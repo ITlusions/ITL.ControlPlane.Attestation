@@ -12,27 +12,22 @@ It does this by anchoring machine identity to the TPM Endorsement Key (EK) — a
 
 ## System Context
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  USB Registration Agent (Alpine Linux / ITL Kiosk)      │
-│  Reads TPM EK cert → POST /api/v1/register              │
-└────────────────────────┬────────────────────────────────┘
-                         │  HTTPS
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│           ITL.ControlPlane.Attestation                  │
-│           https://attest.itlusions.com                  │
-│                                                         │
-│  FastAPI  ──  SQLite DB  ──  Enrollment CA (RSA-4096)   │
-│                │                                        │
-│                └──  Talos Image Factory (factory.talos.dev) │
-└────────────────────────┬────────────────────────────────┘
-                         │
-          ┌──────────────┼──────────────┐
-          ▼              ▼              ▼
-   Talos Node      Talos Node     Talos Node
-   (boots ISO)   (attest on      (offline USB
-                  first boot)     bundle)
+```mermaid
+C4Context
+  title System Context — ITL.ControlPlane.Attestation
+
+  Person(operator, "Operator", "Approves machines, manages lifecycle")
+
+  System_Ext(usb_agent, "USB Registration Agent", "Alpine Linux / ITL Kiosk\nReads TPM EK cert\nPOST /api/v1/register")
+  System_Ext(talos_ext, "itl-tpm-register Extension", "Talos Linux extension\nCalls /self-register and /attest\nApplies MachineConfig on approval")
+  System_Ext(factory, "Talos Image Factory", "factory.talos.dev (or self-hosted)\nGenerates custom ISO with kernel args")
+
+  System(attest, "ITL.ControlPlane.Attestation", "FastAPI · SQLite · Enrollment CA (RSA-4096)\nhttps://attest.itlusions.com")
+
+  Rel(usb_agent, attest, "POST /api/v1/register", "HTTPS")
+  Rel(talos_ext, attest, "POST /api/v1/self-register\nPOST /api/v1/attest\nGET /api/v1/config/{token}", "HTTPS")
+  Rel(operator, attest, "GET/POST /api/v1/machines/*", "HTTPS + Bearer token")
+  Rel(attest, factory, "POST /schematics", "HTTPS (fallback when ITL_ISO_URL not set)")
 ```
 
 ---
@@ -68,22 +63,24 @@ It does this by anchoring machine identity to the TPM Endorsement Key (EK) — a
 
 ### Machine status state machine
 
-```
-                  ┌──────────────────┐
-  (USB agent) ──► │   registered     │ ──► (operator approves) ──► re-registered
-                  └────────┬─────────┘
-                           │ (Talos boot → POST /attest)
-                           ▼
-                  ┌──────────────────┐
-       ┌────────► │    attested      │ ◄──────────┐
-       │          └────────┬─────────┘            │
-       │                   │                      │
-       │     ┌─────────────┼──────────────┐       │
-       │     ▼             ▼              ▼       │
-       │  locked        revoked     pending_approval
-       │  (unlock) ──►  (wipe?)     (first-boot, unknown MAC)
-       │
-  (POST /attest, re-boot)
+```mermaid
+stateDiagram-v2
+  direction LR
+
+  [*] --> pending_approval : POST /self-register\n(extension, first boot)
+  [*] --> registered       : POST /register\n(USB agent)
+
+  pending_approval --> registered : POST /machines/{id}/approve
+  registered       --> attested   : POST /attest\n(EK fingerprint match)
+  attested         --> attested   : POST /attest\n(re-boot, already attested)
+
+  attested --> locked  : POST /machines/{id}/lock
+  locked   --> attested: POST /machines/{id}/unlock
+
+  attested --> revoked : POST /machines/{id}/revoke
+  locked   --> revoked : POST /machines/{id}/revoke
+
+  revoked --> [*] : action=wipe\n(wipe_pending=true)\ntalosctl reset
 ```
 
 When `status=revoked` and `wipe_pending=True`, the next `POST /attest` response includes `"action": "wipe"`. The `itl-tpm-register` Talos extension calls `talosctl reset --graceful=false` on receipt, wiping STATE + EPHEMERAL before rebooting to maintenance mode.
@@ -94,33 +91,31 @@ When `status=revoked` and `wipe_pending=True`, the next `POST /attest` response 
 
 When a machine boots a generic Talos ISO with `talos.config=https://attest.itlusions.com/api/v1/config` baked in, the `itl-tpm-register` extension can self-register without any USB agent pre-step.
 
-```
-Talos Node (itl-tpm-register ext)  Attestation Service     Operator
-──────────────────────────────     ───────────────────     ────────
-Boot generic ISO
-Read TPM EK cert from /sys
-POST /api/v1/self-register ──────►
-  ek_fingerprint, ek_cert_pem,     Verify EK material
-  hw_uuid, hw_mac, ...             Create Machine(pending_approval)
-◄─────────────────────────────── status: pending_approval
-                                                            GET /api/v1/machines
-                                                            POST /machines/{id}/approve
-                                                            (role, hostname, ip)
-Poll POST /api/v1/attest ────────►
-(every 60 s until approved)        Check status
-                                   If still pending: return pending_approval / action=none
-◄─────────────────────────────── action: none  (keep polling)
+```mermaid
+sequenceDiagram
+  participant Node as Talos Node<br/>(itl-tpm-register)
+  participant Svc  as Attestation Service
+  participant Op   as Operator
 
-                                   [operator approves → status=registered]
+  Node->>Svc: POST /api/v1/self-register<br/>ek_fingerprint, ek_cert_pem, hw_*
+  Svc-->>Node: status: pending_approval
 
-Poll POST /api/v1/attest ────────►
-                                   status=registered → transition to attested
-                                   Issue fresh config_token
-◄─────────────────────────────── status: attested, action: apply-config
-                                  config_url: .../config/<token>
+  Op->>Svc: GET /api/v1/machines
+  Svc-->>Op: [list of pending machines]
+  Op->>Svc: POST /machines/{id}/approve<br/>role, hostname, assigned_ip
 
-curl config_url | talosctl apply-config --insecure --file -
-                                         Talos reboots with full cluster config ✓
+  loop Poll every 60 s
+    Node->>Svc: POST /api/v1/attest
+    alt still pending
+      Svc-->>Node: action: none
+    else approved
+      Svc-->>Node: action: apply-config<br/>config_url: .../config/{token}
+    end
+  end
+
+  Node->>Svc: GET /api/v1/config/{token}
+  Svc-->>Node: MachineConfig YAML
+  Node->>Node: talosctl apply-config --insecure<br/>Talos reboots into cluster
 ```
 
 The `action` field in `AttestResponse`:
@@ -136,37 +131,49 @@ The `action` field in `AttestResponse`:
 
 ## Registration Flow (USB Agent)
 
-```
-USB Agent                          Attestation Service
-─────────                          ───────────────────
-Read TPM EK cert from /sys         
-Compute SHA-256 fingerprint        
-POST /api/v1/register ────────────►
-  ek_fingerprint, ek_cert_pem,     Verify EK structural integrity
-  hw_uuid, hw_mac, ...             Recompute fingerprint, compare
-                                   Look up existing record by EK fp
-                                   If new: create Machine(registered)
-                                   If existing: refresh token
-                                   POST schematic → factory.talos.dev
-                                   Receive ISO URL
-◄──────────────────────────────── Return: iso_url, config_token
-Download ISO, burn to USB / boot
+```mermaid
+sequenceDiagram
+  participant Agent as USB Agent<br/>(Alpine Linux)
+  participant Svc   as Attestation Service
+  participant Fac   as Image Factory
+
+  Agent->>Agent: Read TPM EK cert from /sys<br/>Compute SHA-256 fingerprint
+  Agent->>Svc: POST /api/v1/register<br/>ek_fingerprint, ek_cert_pem, hw_*
+  Svc->>Svc: Verify EK structural integrity<br/>Recompute + compare fingerprint<br/>Upsert Machine record
+  alt ITL_ISO_URL set
+    Svc->>Svc: Return pre-built ITL HardenedOS ISO URL
+  else fallback
+    Svc->>Fac: POST /schematics (talos.config kernel arg)
+    Fac-->>Svc: schematic_id
+  end
+  Svc-->>Agent: iso_url, config_token, config_url
+  Agent->>Agent: Download ISO, burn to USB / boot
 ```
 
 ---
 
 ## Attestation Flow (First Talos Boot)
 
-```
-Talos Node (itl-tpm-register ext)  Attestation Service
-──────────────────────────────     ───────────────────
-Read TPM EK cert
-POST /api/v1/attest ──────────────►
-  ek_fingerprint, ek_cert_pem,     Recompute fingerprint
-  hw_uuid, hw_mac, ...             Look up Machine by EK fp
-                                   Check status (locked/revoked/pending)
-                                   Transition: registered → attested
-◄──────────────────────────────── Return: status, action, role
+```mermaid
+sequenceDiagram
+  participant Node as Talos Node<br/>(itl-tpm-register)
+  participant Svc  as Attestation Service
+
+  Node->>Svc: POST /api/v1/attest<br/>ek_fingerprint, ek_cert_pem, hw_*
+  Svc->>Svc: Recompute EK fingerprint<br/>Look up Machine by EK fp<br/>Check status
+
+  alt status = registered
+    Svc->>Svc: Transition → attested<br/>Issue config_token
+    Svc-->>Node: action: apply-config, config_url
+  else status = pending_approval
+    Svc-->>Node: action: none (keep polling)
+  else status = locked
+    Svc-->>Node: action: lock
+  else status = revoked + wipe_pending
+    Svc-->>Node: action: wipe
+  else status = attested
+    Svc-->>Node: action: none
+  end
 ```
 
 ---
@@ -232,14 +239,19 @@ The URI SAN binds the cert to the specific TPM hardware identity.
 
 ### Two-step enrollment challenge
 
-```
-Node                               Attestation Service
-────                               ───────────────────
-Present cert + nonce signature ──►
-                                   1. Verify cert chain against Enrollment CA
-                                   2. Verify nonce signature with cert public key
-                                   (proves key possession, not just cert possession)
-◄─────────────────────────────── Accept or reject
+```mermaid
+sequenceDiagram
+  participant Node as Talos Node
+  participant Svc  as Attestation Service
+
+  Node->>Svc: POST /api/v1/machines/enroll<br/>cert_pem, nonce, nonce_signature
+  Svc->>Svc: 1. Verify cert chain against Enrollment CA
+  Svc->>Svc: 2. Verify nonce_signature with cert public key<br/>(proves key possession)
+  alt valid
+    Svc-->>Node: 200 OK — enrolled
+  else invalid
+    Svc-->>Node: 403 Forbidden
+  end
 ```
 
 ### Key wrapping (optional)

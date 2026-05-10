@@ -2,34 +2,24 @@
 
 ## Machine Lifecycle Overview
 
-```
-New hardware
-    │
-    ▼  (USB agent reads TPM EK cert)
-POST /api/v1/register
-    │
-    ▼
-status: registered
-    │
-    ├──► (Operator: GET /api/v1/machines → review pending/registered machines)
-    │
-    ▼  (Operator: POST /machines/{id}/approve)
-status: registered + role + hostname + config_token assigned
-    │
-    ▼  (Machine boots Talos ISO → itl-tpm-register extension)
-POST /api/v1/attest
-    │
-    ▼
-status: attested ◄────────────────────────────────────────┐
-    │                                                      │
-    ├──► POST /machines/{id}/lock  ──►  status: locked     │
-    │    POST /machines/{id}/unlock ──────────────────────►┘
-    │
-    └──► POST /machines/{id}/revoke
-              │
-              ├── wipe=false  ──►  status: revoked (blocked, no data loss)
-              └── wipe=true   ──►  status: revoked + wipe_pending=true
-                                   (next attest → action=wipe → talosctl reset)
+```mermaid
+stateDiagram-v2
+  direction TB
+
+  [*]              --> pending_approval : POST /self-register\n(extension, generic ISO boot)
+  [*]              --> registered       : POST /register\n(USB agent pre-registration)
+
+  pending_approval --> registered       : POST /machines/{id}/approve\n(operator assigns role + hostname)
+  registered       --> attested         : POST /attest\n(Talos boot, EK fingerprint match)
+  attested         --> attested         : POST /attest\n(subsequent boots)
+
+  attested --> locked   : POST /machines/{id}/lock
+  locked   --> attested : POST /machines/{id}/unlock
+
+  attested --> revoked  : POST /machines/{id}/revoke
+  locked   --> revoked  : POST /machines/{id}/revoke
+
+  revoked --> [*] : action=wipe (wipe_pending=true)\ntalosctl reset --graceful=false
 ```
 
 ---
