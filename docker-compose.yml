@@ -1,0 +1,26 @@
+services:
+  attestation:
+    build: .
+    image: ghcr.io/itlusions/itl-controlplane-attestation:latest
+    ports:
+      - "8080:8080"
+    environment:
+      ITL_DB_URL: sqlite:////var/lib/itl-reg/db/machines.db
+      ITL_SERVICE_URL: ${ITL_SERVICE_URL:-https://attest.itlusions.com}
+      ITL_FACTORY_URL: ${ITL_FACTORY_URL:-https://factory.talos.dev}
+      ITL_TALOS_VERSION: ${ITL_TALOS_VERSION:-v1.9.5}
+      ITL_INSTALLER_IMAGE: ${ITL_INSTALLER_IMAGE:-ghcr.io/itlusions/itl-talos-installer:latest}
+      ITL_ADMIN_TOKEN: ${ITL_ADMIN_TOKEN:-}
+      ITL_ENROLLMENT_CERT_DAYS: ${ITL_ENROLLMENT_CERT_DAYS:-30}
+    volumes:
+      - itl-reg-data:/var/lib/itl-reg
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  itl-reg-data:
