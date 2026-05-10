@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, field_validator
 from sqlmodel import Field, SQLModel
@@ -78,6 +78,12 @@ class RegisterRequest(BaseModel):
     hw_serial:      str           = "unknown"
     hw_product:     str           = "unknown"
     desired_role:   Optional[str] = None
+    # Extensions to bake into the Talos ISO via the Image Factory schematic.
+    # Accepted formats:
+    #   "siderolabs/gvisor"                 → officialExtensions
+    #   "ghcr.io/itlusions/itl-branding"    → ociArtifacts (full ref)
+    #   "itl-branding"                      → resolved to ITL GHCR ref automatically
+    extensions: List[str] = []
 
     @field_validator("ek_fingerprint")
     @classmethod
@@ -95,6 +101,42 @@ class RegisterResponse(BaseModel):
     iso_url:      str
     config_token: str
     config_url:   str
+    message:      str
+
+
+class SelfRegisterRequest(BaseModel):
+    """Registration request sent by the itl-tpm-register Talos extension.
+
+    Unlike RegisterRequest (USB agent), this does not trigger an Image Factory
+    call — the machine is already booted.  After approval the extension calls
+    POST /api/v1/attest periodically; when the response is 'attested' it uses
+    the returned config_token to fetch and apply the full MachineConfig via
+    talosctl apply-config.
+    """
+    ek_fingerprint: str
+    ek_cert_pem:    str
+    ek_source:      str           = "cert"
+    hw_uuid:        str           = "unknown"
+    hw_mac:         str           = "unknown"
+    hw_serial:      str           = "unknown"
+    hw_product:     str           = "unknown"
+    desired_role:   Optional[str] = None
+
+    @field_validator("ek_fingerprint")
+    @classmethod
+    def validate_fingerprint(cls, v: str) -> str:
+        v = v.strip().lower()
+        if len(v) != 64 or not all(c in "0123456789abcdef" for c in v):
+            raise ValueError("ek_fingerprint must be a 64-char hex SHA-256 digest")
+        return v
+
+
+class SelfRegisterResponse(BaseModel):
+    machine_id:   str
+    role:         str
+    status:       str
+    config_token: Optional[str]
+    config_url:   Optional[str]
     message:      str
 
 
@@ -120,16 +162,21 @@ class AttestRequest(BaseModel):
 
 
 class AttestResponse(BaseModel):
-    machine_id: str
-    status:     str
-    hostname:   Optional[str]
-    role:       str
-    message:    str
+    machine_id:   str
+    status:       str
+    hostname:     Optional[str]
+    role:         str
+    message:      str
     # action instructs the Talos extension what to do after attestation.
-    # "none"  — normal operation
-    # "wipe"  — machine revoked with wipe_pending=True; extension calls talosctl reset
-    # "lock"  — machine locked; extension writes lock flag and halts enrollment
-    action:     str = "none"
+    # "none"       — normal operation
+    # "apply-config" — machine just attested; fetch config_url and apply with talosctl
+    # "wipe"       — machine revoked with wipe_pending=True; extension calls talosctl reset
+    # "lock"       — machine locked; extension writes lock flag and halts enrollment
+    action:       str           = "none"
+    # Populated when action="apply-config" — one-time URL for the full MachineConfig YAML.
+    # Extension should call: talosctl apply-config --insecure --file <(curl -sf config_url)
+    config_url:   Optional[str] = None
+    config_token: Optional[str] = None
 
 
 class RevokeRequest(BaseModel):
