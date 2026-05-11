@@ -169,6 +169,27 @@
       margin: 32px 0;
     }
 
+    /* ── IMAGES ── */
+    .prose img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      margin: 20px 0;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    .prose img + em,
+    .prose p > em:only-child {
+      display: block;
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: -12px;
+      margin-bottom: 20px;
+    }
+
     /* ── TABLES ── */
     .prose table {
       width: 100%;
@@ -329,24 +350,21 @@
 <nav>
   <a class="nav-brand" href="{{ '/' | relative_url }}">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-      <polyline points="9 22 9 12 15 12 15 22"/>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
     </svg>
-    ITL Subscription Vending
+    ITL Attestation
   </a>
   <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" id="nav-toggle">
     <span></span><span></span><span></span>
   </button>
   <ul class="nav-links" id="nav-links">
-    <li><a href="{{ '/provisioning-workflow' | relative_url }}"{% if page.url contains 'provisioning-workflow' %} class="active"{% endif %}>Workflow</a></li>
-    <li><a href="{{ '/architecture' | relative_url }}"{% if page.url contains 'architecture' %} class="active"{% endif %}>Architecture</a></li>
-    <li><a href="{{ '/api' | relative_url }}"{% if page.url contains '/api' %} class="active"{% endif %}>API</a></li>
-    <li><a href="{{ '/kubernetes' | relative_url }}"{% if page.url contains 'kubernetes' %} class="active"{% endif %}>Kubernetes</a></li>
-    <li><a href="{{ '/infrastructure' | relative_url }}"{% if page.url contains 'infrastructure' %} class="active"{% endif %}>Infrastructure</a></li>
-    <li><a href="{{ '/configuration' | relative_url }}"{% if page.url contains 'configuration' %} class="active"{% endif %}>Configuration</a></li>
-    <li><a href="{{ '/secrets' | relative_url }}"{% if page.url contains 'secrets' %} class="active"{% endif %}>Secrets</a></li>
-    <li><a href="{{ '/development' | relative_url }}"{% if page.url contains 'development' %} class="active"{% endif %}>Dev Guide</a></li>
-    <li><a href="{{ site.baseurl }}/demo"{% if page.url contains 'demo' %} class="active"{% endif %}>Demo</a></li>
+    <li><a href="{{ '/ARCHITECTURE' | relative_url }}"{% if page.url contains 'ARCHITECTURE' %} class="active"{% endif %}>Architecture</a></li>
+    <li><a href="{{ '/ENDPOINTS' | relative_url }}"{% if page.url contains 'ENDPOINTS' %} class="active"{% endif %}>API</a></li>
+    <li><a href="{{ '/DEPLOYMENT' | relative_url }}"{% if page.url contains 'DEPLOYMENT' %} class="active"{% endif %}>Deployment</a></li>
+    <li><a href="{{ '/OPERATIONS' | relative_url }}"{% if page.url contains 'OPERATIONS' %} class="active"{% endif %}>Operations</a></li>
+    <li><a href="{{ '/SECURITY' | relative_url }}"{% if page.url contains 'SECURITY' %} class="active"{% endif %}>Security</a></li>
+    <li><a href="{{ '/TPM_EXPLAINED' | relative_url }}"{% if page.url contains 'TPM_EXPLAINED' %} class="active"{% endif %}>TPM Explained</a></li>
+    <li><a href="{{ '/WALKTHROUGH' | relative_url }}"{% if page.url contains 'WALKTHROUGH' %} class="active"{% endif %}>Walkthrough</a></li>
   </ul>
 </nav>
 
@@ -357,8 +375,8 @@
 </main>
 
 <footer>
-  <a href="{{ '/' | relative_url }}">ITL Subscription Vending</a> &nbsp;·&nbsp;
-  <a href="https://github.com/ITlusions/ITL.Platform.SubscriptionVending" target="_blank">GitHub</a>
+  <a href="{{ '/' | relative_url }}">ITL Attestation</a> &nbsp;·&nbsp;
+  <a href="https://github.com/ITlusions/ITL.ControlPlane.Attestation" target="_blank">GitHub</a>
   &nbsp;·&nbsp; Built with Jekyll
 </footer>
 
