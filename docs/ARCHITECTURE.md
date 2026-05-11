@@ -58,15 +58,36 @@ flowchart TB
 
 ---
 
-## Source Modules
+## Source Layout
 
-| File | Role |
-|---|---|
-| `main.py` | FastAPI app — all HTTP endpoints and request routing |
-| `models.py` | SQLModel `Machine` ORM table + all Pydantic request/response schemas |
-| `tpm_verifier.py` | EK material structural verification and SHA-256 fingerprint computation |
-| `enrollment_ca.py` | Self-signed Enrollment CA lifecycle, cert issuance, chain verification, nonce signature, RSA-OAEP wrapping |
-| `config_generator.py` | Merge role base configs (downloaded from GitHub Release) with machine-specific overrides to produce Talos MachineConfig YAML |
+```
+src/attestation/
+  core/
+    config.py           — Settings (Pydantic BaseSettings) + settings singleton
+    deps.py             — FastAPI dependency injectors: get_db(), get_engine(), require_admin()
+    models.py           — SQLModel Machine ORM table + all Pydantic request/response schemas
+    app.py              — create_app() factory + lifespan (DB init, CA init)
+  pki/
+    enrollment_ca.py    — Enrollment CA: init, cert issuance, chain verification, nonce signature, RSA-OAEP wrapping
+    tpm_verifier.py     — EK material structural verification and SHA-256 fingerprint computation
+  talos/
+    config_generator.py — Merge role base configs with machine-specific overrides → Talos MachineConfig YAML
+    iso_factory.py      — Build Talos Image Factory schematic URLs; ITL_ISO_URL fallback
+  handlers/
+    registration.py     — Business logic for /register and /self-register
+    attestation.py      — Business logic for /attest
+    config_delivery.py  — Business logic for /config/{token} and /config?mac=
+    machines.py         — Business logic for machine CRUD, approve, revoke, lock, unlock, offline-bundle
+    enrollment.py       — Business logic for /machines/enroll and /machines/{id}/request-cert
+  routes/
+    registration.py     — FastAPI router: POST /api/v1/register, /self-register
+    attestation.py      — FastAPI router: GET /healthz, POST /api/v1/attest
+    config.py           — FastAPI router: GET /api/v1/config, /api/v1/config/{token}
+    machines.py         — FastAPI router: GET/POST /api/v1/machines/**
+  main.py               — Entry point: app = create_app()
+```
+
+Backward-compatible re-export shims at the package root (`config.py`, `deps.py`, `models.py`, `app.py`, `enrollment_ca.py`, `tpm_verifier.py`, `config_generator.py`, `iso_factory.py`) allow existing import paths to continue working without changes.
 
 ---
 

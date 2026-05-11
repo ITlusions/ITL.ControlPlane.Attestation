@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ITL Attestation — Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    body {
+      background: #04070f;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 20% -10%, rgba(56,189,248,0.09) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 110%, rgba(99,102,241,0.07) 0%, transparent 60%);
+      min-height: 100vh;
+    }
+    .glass { background: rgba(255,255,255,0.04); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.07); }
+    .glass-sm { background: rgba(255,255,255,0.06); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08); }
+    .glass-hover:hover { background: rgba(255,255,255,0.07); transition: background 0.15s; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    .pulse-dot { animation: pulse-opacity 2s ease-in-out infinite; }
+    @keyframes pulse-opacity { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+    .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:9999px; font-size:.7rem; font-weight:600; letter-spacing:.05em; text-transform:uppercase; }
+    .fade-in { animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+    .action-btn { padding:3px 10px; border-radius:6px; font-size:.72rem; font-weight:500; transition:all .15s; border:1px solid transparent; cursor:pointer; }
+    .action-btn:hover { filter:brightness(1.2); }
+    .action-btn:active { transform:scale(.96); }
+    .demo-ribbon { position:fixed; top:10px; left:50%; transform:translateX(-50%); background:rgba(245,158,11,.15); border:1px solid rgba(245,158,11,.3); color:rgb(251,191,36); font-size:.65rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:3px 14px; border-radius:9999px; backdrop-filter:blur(8px); z-index:100; pointer-events:none; }
+  </style>
+</head>
+<body class="text-slate-200 antialiased">
+
+  <div class="demo-ribbon">Demo — Static Preview</div>
+
+  <!-- Nav -->
+  <nav class="glass sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <svg class="w-7 h-7 text-sky-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+      </svg>
+      <div>
+        <div class="text-sm font-semibold text-white leading-tight">ITL Attestation</div>
+        <div class="text-xs text-slate-500 leading-tight">Control Plane — Management</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
+        <span class="text-xs text-emerald-500">Healthy</span>
+      </div>
+      <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-400">
+        <div class="relative">
+          <input type="checkbox" class="sr-only peer" checked />
+          <div class="w-8 h-4 bg-sky-600 rounded-full"></div>
+          <div class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full translate-x-4"></div>
+        </div>
+        Auto-refresh
+      </label>
+      <div class="glass-sm text-xs text-slate-500 rounded-lg px-3 py-1.5">••••••••••••</div>
+      <button class="glass-sm text-xs text-sky-400 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </nav>
+
+  <main class="max-w-screen-2xl mx-auto px-6 py-8 space-y-6">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-white/5 fade-in">
+        <div class="p-2 rounded-lg bg-white/5"><svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg></div>
+        <div><div class="text-xl font-bold text-white">8</div><div class="text-xs text-slate-500">Total</div></div>
+      </div>
+      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-amber-500/10 fade-in">
+        <div class="p-2 rounded-lg bg-amber-500/10"><svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        <div><div class="text-xl font-bold text-white">2</div><div class="text-xs text-slate-500">Pending</div></div>
+      </div>
+      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-blue-500/10 fade-in">
+        <div class="p-2 rounded-lg bg-blue-500/10"><svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V19.5a2.25 2.25 0 002.25 2.25H15"/></svg></div>
+        <div><div class="text-xl font-bold text-white">1</div><div class="text-xs text-slate-500">Registered</div></div>
+      </div>
+      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-emerald-500/10 fade-in">
+        <div class="p-2 rounded-lg bg-emerald-500/10"><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg></div>
+        <div><div class="text-xl font-bold text-white">4</div><div class="text-xs text-slate-500">Attested</div></div>
+      </div>
+      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-orange-500/10 fade-in">
+        <div class="p-2 rounded-lg bg-orange-500/10"><svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg></div>
+        <div><div class="text-xl font-bold text-white">1</div><div class="text-xs text-slate-500">Locked</div></div>
+      </div>
+      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-red-500/10 fade-in">
+        <div class="p-2 rounded-lg bg-red-500/10"><svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg></div>
+        <div><div class="text-xl font-bold text-white">0</div><div class="text-xs text-slate-500">Revoked</div></div>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="glass rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
+      <div class="relative flex-1 min-w-48">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+        <input type="text" placeholder="Search machine ID, serial, MAC, hostname…" class="w-full bg-transparent pl-8 pr-3 py-1.5 text-xs text-slate-300 placeholder-slate-600 outline-none" />
+      </div>
+      <div class="h-5 w-px bg-white/10"></div>
+      <div class="flex gap-2 flex-wrap">
+        <span class="badge bg-white/15 text-slate-200 border border-white/20 cursor-pointer" style="outline:2px solid rgba(56,189,248,.5)">All</span>
+        <span class="badge bg-amber-500/10 text-amber-400 border border-amber-500/20 cursor-pointer hover:bg-amber-500/20">Pending</span>
+        <span class="badge bg-blue-500/10 text-blue-400 border border-blue-500/20 cursor-pointer hover:bg-blue-500/20">Registered</span>
+        <span class="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20">Attested</span>
+        <span class="badge bg-orange-500/10 text-orange-400 border border-orange-500/20 cursor-pointer hover:bg-orange-500/20">Locked</span>
+        <span class="badge bg-red-500/10 text-red-400 border border-red-500/20 cursor-pointer hover:bg-red-500/20">Revoked</span>
+      </div>
+      <div class="ml-auto text-xs text-slate-500">8 machines</div>
+    </div>
+
+    <!-- Table -->
+    <div class="glass rounded-xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="border-b border-white/5 text-slate-500 uppercase tracking-wider text-[.65rem]">
+              <th class="px-4 py-3 text-left">Machine</th>
+              <th class="px-4 py-3 text-left">Hardware</th>
+              <th class="px-4 py-3 text-left">Role</th>
+              <th class="px-4 py-3 text-left">Status</th>
+              <th class="px-4 py-3 text-left">EK Fingerprint</th>
+              <th class="px-4 py-3 text-left">Registered</th>
+              <th class="px-4 py-3 text-left">Attested</th>
+              <th class="px-4 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="demo-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Detail panel -->
+  <div id="detail-overlay" onclick="closeDetail()" class="fixed inset-0 bg-black/50 z-40 hidden backdrop-blur-sm"></div>
+  <aside id="detail-panel" class="fixed right-0 top-0 h-full w-[480px] z-50 translate-x-full transition-transform duration-300 glass border-l border-white/10 overflow-y-auto">
+    <div class="p-6 space-y-5" id="detail-content"></div>
+  </aside>
+
+  <!-- Toast -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    // ── Demo data ────────────────────────────────────────────────────────────
+    const MACHINES = [
+      { machine_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', hw_product: 'Dell PowerEdge R740',  hw_serial: 'SVC1284AB', hw_mac: '00:1A:2B:3C:4D:5E', hw_uuid: 'ff2a4c82-11ae-4cc1-b6e1-9a3c1f291022', role: 'controlplane', status: 'attested',         hostname: 'cp-node-01', assigned_ip: '10.10.0.11', ek_fingerprint: 'a3f8e21c9b04d7f61e8ca932ff012345678901234567890abcdef01', ek_source: 'cert', registered_at: '2026-04-28T09:11:00Z', attested_at: '2026-04-28T09:13:22Z', locked_at: null, revoked_at: null, token_consumed: true,  wipe_pending: false },
+      { machine_id: 'b2c3d4e5-f6a7-8901-bcde-f01234567891', hw_product: 'Dell PowerEdge R740',  hw_serial: 'SVC1284AC', hw_mac: '00:1A:2B:3C:4D:5F', hw_uuid: 'cc9a1b44-22bf-4dd2-c7f2-0b4d2e302133', role: 'controlplane', status: 'attested',         hostname: 'cp-node-02', assigned_ip: '10.10.0.12', ek_fingerprint: 'b4e9f32dac15e8g72f9db043ef123456789012345678901bcdef02', ek_source: 'cert', registered_at: '2026-04-28T09:14:00Z', attested_at: '2026-04-28T09:16:45Z', locked_at: null, revoked_at: null, token_consumed: true,  wipe_pending: false },
+      { machine_id: 'c3d4e5f6-a7b8-9012-cdef-012345678902', hw_product: 'Dell PowerEdge R640',  hw_serial: 'SVI9823XA', hw_mac: 'AA:BB:CC:DD:EE:01', hw_uuid: 'dd0b2c55-33c0-4ee3-d8g3-1c5e3f413244', role: 'controlplane', status: 'attested',         hostname: 'cp-node-03', assigned_ip: '10.10.0.13', ek_fingerprint: 'c5f0g43ebd26f9h83g0ec154fg234567890123456789012cdef03', ek_source: 'cert', registered_at: '2026-04-29T07:02:00Z', attested_at: '2026-04-29T07:04:11Z', locked_at: null, revoked_at: null, token_consumed: true,  wipe_pending: false },
+      { machine_id: 'd4e5f6a7-b8c9-0123-def0-123456789003', hw_product: 'HPE ProLiant DL360',   hw_serial: 'HPE4481ZZ', hw_mac: 'AA:BB:CC:DD:EE:02', hw_uuid: 'ee1c3d66-44d1-5ff4-e9h4-2d6f4g524355', role: 'worker-infra', status: 'attested',         hostname: 'infra-node-01', assigned_ip: '10.10.1.21', ek_fingerprint: 'd6g1h54fce37g0i94h1fd265gh345678901234567890123def04', ek_source: 'cert', registered_at: '2026-04-30T11:20:00Z', attested_at: '2026-04-30T11:22:50Z', locked_at: null, revoked_at: null, token_consumed: true,  wipe_pending: false },
+      { machine_id: 'e5f6a7b8-c9d0-1234-ef01-234567890004', hw_product: 'Supermicro SYS-1029U', hw_serial: 'SMC7712AA', hw_mac: 'AA:BB:CC:DD:EE:03', hw_uuid: 'ff2d4e77-55e2-6gg5-f0i5-3e7g5h635466', role: 'worker-app',   status: 'registered',       hostname: null,        assigned_ip: null,       ek_fingerprint: 'e7h2i65gdf48h1j05i2ge376hi456789012345678901234ef05', ek_source: 'pub',  registered_at: '2026-05-01T14:05:00Z', attested_at: null,                     locked_at: null, revoked_at: null, token_consumed: false, wipe_pending: false },
+      { machine_id: 'f6a7b8c9-d0e1-2345-f012-345678900005', hw_product: 'Intel NUC 12 Pro',     hw_serial: 'NUC8821XB', hw_mac: 'AA:BB:CC:DD:EE:04', hw_uuid: 'gg3e5f88-66f3-7hh6-g1j6-4f8h6i746577', role: 'worker-app',   status: 'pending_approval', hostname: null,        assigned_ip: null,       ek_fingerprint: 'f8i3j76heg59i2k16j3hf487ij567890123456789012345f06',  ek_source: 'cert', registered_at: '2026-05-10T22:41:00Z', attested_at: null,                     locked_at: null, revoked_at: null, token_consumed: false, wipe_pending: false },
+      { machine_id: 'a7b8c9d0-e1f2-3456-0123-456789000006', hw_product: 'Intel NUC 12 Pro',     hw_serial: 'NUC8822XC', hw_mac: 'AA:BB:CC:DD:EE:05', hw_uuid: 'hh4f6g99-77g4-8ii7-h2k7-5g9i7j857688', role: 'worker-app',   status: 'pending_approval', hostname: null,        assigned_ip: null,       ek_fingerprint: 'g9j4k87ifh60j3l27k4ig598jk678901234567890123456g07',  ek_source: 'cert', registered_at: '2026-05-11T06:03:00Z', attested_at: null,                     locked_at: null, revoked_at: null, token_consumed: false, wipe_pending: false },
+      { machine_id: 'b8c9d0e1-f2a3-4567-1234-567890000007', hw_product: 'HPE ProLiant DL380',   hw_serial: 'HPE9911YA', hw_mac: 'AA:BB:CC:DD:EE:06', hw_uuid: 'ii5g7h00-88h5-9jj8-i3l8-6h0j8k968799', role: 'worker-infra', status: 'locked',           hostname: 'infra-node-02', assigned_ip: '10.10.1.22', ek_fingerprint: 'h0k5l98jgi71k4m38l5jh609kl789012345678901234567h08', ek_source: 'cert', registered_at: '2026-04-25T08:00:00Z', attested_at: '2026-04-25T08:02:14Z', locked_at: '2026-05-09T16:30:00Z', revoked_at: null, token_consumed: true, wipe_pending: false },
+    ];
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    const STATUS_CFG = {
+      pending_approval: { label:'Pending',    bg:'bg-amber-500/15',   text:'text-amber-400',   dot:'bg-amber-400' },
+      registered:       { label:'Registered', bg:'bg-blue-500/15',    text:'text-blue-400',    dot:'bg-blue-400' },
+      attested:         { label:'Attested',   bg:'bg-emerald-500/15', text:'text-emerald-400', dot:'bg-emerald-400' },
+      rejected:         { label:'Rejected',   bg:'bg-red-500/15',     text:'text-red-400',     dot:'bg-red-400' },
+      locked:           { label:'Locked',     bg:'bg-orange-500/15',  text:'text-orange-400',  dot:'bg-orange-400' },
+      revoked:          { label:'Revoked',    bg:'bg-red-900/30',     text:'text-red-500',     dot:'bg-red-600' },
+    };
+    const ROLE_CFG = {
+      controlplane:   { label:'Control Plane', bg:'bg-violet-500/15', text:'text-violet-400' },
+      'worker-infra': { label:'Worker Infra',  bg:'bg-cyan-500/15',   text:'text-cyan-400' },
+      'worker-app':   { label:'Worker App',    bg:'bg-sky-500/15',    text:'text-sky-400' },
+    };
+
+    function fmt(dt) {
+      if (!dt) return '—';
+      return new Date(dt).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    }
+    function trunc(s, n=12) { return s ? s.slice(0,n)+'…' : '—'; }
+
+    function statusBadge(s) {
+      const c = STATUS_CFG[s] || { label:s, bg:'bg-slate-500/15', text:'text-slate-400', dot:'bg-slate-400' };
+      return `<span class="badge ${c.bg} ${c.text}"><span class="w-1.5 h-1.5 rounded-full ${c.dot} inline-block${s==='attested'?' pulse-dot':''}"></span>${c.label}</span>`;
+    }
+    function roleBadge(r) {
+      const c = ROLE_CFG[r] || { label:r, bg:'bg-slate-500/15', text:'text-slate-400' };
+      return `<span class="badge ${c.bg} ${c.text}">${c.label}</span>`;
+    }
+
+    function buildActions(m) {
+      const b = [];
+      if (['pending_approval','registered'].includes(m.status))
+        b.push(`<button class="action-btn bg-emerald-500/20 text-emerald-400 border-emerald-500/30" onclick="demoAction('approve','${m.machine_id}')">Approve</button>`);
+      if (['attested','registered'].includes(m.status))
+        b.push(`<button class="action-btn bg-orange-500/20 text-orange-400 border-orange-500/30" onclick="demoAction('lock','${m.machine_id}')">Lock</button>`);
+      if (m.status === 'locked')
+        b.push(`<button class="action-btn bg-blue-500/20 text-blue-400 border-blue-500/30" onclick="demoAction('unlock','${m.machine_id}')">Unlock</button>`);
+      if (!['revoked','rejected'].includes(m.status))
+        b.push(`<button class="action-btn bg-red-500/20 text-red-400 border-red-500/30" onclick="demoAction('revoke','${m.machine_id}')">Revoke</button>`);
+      return b.join('');
+    }
+
+    // ── Toast ────────────────────────────────────────────────────────────────
+    function toast(msg, type='info') {
+      const colors = { info:'bg-sky-500/20 border-sky-500/30 text-sky-300', success:'bg-emerald-500/20 border-emerald-500/30 text-emerald-300', error:'bg-red-500/20 border-red-500/30 text-red-300', warn:'bg-amber-500/20 border-amber-500/30 text-amber-300' };
+      const el = document.createElement('div');
+      el.className = `pointer-events-auto glass-sm rounded-xl px-4 py-3 text-xs border fade-in ${colors[type]} max-w-xs`;
+      el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    function demoAction(act, id) {
+      const labels = { approve:'Approve', lock:'Lock', unlock:'Unlock', revoke:'Revoke' };
+      toast(`Demo: ${labels[act]} action triggered for ${id.slice(0,8)}… (no-op in preview)`, 'warn');
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+    function renderTable() {
+      document.getElementById('demo-tbody').innerHTML = MACHINES.map(m => `
+        <tr class="border-b border-white/5 glass-hover cursor-pointer fade-in" onclick="openDetail('${m.machine_id}')">
+          <td class="px-4 py-3">
+            <div class="font-mono text-sky-300 text-[.68rem]">${trunc(m.machine_id, 16)}</div>
+            <div class="text-slate-500 text-[.65rem] mt-0.5">${m.hostname || '—'}</div>
+          </td>
+          <td class="px-4 py-3">
+            <div class="text-slate-300">${m.hw_product}</div>
+            <div class="text-slate-500 font-mono text-[.65rem]">${m.hw_serial} · ${m.hw_mac}</div>
+          </td>
+          <td class="px-4 py-3">${roleBadge(m.role)}</td>
+          <td class="px-4 py-3">${statusBadge(m.status)}</td>
+          <td class="px-4 py-3"><span class="font-mono text-slate-500 text-[.65rem]" title="${m.ek_fingerprint}">${trunc(m.ek_fingerprint, 20)}</span></td>
+          <td class="px-4 py-3 text-slate-500 whitespace-nowrap">${fmt(m.registered_at)}</td>
+          <td class="px-4 py-3 text-slate-500 whitespace-nowrap">${fmt(m.attested_at)}</td>
+          <td class="px-4 py-3 text-right" onclick="event.stopPropagation()">
+            <div class="flex justify-end gap-1.5 flex-wrap">${buildActions(m)}</div>
+          </td>
+        </tr>`).join('');
+    }
+
+    // ── Detail panel ──────────────────────────────────────────────────────────
+    function openDetail(id) {
+      const m = MACHINES.find(x => x.machine_id === id);
+      if (!m) return;
+
+      const rows = [
+        ['Machine ID',     `<span class="font-mono text-sky-300 break-all">${m.machine_id}</span>`],
+        ['Status',         statusBadge(m.status)],
+        ['Role',           roleBadge(m.role)],
+        ['Hostname',       m.hostname || '—'],
+        ['Assigned IP',    m.assigned_ip || '—'],
+        ['HW Product',     m.hw_product],
+        ['HW Serial',      `<span class="font-mono">${m.hw_serial}</span>`],
+        ['MAC Address',    `<span class="font-mono">${m.hw_mac}</span>`],
+        ['HW UUID',        `<span class="font-mono text-[.65rem] break-all">${m.hw_uuid}</span>`],
+        ['EK Source',      m.ek_source],
+        ['EK Fingerprint', `<span class="font-mono text-[.65rem] break-all text-slate-400">${m.ek_fingerprint}</span>`],
+        ['Registered',     fmt(m.registered_at)],
+        ['Attested',       fmt(m.attested_at)],
+        ['Locked',         fmt(m.locked_at)],
+        ['Revoked',        fmt(m.revoked_at)],
+        ['Token consumed', m.token_consumed ? '<span class="text-amber-400">Yes</span>' : '<span class="text-slate-500">No</span>'],
+        ['Wipe pending',   m.wipe_pending ? '<span class="text-red-400 font-semibold">YES</span>' : '<span class="text-slate-500">No</span>'],
+      ];
+
+      document.getElementById('detail-content').innerHTML = `
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <div class="text-sm font-semibold text-white mb-1">Machine Detail</div>
+            <div class="font-mono text-sky-400 text-xs">${trunc(m.machine_id, 20)}</div>
+          </div>
+          <button onclick="closeDetail()" class="text-slate-500 hover:text-white transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="space-y-2">
+          ${rows.map(([k,v]) => `
+            <div class="glass-sm rounded-lg px-3 py-2 flex justify-between gap-4">
+              <span class="text-xs text-slate-500 shrink-0">${k}</span>
+              <span class="text-xs text-slate-300 text-right">${v}</span>
+            </div>`).join('')}
+        </div>
+        <div class="pt-4 border-t border-white/10">
+          <div class="text-xs text-slate-500 mb-3">Actions</div>
+          <div class="flex flex-wrap gap-2">${buildActions(m)}</div>
+        </div>
+      `;
+
+      document.getElementById('detail-overlay').classList.remove('hidden');
+      document.getElementById('detail-panel').classList.remove('translate-x-full');
+    }
+
+    function closeDetail() {
+      document.getElementById('detail-overlay').classList.add('hidden');
+      document.getElementById('detail-panel').classList.add('translate-x-full');
+    }
+
+    renderTable();
+  </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+title: ITL.ControlPlane.Attestation
+description: TPM hardware trust broker for ITL Control Plane Kubernetes nodes
+baseurl: "/ITL.ControlPlane.Attestation"
+url: "https://itlusions.github.io"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# Mermaid diagrams via jekyll-mermaid or passthrough
+plugins: []
+
+# Exclude non-doc files
+exclude:
+  - Gemfile
+  - Gemfile.lock

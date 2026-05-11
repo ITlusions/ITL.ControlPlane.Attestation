@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ITL.ControlPlane.Attestation — TPM Hardware Trust for Kubernetes Nodes</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --accent: #1f6feb;
+      --accent-glow: rgba(31, 111, 235, 0.15);
+      --accent2: #58a6ff;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --success: #3fb950;
+      --warning: #d29922;
+      --danger: #f85149;
+      --tag-bg: #1f3347;
+      --tag-text: #58a6ff;
+      --radius: 8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Nav ─────────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13, 17, 23, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .nav-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+      font-size: 0.875rem;
+    }
+    .nav-links a { color: var(--muted); }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── Hero ────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 6rem 2rem 4rem;
+      background: radial-gradient(ellipse at 50% 0%, rgba(31, 111, 235, 0.12) 0%, transparent 70%);
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+      border-radius: 2rem;
+      padding: 4px 14px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, #e6edf3 0%, #58a6ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.125rem;
+      color: var(--muted);
+      max-width: 620px;
+      margin: 0 auto 2.5rem;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      border: none;
+    }
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+    .badges {
+      display: flex;
+      justify-content: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      margin-top: 2.5rem;
+    }
+    .badge-pill {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2rem;
+      padding: 3px 12px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .badge-pill .dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      margin-right: 5px;
+      background: var(--success);
+    }
+    .badge-pill .dot.warn { background: var(--warning); }
+
+    /* ── Layout ──────────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
+    section { padding: 5rem 0; }
+    section + section { border-top: 1px solid var(--border); }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 1rem;
+    }
+    .section-sub {
+      color: var(--muted);
+      max-width: 560px;
+      margin-bottom: 3rem;
+    }
+
+    /* ── Flow ────────────────────────────────────────────── */
+    .flow {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+    .flow-node { display: flex; flex-direction: column; align-items: center; }
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      text-align: center;
+      white-space: nowrap;
+      color: var(--text);
+    }
+    .flow-box.highlight {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+      color: var(--accent2);
+      font-weight: 600;
+    }
+    .flow-box.ok {
+      background: rgba(63, 185, 80, 0.1);
+      border-color: var(--success);
+      color: var(--success);
+      font-weight: 600;
+    }
+    .flow-arrow {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      width: 36px;
+      flex-shrink: 0;
+      padding-top: 22px;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+    .flow-sub {
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 4px;
+      text-align: center;
+      max-width: 100px;
+    }
+
+    /* ── Steps ───────────────────────────────────────────── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .step-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .step-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .step-card:nth-child(1)::before { background: #1f6feb; }
+    .step-card:nth-child(2)::before { background: #238636; }
+    .step-card:nth-child(3)::before { background: #9e6a03; }
+    .step-card:nth-child(4)::before { background: #8b949e; }
+    .step-card:nth-child(5)::before { background: #6e40c9; }
+    .step-card:nth-child(6)::before { background: #3fb950; }
+
+    .step-num {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    .step-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .step-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.55; }
+    .step-tag {
+      display: inline-block;
+      margin-top: 0.75rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-family: ui-monospace, "Cascadia Code", monospace;
+    }
+
+    /* ── Features ────────────────────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    .feature-icon { display: flex; align-items: center; margin-bottom: 0.75rem; color: var(--accent2); }
+    .feature-icon svg { width: 24px; height: 24px; flex-shrink: 0; }
+    .feature-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.4rem; }
+    .feature-desc { font-size: 0.83rem; color: var(--muted); }
+
+    /* ── Registration paths ──────────────────────────────── */
+    .paths-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    .path-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+    }
+    .path-card.usb { border-top: 3px solid #58a6ff; }
+    .path-card.ext { border-top: 3px solid #3fb950; }
+    .path-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+    .path-sub {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .path-steps { list-style: none; }
+    .path-steps li {
+      font-size: 0.83rem;
+      color: var(--muted);
+      padding: 0.3rem 0;
+      display: flex;
+      gap: 0.6rem;
+    }
+    .path-steps li::before {
+      content: "→";
+      color: var(--accent2);
+      flex-shrink: 0;
+    }
+
+    /* ── Docs ────────────────────────────────────────────── */
+    .docs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 0.75rem;
+    }
+    .doc-link {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .doc-link:hover {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+      text-decoration: none;
+      color: var(--accent2);
+    }
+    .doc-icon { display: flex; align-items: center; flex-shrink: 0; color: var(--accent2); }
+    .doc-icon svg { width: 20px; height: 20px; }
+    .doc-title { font-weight: 500; font-size: 0.9rem; }
+    .doc-desc { font-size: 0.78rem; color: var(--muted); margin-top: 1px; }
+
+    /* ── Stack ───────────────────────────────────────────── */
+    .stack-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .stack-tag {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    /* ── Footer ──────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+
+    /* ── Hamburger ───────────────────────────────────────── */
+    .nav-toggle {
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 22px; height: 16px;
+      background: none; border: none;
+      cursor: pointer; padding: 0; flex-shrink: 0;
+    }
+    .nav-toggle span {
+      display: block; height: 2px;
+      background: var(--text); border-radius: 2px;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    .nav-toggle.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-toggle.open span:nth-child(2) { opacity: 0; }
+    .nav-toggle.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .nav-links { gap: 1rem; font-size: 0.82rem; }
+      .paths-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      nav { padding: 0 1rem; }
+      .nav-toggle { display: flex; }
+      .nav-links {
+        display: none;
+        position: absolute;
+        top: 56px; left: 0; right: 0;
+        flex-direction: column;
+        gap: 0; list-style: none;
+        background: rgba(13, 17, 23, 0.97);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+        padding: 0.5rem 0;
+        z-index: 99;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links li { width: 100%; }
+      .nav-links a { display: block; padding: 0.75rem 1.5rem; color: var(--text); font-size: 0.95rem; }
+      .nav-links a:hover { background: var(--surface2); text-decoration: none; }
+      .hero { padding: 4rem 1.25rem 3rem; }
+      .hero-actions { flex-direction: column; align-items: center; }
+      .btn { width: 100%; max-width: 280px; justify-content: center; }
+      .container { padding: 0 1.25rem; }
+      section { padding: 3.5rem 0; }
+      .flow { flex-direction: column; align-items: center; }
+      .flow-node { width: 100%; max-width: 220px; }
+      .flow-arrow { width: 40px; height: 32px; padding-top: 0; align-items: center; transform: rotate(90deg); }
+    }
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 1.85rem; }
+      .badges { gap: 0.4rem; }
+      .badge-pill { font-size: 0.7rem; padding: 3px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-brand">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+    ITL.ControlPlane.Attestation
+  </div>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" id="nav-toggle">
+    <span></span><span></span><span></span>
+  </button>
+  <ul class="nav-links" id="nav-links">
+    <li><a href="#how-it-works">How it works</a></li>
+    <li><a href="#registration">Registration</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#docs">Docs</a></li>
+    <li><a href="https://github.com/ITlusions/ITL.ControlPlane.Attestation" target="_blank" rel="noopener">GitHub</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="hero-badge">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    TPM 2.0 &middot; Zero-touch provisioning &middot; FastAPI &middot; Talos Linux
+  </div>
+  <h1>Hardware Trust<br>for Kubernetes Nodes</h1>
+  <p>The ITL Attestation Service anchors every cluster node to its physical TPM Endorsement Key. No hardware identity, no cluster access — ever.</p>
+  <div class="hero-actions">
+    <a href="https://github.com/ITlusions/ITL.ControlPlane.Attestation" class="btn btn-primary" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      View on GitHub
+    </a>
+    <a href="ARCHITECTURE.md" class="btn btn-secondary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Architecture
+    </a>
+    <a href="ENDPOINTS.md" class="btn btn-secondary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      API Reference
+    </a>
+  </div>
+  <div class="badges">
+    <span class="badge-pill"><span class="dot"></span>TPM 2.0 Ready</span>
+    <span class="badge-pill"><span class="dot"></span>FastAPI 0.115+</span>
+    <span class="badge-pill"><span class="dot"></span>Python 3.12+</span>
+    <span class="badge-pill"><span class="dot warn"></span>SQLite (upgradeable)</span>
+    <span class="badge-pill"><span class="dot"></span>Talos Linux</span>
+    <span class="badge-pill"><span class="dot"></span>AMD &amp; Intel fTPM</span>
+  </div>
+</header>
+
+<!-- How it works -->
+<section id="how-it-works">
+  <div class="container">
+    <div class="section-label">Trust flow</div>
+    <h2 class="section-title">From bare metal to cluster node</h2>
+    <p class="section-sub">Every node must prove its hardware identity before it ever receives a cluster credential. The TPM EK fingerprint is the immutable anchor.</p>
+
+    <div class="flow">
+      <div class="flow-node">
+        <div class="flow-box">TPM Chip<br><small style="color:var(--muted)">EK fingerprint</small></div>
+        <div class="flow-sub">SHA-256 of EK bytes</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box">Registration<br><small style="color:var(--muted)">USB agent or<br>Talos extension</small></div>
+        <div class="flow-sub">POST /register<br>or /self-register</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box highlight">Attestation<br><small>Service</small></div>
+        <div class="flow-sub">EK verified,<br>machine stored</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box">Operator<br><small style="color:var(--muted)">Approves + assigns<br>role &amp; hostname</small></div>
+        <div class="flow-sub">POST /approve</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box">Attestation<br><small style="color:var(--muted)">EK re-verified<br>on every boot</small></div>
+        <div class="flow-sub">POST /attest</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box ok">MachineConfig<br><small>delivered</small></div>
+        <div class="flow-sub">GET /config/{token}</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box ok">Node joins<br>cluster</div>
+        <div class="flow-sub">talosctl apply-config</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Registration paths -->
+<section id="registration">
+  <div class="container">
+    <div class="section-label">Registration</div>
+    <h2 class="section-title">Two paths, one identity model</h2>
+    <p class="section-sub">Both paths anchor machine identity to the TPM EK fingerprint. Choose based on whether you have physical USB access before first boot.</p>
+
+    <div class="paths-grid">
+      <div class="path-card usb">
+        <div class="path-title">USB Registration Agent</div>
+        <div class="path-sub">Pre-boot — operator has physical access</div>
+        <ul class="path-steps">
+          <li>Boot machine from ITL HardenedOS USB (Alpine Linux)</li>
+          <li>Agent reads EK cert from <code>/sys/class/tpm/tpm0/</code></li>
+          <li>Posts EK fingerprint + hardware metadata to <code>/api/v1/register</code></li>
+          <li>Service returns a signed Talos ISO URL with config token baked in</li>
+          <li>Operator boots machine from that ISO — Talos auto-fetches its config</li>
+        </ul>
+      </div>
+      <div class="path-card ext">
+        <div class="path-title">Talos Extension (itl-tpm-register)</div>
+        <div class="path-sub">Zero-touch — machine boots generic Talos ISO</div>
+        <ul class="path-steps">
+          <li>Machine boots generic Talos ISO with <code>talos.config=&lt;service-url&gt;</code></li>
+          <li>Extension reads EK from TPM on first boot</li>
+          <li>Posts to <code>/api/v1/self-register</code> → machine appears as <em>pending_approval</em></li>
+          <li>Polls <code>/api/v1/attest</code> every 60 s until operator approves</li>
+          <li>On approval: extension fetches full MachineConfig, applies it, node reboots into cluster</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Lifecycle steps -->
+<section id="lifecycle">
+  <div class="container">
+    <div class="section-label">Machine lifecycle</div>
+    <h2 class="section-title">Full lifecycle control</h2>
+    <p class="section-sub">Every state transition is logged. Operators can lock, unlock, revoke, and remotely wipe nodes at any time.</p>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">State 1</div>
+        <div class="step-title">registered / pending_approval</div>
+        <div class="step-desc">Machine is known to the service. Operator has not yet assigned a role or approved it. No cluster credentials are delivered.</div>
+        <span class="step-tag">POST /register · /self-register</span>
+      </div>
+      <div class="step-card">
+        <div class="step-num">State 2</div>
+        <div class="step-title">Operator Approval</div>
+        <div class="step-desc">Operator assigns role (controlplane / worker-infra / worker-app), hostname, and optional static IP. A fresh config token is generated.</div>
+        <span class="step-tag">POST /machines/{id}/approve</span>
+      </div>
+      <div class="step-card">
+        <div class="step-num">State 3</div>
+        <div class="step-title">attested</div>
+        <div class="step-desc">TPM EK fingerprint verified on boot. Full MachineConfig is delivered via one-time config token. Node joins the cluster.</div>
+        <span class="step-tag">POST /attest · GET /config/{token}</span>
+      </div>
+      <div class="step-card">
+        <div class="step-num">State 4</div>
+        <div class="step-title">locked</div>
+        <div class="step-desc">Reversible suspension. Attestation and cert issuance are blocked. No data is destroyed. Unlockable without hardware intervention.</div>
+        <span class="step-tag">POST /machines/{id}/lock · /unlock</span>
+      </div>
+      <div class="step-card">
+        <div class="step-num">State 5</div>
+        <div class="step-title">revoked</div>
+        <div class="step-desc">Permanent removal from the cluster. When <code>wipe=true</code>, the next attestation poll returns <code>action=wipe</code> and the Talos extension triggers a full disk reset.</div>
+        <span class="step-tag">POST /machines/{id}/revoke</span>
+      </div>
+      <div class="step-card">
+        <div class="step-num">Offline</div>
+        <div class="step-title">Offline Bundle</div>
+        <div class="step-desc">Generate a self-contained ZIP containing a signed enrollment cert, role MachineConfig, and USB deployment script — for air-gapped environments with no network access to the service.</div>
+        <span class="step-tag">POST /machines/{id}/offline-bundle</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features">
+  <div class="container">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Security by design</h2>
+    <p class="section-sub">Every control exists to prevent a specific class of attack. Nothing is security theatre.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
+        <div class="feature-title">EK Fingerprint Verification</div>
+        <div class="feature-desc">Server always re-derives the SHA-256 fingerprint from raw EK bytes — never trusts the client-supplied value. Compared with <code>hmac.compare_digest</code> (constant-time).</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20M6 20V10l6-4 6 4v10M10 20v-5h4v5"/></svg></div>
+        <div class="feature-title">Enrollment CA</div>
+        <div class="feature-desc">On-disk RSA-4096 CA issues 30-day mTLS enrollment certs for offline USB bundles. Cert + nonce challenge proves key possession, not just cert ownership.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M16 7v-.5a2.5 2.5 0 0 0-5 0V7m5 10v.5a2.5 2.5 0 0 1-5 0V17"/></svg></div>
+        <div class="feature-title">One-time Config Tokens</div>
+        <div class="feature-desc"><code>secrets.token_urlsafe(32)</code> (256 bits). Scoped to a single machine. Regenerated on every registration and approval, invalidating any prior token.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/></svg></div>
+        <div class="feature-title">Status-gated Config Delivery</div>
+        <div class="feature-desc">Only <em>attested</em> machines receive their full MachineConfig. All other states get a safe pending config containing zero cluster secrets.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></div>
+        <div class="feature-title">Remote Wipe</div>
+        <div class="feature-desc">Revoking with <code>wipe=true</code> causes the Talos extension to execute <code>talosctl reset --graceful=false</code>, wiping STATE + EPHEMERAL partitions and rebooting into maintenance mode.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></div>
+        <div class="feature-title">No-TPM Fallback</div>
+        <div class="feature-desc">Supports <code>ek_source=pub</code> for machines where the EK cert is not published (e.g. AMD fTPM). Fingerprint is computed from the raw public key bytes instead.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+        <div class="feature-title">Talos Image Factory</div>
+        <div class="feature-desc">Dynamically builds ISO schematics with <code>talos.config=&lt;url&gt;</code> baked into kernel args. Falls back to pre-built ITL HardenedOS ISO when <code>ITL_ISO_URL</code> is set.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="feature-title">TPM Key Wrapping</div>
+        <div class="feature-desc">Enrollment private keys can be RSA-OAEP-SHA256 wrapped to a TPM resident decrypt key supplied by the client — the plaintext key never leaves the TPM.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Docs -->
+<section id="docs">
+  <div class="container">
+    <div class="section-label">Documentation</div>
+    <h2 class="section-title">Everything you need</h2>
+    <p class="section-sub">From first deployment to production operations — all in one place.</p>
+
+    <div class="docs-grid">
+      <a href="ARCHITECTURE.md" class="doc-link">
+        <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
+        <div>
+          <div class="doc-title">Architecture</div>
+          <div class="doc-desc">System context, component layout, module structure, dependency flow</div>
+        </div>
+      </a>
+      <a href="ENDPOINTS.md" class="doc-link">
+        <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div>
+          <div class="doc-title">API Endpoints</div>
+          <div class="doc-desc">Complete REST reference — request/response schemas, auth, status codes</div>
+        </div>
+      </a>
+      <a href="DEPLOYMENT.md" class="doc-link">
+        <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></div>
+        <div>
+          <div class="doc-title">Deployment</div>
+          <div class="doc-desc">Docker Compose, env vars, volume layout, Kubernetes manifests</div>
+        </div>
+      </a>
+      <a href="OPERATIONS.md" class="doc-link">
+        <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+        <div>
+          <div class="doc-title">Operations</div>
+          <div class="doc-desc">Machine lifecycle workflows, operator runbooks, monitoring</div>
+        </div>
+      </a>
+      <a href="SECURITY.md" class="doc-link">
+        <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <div>
+          <div class="doc-title">Security</div>
+          <div class="doc-desc">Threat model, implemented controls, open issues, hardening guide</div>
+        </div>
+      </a>
+      <a href="https://github.com/ITlusions/ITL.ControlPlane.Attestation" class="doc-link" target="_blank" rel="noopener">
+        <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+        <div>
+          <div class="doc-title">Source Code</div>
+          <div class="doc-desc">GitHub repository — issues, PRs, Dockerfile, CI workflow</div>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Tech stack -->
+<section id="stack">
+  <div class="container">
+    <div class="section-label">Technology</div>
+    <h2 class="section-title">Built on solid foundations</h2>
+    <p class="section-sub" style="margin-bottom:2rem;">Chosen for production reliability, not novelty.</p>
+
+    <div class="stack-row">
+      <span class="stack-tag">Python 3.12+</span>
+      <span class="stack-tag">FastAPI 0.115+</span>
+      <span class="stack-tag">SQLModel 0.0.21+</span>
+      <span class="stack-tag">SQLite (Alembic)</span>
+      <span class="stack-tag">cryptography 43+</span>
+      <span class="stack-tag">httpx 0.28+</span>
+      <span class="stack-tag">PyYAML 6.0+</span>
+      <span class="stack-tag">Uvicorn</span>
+      <span class="stack-tag">Talos Linux</span>
+      <span class="stack-tag">TPM 2.0</span>
+      <span class="stack-tag">RSA-4096 / RSA-2048</span>
+      <span class="stack-tag">OAEP-SHA256</span>
+      <span class="stack-tag">Docker</span>
+      <span class="stack-tag">GitHub Actions</span>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>
+    &copy; 2026 <a href="https://github.com/ITlusions" target="_blank" rel="noopener">ITLusions</a>
+    &nbsp;&middot;&nbsp;
+    <a href="https://github.com/ITlusions/ITL.ControlPlane.Attestation" target="_blank" rel="noopener">GitHub</a>
+    &nbsp;&middot;&nbsp;
+    <a href="SECURITY.md">Security Policy</a>
+    &nbsp;&middot;&nbsp;
+    Part of the <a href="https://github.com/ITlusions" target="_blank" rel="noopener">ITL Control Plane</a>
+  </p>
+</footer>
+
+<script>
+  const toggle = document.getElementById('nav-toggle');
+  const links  = document.getElementById('nav-links');
+  toggle.addEventListener('click', () => {
+    const open = links.classList.toggle('open');
+    toggle.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', open);
+  });
+  links.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      links.classList.remove('open');
+      toggle.classList.remove('open');
+      toggle.setAttribute('aria-expanded', false);
+    });
+  });
+</script>
+
+</body>
+</html>
