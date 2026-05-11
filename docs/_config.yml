@@ -10,11 +10,28 @@ highlighter: rouge
 kramdown:
   input: GFM
   syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: false
 
 # Mermaid diagrams via jekyll-mermaid or passthrough
 plugins: []
+
+# Apply default layout to all markdown pages that don't specify one
+defaults:
+  - scope:
+      path: ""
+      type: pages
+    values:
+      layout: default
 
 # Exclude non-doc files
 exclude:
   - Gemfile
   - Gemfile.lock
+  - "*.py"
+  - "*.sh"
+  - docker-compose.yml
+  - Dockerfile
+  - pyproject.toml
+  - README.md
