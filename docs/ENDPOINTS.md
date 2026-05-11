@@ -1,3 +1,8 @@
+---
+layout: default
+title: API Endpoints
+---
+
 # API Endpoints — ITL.ControlPlane.Attestation
 
 Base URL: `https://attest.itlusions.com`  

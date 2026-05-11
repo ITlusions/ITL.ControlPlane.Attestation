@@ -1,3 +1,8 @@
+---
+layout: default
+title: How a TPM Works
+---
+
 # How a TPM Works
 
 ## What is a TPM?

@@ -1,3 +1,8 @@
+---
+layout: default
+title: Deployment
+---
+
 # Deployment — ITL.ControlPlane.Attestation
 
 ## Requirements

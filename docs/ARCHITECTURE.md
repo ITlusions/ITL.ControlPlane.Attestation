@@ -1,3 +1,8 @@
+---
+layout: default
+title: Architecture
+---
+
 # Architecture — ITL.ControlPlane.Attestation
 
 ## Purpose

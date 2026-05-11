@@ -1,3 +1,8 @@
+---
+layout: default
+title: UI Walkthrough
+---
+
 # ITL Attestation — UI Walkthrough
 
 Visual walkthrough of all demo pages. All screenshots use the Azure Portal dark theme design system.

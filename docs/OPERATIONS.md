@@ -1,3 +1,8 @@
+---
+layout: default
+title: Operations
+---
+
 # Operations — ITL.ControlPlane.Attestation
 
 ## Machine Lifecycle Overview

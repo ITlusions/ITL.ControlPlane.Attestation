@@ -1,3 +1,8 @@
+---
+layout: default
+title: Security
+---
+
 # Security — ITL.ControlPlane.Attestation
 
 ## Threat Model
