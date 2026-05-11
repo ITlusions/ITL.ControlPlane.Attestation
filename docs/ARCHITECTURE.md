@@ -13,21 +13,47 @@ It does this by anchoring machine identity to the TPM Endorsement Key (EK) — a
 ## System Context
 
 ```mermaid
-C4Context
-  title System Context — ITL.ControlPlane.Attestation
+flowchart TB
+    subgraph Physical["Physical / Virtual Hardware"]
+        direction TB
+        TPM["TPM Chip\n(Endorsement Key)"]
+        TalosNode["Talos Node\n(boots ISO)"]
+    end
 
-  Person(operator, "Operator", "Approves machines, manages lifecycle")
+    subgraph Agents["Registration Paths"]
+        direction TB
+        USB["USB Registration Agent\nAlpine Linux / ITL Kiosk\n\nReads TPM EK cert from /sys\nbefore machine boots"]
+        Ext["itl-tpm-register\nTalos Extension\n\nRuns inside Talos on first boot\nSelf-registers + polls for approval"]
+    end
 
-  System_Ext(usb_agent, "USB Registration Agent", "Alpine Linux / ITL Kiosk\nReads TPM EK cert\nPOST /api/v1/register")
-  System_Ext(talos_ext, "itl-tpm-register Extension", "Talos Linux extension\nCalls /self-register and /attest\nApplies MachineConfig on approval")
-  System_Ext(factory, "Talos Image Factory", "factory.talos.dev (or self-hosted)\nGenerates custom ISO with kernel args")
+    subgraph Service["ITL.ControlPlane.Attestation\nhttps://attest.itlusions.com"]
+        direction LR
+        API["FastAPI\nHTTP endpoints"]
+        DB["SQLite\nmachines.db"]
+        CA["Enrollment CA\nRSA-4096"]
+        API --- DB
+        API --- CA
+    end
 
-  System(attest, "ITL.ControlPlane.Attestation", "FastAPI · SQLite · Enrollment CA (RSA-4096)\nhttps://attest.itlusions.com")
+    subgraph ISODelivery["ISO Delivery (fallback only)"]
+        Factory["Talos Image Factory\nfactory.talos.dev\nor self-hosted"]
+    end
 
-  Rel(usb_agent, attest, "POST /api/v1/register", "HTTPS")
-  Rel(talos_ext, attest, "POST /api/v1/self-register\nPOST /api/v1/attest\nGET /api/v1/config/{token}", "HTTPS")
-  Rel(operator, attest, "GET/POST /api/v1/machines/*", "HTTPS + Bearer token")
-  Rel(attest, factory, "POST /schematics", "HTTPS (fallback when ITL_ISO_URL not set)")
+    Operator(["Operator\n(admin token)"])
+
+    TPM -->|"EK cert read\nfrom /sys"| USB
+    TPM -->|"EK cert read\nfrom /sys"| Ext
+
+    USB -->|"POST /api/v1/register\n(HTTPS)"| API
+    Ext -->|"POST /api/v1/self-register\nPOST /api/v1/attest\nGET /api/v1/config/{token}\n(HTTPS)"| API
+
+    Operator -->|"GET/POST /api/v1/machines/*\n(HTTPS + Bearer token)"| API
+
+    API -->|"POST /schematics\n(when ITL_ISO_URL not set)"| Factory
+    Factory -->|"iso_url"| API
+    API -->|"iso_url → machine downloads ISO"| USB
+
+    TalosNode -.->|"boots"| Ext
 ```
 
 ---
