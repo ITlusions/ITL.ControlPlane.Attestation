@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ITL Attestation — Audit Log</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --az-header-bg:      #1c1c1c;
+      --az-nav-bg:         #1b3a57;
+      --az-body-bg:        #1a1a1a;
+      --az-surface:        #222222;
+      --az-surface-raised: #2a2a2a;
+      --az-surface-hover:  #2e3f52;
+      --az-border:         rgba(255,255,255,0.08);
+      --az-border-strong:  rgba(255,255,255,0.15);
+      --az-accent:         #0078d4;
+      --az-accent-hover:   #106ebe;
+      --az-text:           #ffffff;
+      --az-text-secondary: rgba(255,255,255,0.65);
+      --az-text-muted:     rgba(255,255,255,0.38);
+      --az-link:           #6cb0f5;
+      --az-link-hover:     #90c7ff;
+      --az-header-height:  48px;
+      --az-sidebar-width:  220px;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--az-body-bg); color: var(--az-text); margin: 0; }
+
+    /* ── Layout ── */
+    .az-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: var(--az-header-height); background: var(--az-header-bg); border-bottom: 1px solid var(--az-border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+    .az-header-left, .az-header-right { display: flex; align-items: center; gap: 8px; }
+    .az-logo { display: flex; align-items: center; gap: 8px; color: var(--az-text); font-size: .9rem; font-weight: 600; white-space: nowrap; margin-right: 12px; }
+    .az-logo-mark { width: 20px; height: 20px; background: var(--az-accent); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: .75rem; color: #fff; }
+    .az-icon-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: none; border: none; border-radius: 4px; color: var(--az-text-secondary); cursor: pointer; font-size: .9rem; text-decoration: none; transition: background .15s, color .15s; }
+    .az-icon-btn:hover { background: rgba(255,255,255,0.1); color: var(--az-text); }
+    .az-user-pill { padding: 4px 10px; border-radius: 4px; font-size: .75rem; color: var(--az-text-secondary); cursor: pointer; border: 1px solid transparent; }
+    .az-user-pill:hover { border-color: var(--az-border-strong); color: var(--az-text); }
+    .az-demo-pill { background: rgba(237,137,54,.18); border: 1px solid rgba(237,137,54,.35); color: #f6ad55; font-size: .65rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 10px; border-radius: 2px; }
+
+    .az-page-wrapper { display: flex; margin-top: var(--az-header-height); height: calc(100vh - var(--az-header-height)); }
+    .az-nav { width: var(--az-sidebar-width); min-width: var(--az-sidebar-width); background: var(--az-nav-bg); height: 100%; overflow-y: auto; border-right: 1px solid var(--az-border); padding: 8px 0; flex-shrink: 0; }
+    .az-nav-create { display: flex; align-items: center; gap: 10px; padding: 8px 16px; margin: 0 8px 4px; border-radius: 4px; color: var(--az-text); text-decoration: none; font-size: .82rem; background: rgba(0,120,212,0.15); border: 1px solid rgba(0,120,212,0.3); }
+    .az-nav-create:hover { background: rgba(0,120,212,0.25); color: var(--az-text); }
+    .az-nav-create i { color: var(--az-accent); }
+    .az-nav-item { display: flex; align-items: center; gap: 12px; padding: 8px 16px; color: var(--az-text-secondary); text-decoration: none; font-size: .82rem; transition: background .1s, color .1s; white-space: nowrap; }
+    .az-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--az-text); }
+    .az-nav-item.active { background: rgba(0,120,212,0.2); color: var(--az-text); border-left: 3px solid var(--az-accent); padding-left: 13px; }
+    .az-nav-item i { font-size: .9rem; flex-shrink: 0; }
+    .az-nav-divider { padding: 12px 16px 4px; font-size: .68rem; font-weight: 600; color: var(--az-text-muted); letter-spacing: .5px; text-transform: uppercase; }
+
+    .az-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--az-body-bg); }
+
+    /* ── Page header ── */
+    .az-breadcrumb { padding: 8px 24px; font-size: .75rem; color: var(--az-text-secondary); background: var(--az-surface-raised); border-bottom: 1px solid var(--az-border); flex-shrink: 0; }
+    .az-breadcrumb a { color: var(--az-link); text-decoration: none; }
+    .az-breadcrumb a:hover { text-decoration: underline; }
+    .az-bc-sep { margin: 0 6px; color: var(--az-text-muted); }
+    .az-page-header { display: flex; align-items: center; gap: 14px; padding: 14px 24px 10px; border-bottom: 1px solid var(--az-border); background: var(--az-surface); flex-shrink: 0; }
+    .az-page-icon { width: 38px; height: 38px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #fff; background: var(--az-accent); }
+    .az-page-title { margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--az-text); }
+    .az-page-subtitle { font-size: .75rem; color: var(--az-text-secondary); margin-top: 1px; }
+
+    /* ── Filter bar ── */
+    .az-filter-bar { padding: 10px 24px; background: var(--az-surface-raised); border-bottom: 1px solid var(--az-border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+    .az-filter-input { background: var(--az-surface); border: 1px solid var(--az-border-strong); color: var(--az-text); border-radius: 2px; font-size: .78rem; font-family: inherit; padding: 5px 10px; outline: none; height: 28px; }
+    .az-filter-input:focus { border-color: var(--az-accent); }
+    .az-filter-input::placeholder { color: var(--az-text-muted); }
+    .az-filter-select { background: var(--az-surface); border: 1px solid var(--az-border-strong); color: var(--az-text); border-radius: 2px; font-size: .78rem; font-family: inherit; padding: 4px 8px; outline: none; height: 28px; }
+    .az-filter-select option { background: var(--az-surface-raised); }
+    .az-filter-label { font-size: .72rem; color: var(--az-text-muted); white-space: nowrap; }
+    .az-cmd-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 2px; font-size: .75rem; font-family: inherit; background: transparent; color: var(--az-text-secondary); border: 1px solid transparent; cursor: pointer; transition: background .12s; height: 28px; }
+    .az-cmd-btn:hover { background: rgba(255,255,255,0.06); color: var(--az-text); border-color: var(--az-border-strong); }
+    .az-cmd-btn.primary { background: var(--az-accent); color: #fff; border-color: var(--az-accent); }
+    .az-cmd-btn.primary:hover { background: var(--az-accent-hover); }
+
+    /* ── Table ── */
+    .az-table-wrap { flex: 1; overflow: auto; padding: 0 24px 12px; }
+    .az-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .az-table thead th { padding: 9px 12px; text-align: left; font-weight: 600; font-size: .72rem; color: var(--az-text-secondary); background: var(--az-surface-raised); border-bottom: 1px solid var(--az-border-strong); white-space: nowrap; position: sticky; top: 0; z-index: 10; }
+    .az-table tbody tr { border-bottom: 1px solid var(--az-border); transition: background .1s; cursor: pointer; }
+    .az-table tbody tr:hover { background: var(--az-surface-hover); }
+    .az-table tbody tr.selected { background: rgba(0,120,212,0.12); border-color: rgba(0,120,212,0.3); }
+    .az-table tbody td { padding: 8px 12px; color: var(--az-text); vertical-align: middle; }
+    .az-resource-link { color: var(--az-link); text-decoration: none; font-family: monospace; font-size: .75rem; }
+    .az-resource-link:hover { color: var(--az-link-hover); text-decoration: underline; }
+
+    /* Badges */
+    .az-status { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 500; }
+    .az-status i { font-size: .45rem; }
+    .az-status.success i { color: #4ec94e; } .az-status.success { color: rgba(255,255,255,.9); }
+    .az-status.warning i { color: #f0c040; } .az-status.warning { color: rgba(255,255,255,.9); }
+    .az-status.info i    { color: #6cb0f5; } .az-status.info    { color: rgba(255,255,255,.9); }
+    .az-status.secondary i { color: #808080; } .az-status.secondary { color: rgba(255,255,255,.5); }
+    .az-status.error i { color: #e74c3c; } .az-status.error { color: rgba(255,255,255,.9); }
+    .az-type-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 2px; font-size: .72rem; font-weight: 500; background: rgba(0,120,212,0.15); border: 1px solid rgba(0,120,212,0.25); color: var(--az-link); }
+
+    /* ── Pagination ── */
+    .az-pagination-bar { padding: 8px 24px; display: flex; align-items: center; justify-content: space-between; font-size: .75rem; color: var(--az-text-secondary); border-top: 1px solid var(--az-border); background: var(--az-surface-raised); flex-shrink: 0; }
+    .az-page-btns { display: flex; gap: 2px; }
+    .az-page-btn { min-width: 28px; height: 28px; padding: 0 6px; background: none; border: 1px solid transparent; border-radius: 2px; color: var(--az-text-secondary); font-size: .78rem; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .az-page-btn:hover { background: rgba(255,255,255,0.06); border-color: var(--az-border-strong); color: var(--az-text); }
+    .az-page-btn.active { background: var(--az-accent); border-color: var(--az-accent); color: #fff; }
+    .az-page-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+    /* ── Detail panel ── */
+    .az-panel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1100; }
+    .az-panel { position: fixed; top: var(--az-header-height); right: 0; bottom: 0; width: 480px; max-width: 95vw; background: var(--az-surface); border-left: 1px solid var(--az-border-strong); z-index: 1200; display: flex; flex-direction: column; transform: translateX(100%); transition: transform .2s ease; overflow: hidden; }
+    .az-panel.open { transform: translateX(0); }
+    .az-panel-top { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--az-border); background: var(--az-surface-raised); flex-shrink: 0; }
+    .az-panel-heading { font-size: .9rem; font-weight: 600; color: var(--az-text); margin: 0; }
+    .az-panel-subtitle { font-size: .72rem; color: var(--az-text-muted); margin-top: 2px; font-family: monospace; }
+    .az-panel-close { background: none; border: none; color: var(--az-text-secondary); cursor: pointer; font-size: 1rem; border-radius: 4px; padding: 2px 6px; }
+    .az-panel-close:hover { background: rgba(255,255,255,0.1); color: var(--az-text); }
+    .az-panel-body { padding: 16px 18px; overflow-y: auto; flex: 1; }
+    .az-panel-row { display: flex; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--az-border); }
+    .az-panel-row:last-child { border-bottom: none; }
+    .az-panel-label { min-width: 120px; font-size: .75rem; color: var(--az-text-muted); flex-shrink: 0; }
+    .az-panel-value { font-size: .78rem; color: var(--az-text); word-break: break-all; }
+    .az-panel-json { background: var(--az-surface-raised); border: 1px solid var(--az-border); border-radius: 3px; padding: 10px 12px; font-family: monospace; font-size: .7rem; color: var(--az-text-secondary); white-space: pre-wrap; overflow-x: auto; margin-top: 10px; max-height: 200px; }
+
+    /* Toast */
+    #az-toast-host { position: fixed; bottom: 24px; right: 24px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; width: 340px; }
+
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .pulse { animation: pulse-dot 2s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="az-header">
+    <div class="az-header-left">
+      <div class="az-logo">
+        <div class="az-logo-mark"><i class="bi bi-shield-check"></i></div>
+        <span>ITL Attestation</span>
+      </div>
+    </div>
+    <div class="az-header-right">
+      <span style="color:var(--az-text-secondary);font-size:.75rem;">
+        <i class="bi bi-circle-fill pulse" style="color:#4ec94e;font-size:.45rem;vertical-align:middle;"></i> Healthy
+      </span>
+      <div class="az-demo-pill">Demo — Static Preview</div>
+      <a href="demo-dashboard.html" class="az-icon-btn" title="Overview"><i class="bi bi-speedometer2"></i></a>
+      <a href="demo.html" class="az-icon-btn" title="Machines"><i class="bi bi-hdd-stack"></i></a>
+      <button class="az-icon-btn" title="Notifications"><i class="bi bi-bell"></i></button>
+      <div class="az-user-pill">n.weistra@itlusions.nl</div>
+    </div>
+  </header>
+
+  <!-- Layout -->
+  <div class="az-page-wrapper">
+    <aside class="az-nav">
+      <a href="#" class="az-nav-create"><i class="bi bi-plus-circle"></i><span>Register machine</span></a>
+      <a href="demo-dashboard.html" class="az-nav-item"><i class="bi bi-speedometer2"></i><span>Overview</span></a>
+      <a href="demo.html" class="az-nav-item"><i class="bi bi-hdd-stack"></i><span>Machines</span></a>
+      <a href="demo-audit.html" class="az-nav-item active"><i class="bi bi-journal-text"></i><span>Audit log</span></a>
+      <div class="az-nav-divider">Settings</div>
+      <a href="#" class="az-nav-item"><i class="bi bi-sliders"></i><span>Configuration</span></a>
+      <a href="#" class="az-nav-item"><i class="bi bi-shield-lock"></i><span>Policies</span></a>
+    </aside>
+
+    <main class="az-content">
+      <div class="az-breadcrumb">
+        <a href="#">Home</a><span class="az-bc-sep">›</span>
+        <a href="#">ITL Control Plane</a><span class="az-bc-sep">›</span>
+        <a href="demo-dashboard.html">Attestation</a><span class="az-bc-sep">›</span>
+        <span>Audit Log</span>
+      </div>
+      <div class="az-page-header">
+        <div class="az-page-icon"><i class="bi bi-journal-text"></i></div>
+        <div>
+          <h1 class="az-page-title">Audit Log</h1>
+          <div class="az-page-subtitle">All attestation events &mdash; immutable audit trail</div>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="az-filter-bar">
+        <span class="az-filter-label">From</span>
+        <input type="date" id="filter-from" class="az-filter-input" value="2026-04-01" style="width:130px;">
+        <span class="az-filter-label">To</span>
+        <input type="date" id="filter-to"   class="az-filter-input" value="2026-05-31" style="width:130px;">
+        <span class="az-filter-label" style="margin-left:8px;">Machine</span>
+        <input type="search" id="filter-machine" class="az-filter-input" placeholder="ID / hostname / serial…" style="width:200px;">
+        <span class="az-filter-label" style="margin-left:8px;">Action</span>
+        <select id="filter-action" class="az-filter-select" style="width:140px;">
+          <option value="">All actions</option>
+          <option>REGISTER</option>
+          <option>APPROVE</option>
+          <option>REJECT</option>
+          <option>ATTEST</option>
+          <option>TOKEN_ISSUE</option>
+          <option>LOCK</option>
+          <option>UNLOCK</option>
+          <option>REVOKE</option>
+        </select>
+        <span class="az-filter-label" style="margin-left:8px;">Result</span>
+        <select id="filter-result" class="az-filter-select" style="width:120px;">
+          <option value="">All results</option>
+          <option>success</option>
+          <option>failure</option>
+          <option>warning</option>
+        </select>
+        <button class="az-cmd-btn" onclick="applyFilter()"><i class="bi bi-funnel"></i> Apply</button>
+        <button class="az-cmd-btn" onclick="clearFilter()"><i class="bi bi-x-circle"></i> Clear</button>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button class="az-cmd-btn" onclick="toast('Export triggered (demo only)','info')"><i class="bi bi-download"></i> Export CSV</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="az-table-wrap">
+        <table class="az-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Event ID</th>
+              <th>Machine</th>
+              <th>User / Agent</th>
+              <th>Action</th>
+              <th>Result</th>
+              <th>Source IP</th>
+            </tr>
+          </thead>
+          <tbody id="audit-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="az-pagination-bar">
+        <span id="pagination-info"></span>
+        <div class="az-page-btns" id="pagination-btns"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Overlay + panel -->
+  <div class="az-panel-overlay" id="az-overlay" onclick="closePanel()"></div>
+  <aside class="az-panel" id="az-panel">
+    <div class="az-panel-top">
+      <div>
+        <p class="az-panel-heading">Event Details</p>
+        <p class="az-panel-subtitle" id="panel-subtitle">—</p>
+      </div>
+      <button class="az-panel-close" onclick="closePanel()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="az-panel-body" id="panel-body"></div>
+  </aside>
+
+  <div id="az-toast-host"></div>
+
+  <script>
+    // ── Audit event data ──────────────────────────────────────────────────────
+    const AUDIT_EVENTS = [
+      { id:'evt-001', ts:'2026-05-11T06:03:00Z', machine_id:'a7b8c9d0-e1f2-3456-0123-456789000006', hostname: null,           user:'system/auto-register', action:'REGISTER',    result:'success', ip:'10.10.2.45', detail:{ hw_serial:'NUC8822XC', ek_source:'cert', event:'New machine self-registered via boot agent' } },
+      { id:'evt-002', ts:'2026-05-10T22:41:00Z', machine_id:'f6a7b8c9-d0e1-2345-f012-345678900005', hostname: null,           user:'system/auto-register', action:'REGISTER',    result:'success', ip:'10.10.2.44', detail:{ hw_serial:'NUC8821XB', ek_source:'cert', event:'New machine self-registered via boot agent' } },
+      { id:'evt-003', ts:'2026-05-09T16:30:00Z', machine_id:'b8c9d0e1-f2a3-4567-1234-567890000007', hostname:'infra-node-02', user:'n.weistra@itlusions.nl', action:'LOCK',      result:'success', ip:'10.10.0.1',  detail:{ reason:'Suspected compromise — anomalous network traffic detected', locked_by:'admin portal' } },
+      { id:'evt-004', ts:'2026-05-01T14:05:00Z', machine_id:'e5f6a7b8-c9d0-1234-ef01-234567890004', hostname: null,           user:'system/auto-register', action:'REGISTER',    result:'success', ip:'10.10.2.30', detail:{ hw_serial:'SMC7712AA', ek_source:'pub', event:'New machine self-registered via boot agent' } },
+      { id:'evt-005', ts:'2026-04-30T11:24:01Z', machine_id:'d4e5f6a7-b8c9-0123-def0-123456789003', hostname:'infra-node-01', user:'n.weistra@itlusions.nl', action:'APPROVE',   result:'success', ip:'10.10.0.1',  detail:{ approved_by:'admin portal', comment:'Hardware EK verified offline' } },
+      { id:'evt-006', ts:'2026-04-30T11:22:50Z', machine_id:'d4e5f6a7-b8c9-0123-def0-123456789003', hostname:'infra-node-01', user:'tpm-agent/v2.1',        action:'ATTEST',    result:'success', ip:'10.10.1.21', detail:{ pcr_banks:['sha256'], pcrs_matched:true, nonce:'d3a8e2...' } },
+      { id:'evt-007', ts:'2026-04-30T11:23:05Z', machine_id:'d4e5f6a7-b8c9-0123-def0-123456789003', hostname:'infra-node-01', user:'tpm-agent/v2.1',        action:'TOKEN_ISSUE',result:'success', ip:'10.10.1.21', detail:{ token_type:'bootstrap', expires_in_s:3600 } },
+      { id:'evt-008', ts:'2026-04-30T11:20:00Z', machine_id:'d4e5f6a7-b8c9-0123-def0-123456789003', hostname: null,           user:'system/auto-register', action:'REGISTER',    result:'success', ip:'10.10.1.21', detail:{ hw_serial:'HPE4481ZZ', ek_source:'cert' } },
+      { id:'evt-009', ts:'2026-04-29T07:06:00Z', machine_id:'c3d4e5f6-a7b8-9012-cdef-012345678902', hostname:'cp-node-03',   user:'n.weistra@itlusions.nl', action:'APPROVE',   result:'success', ip:'10.10.0.1',  detail:{ approved_by:'admin portal' } },
+      { id:'evt-010', ts:'2026-04-29T07:04:11Z', machine_id:'c3d4e5f6-a7b8-9012-cdef-012345678902', hostname:'cp-node-03',   user:'tpm-agent/v2.1',        action:'ATTEST',    result:'success', ip:'10.10.0.13', detail:{ pcr_banks:['sha256'], pcrs_matched:true, nonce:'a91c44...' } },
+      { id:'evt-011', ts:'2026-04-29T07:04:20Z', machine_id:'c3d4e5f6-a7b8-9012-cdef-012345678902', hostname:'cp-node-03',   user:'tpm-agent/v2.1',        action:'TOKEN_ISSUE',result:'success', ip:'10.10.0.13', detail:{ token_type:'bootstrap', expires_in_s:3600 } },
+      { id:'evt-012', ts:'2026-04-29T07:02:00Z', machine_id:'c3d4e5f6-a7b8-9012-cdef-012345678902', hostname: null,           user:'system/auto-register', action:'REGISTER',    result:'success', ip:'10.10.0.13', detail:{ hw_serial:'SVI9823XA', ek_source:'cert' } },
+      { id:'evt-013', ts:'2026-04-28T09:17:00Z', machine_id:'b2c3d4e5-f6a7-8901-bcde-f01234567891', hostname:'cp-node-02',   user:'n.weistra@itlusions.nl', action:'APPROVE',   result:'success', ip:'10.10.0.1',  detail:{ approved_by:'admin portal' } },
+      { id:'evt-014', ts:'2026-04-28T09:16:45Z', machine_id:'b2c3d4e5-f6a7-8901-bcde-f01234567891', hostname:'cp-node-02',   user:'tpm-agent/v2.1',        action:'ATTEST',    result:'success', ip:'10.10.0.12', detail:{ pcr_banks:['sha256'], pcrs_matched:true, nonce:'b33f99...' } },
+      { id:'evt-015', ts:'2026-04-28T09:16:55Z', machine_id:'b2c3d4e5-f6a7-8901-bcde-f01234567891', hostname:'cp-node-02',   user:'tpm-agent/v2.1',        action:'TOKEN_ISSUE',result:'success', ip:'10.10.0.12', detail:{ token_type:'bootstrap', expires_in_s:3600 } },
+      { id:'evt-016', ts:'2026-04-28T09:14:00Z', machine_id:'b2c3d4e5-f6a7-8901-bcde-f01234567891', hostname: null,           user:'system/auto-register', action:'REGISTER',    result:'success', ip:'10.10.0.12', detail:{ hw_serial:'SVC1284AC', ek_source:'cert' } },
+      { id:'evt-017', ts:'2026-04-28T09:12:00Z', machine_id:'a1b2c3d4-e5f6-7890-abcd-ef1234567890', hostname:'cp-node-01',   user:'n.weistra@itlusions.nl', action:'APPROVE',   result:'success', ip:'10.10.0.1',  detail:{ approved_by:'admin portal', comment:'First node — manually verified' } },
+      { id:'evt-018', ts:'2026-04-28T09:13:22Z', machine_id:'a1b2c3d4-e5f6-7890-abcd-ef1234567890', hostname:'cp-node-01',   user:'tpm-agent/v2.1',        action:'ATTEST',    result:'success', ip:'10.10.0.11', detail:{ pcr_banks:['sha256'], pcrs_matched:true, nonce:'f00ba1...' } },
+      { id:'evt-019', ts:'2026-04-28T09:13:35Z', machine_id:'a1b2c3d4-e5f6-7890-abcd-ef1234567890', hostname:'cp-node-01',   user:'tpm-agent/v2.1',        action:'TOKEN_ISSUE',result:'success', ip:'10.10.0.11', detail:{ token_type:'bootstrap', expires_in_s:3600 } },
+      { id:'evt-020', ts:'2026-04-28T09:11:00Z', machine_id:'a1b2c3d4-e5f6-7890-abcd-ef1234567890', hostname: null,           user:'system/auto-register', action:'REGISTER',    result:'success', ip:'10.10.0.11', detail:{ hw_serial:'SVC1284AB', ek_source:'cert' } },
+    ];
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    const ACTION_CFG = {
+      REGISTER:    { label:'Register',    cls:'info' },
+      APPROVE:     { label:'Approve',     cls:'success' },
+      REJECT:      { label:'Reject',      cls:'secondary' },
+      ATTEST:      { label:'Attest',      cls:'success' },
+      TOKEN_ISSUE: { label:'Token Issue', cls:'info' },
+      LOCK:        { label:'Lock',        cls:'warning' },
+      UNLOCK:      { label:'Unlock',      cls:'info' },
+      REVOKE:      { label:'Revoke',      cls:'secondary' },
+    };
+    const RESULT_CFG = {
+      success: { label:'Success', cls:'success' },
+      failure: { label:'Failure', cls:'error' },
+      warning: { label:'Warning', cls:'warning' },
+    };
+
+    function fmtTs(dt) {
+      return new Date(dt).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    }
+    function trunc(s, n=16) { return s ? s.slice(0,n)+'…' : '—'; }
+
+    function actionBadge(a) {
+      const c = ACTION_CFG[a] || { label:a, cls:'info' };
+      return `<span class="az-status ${c.cls}"><i class="bi bi-circle-fill"></i>${c.label}</span>`;
+    }
+    function resultBadge(r) {
+      const c = RESULT_CFG[r] || { label:r, cls:'secondary' };
+      return `<span class="az-status ${c.cls}"><i class="bi bi-circle-fill"></i>${c.label}</span>`;
+    }
+
+    // ── Filter + pagination ───────────────────────────────────────────────────
+    let _filtered = [...AUDIT_EVENTS];
+    let _page = 1;
+    const PAGE_SIZE = 10;
+
+    function applyFilter() {
+      const from   = document.getElementById('filter-from').value;
+      const to     = document.getElementById('filter-to').value;
+      const search = document.getElementById('filter-machine').value.toLowerCase();
+      const action = document.getElementById('filter-action').value;
+      const result = document.getElementById('filter-result').value;
+
+      _filtered = AUDIT_EVENTS.filter(e => {
+        const d = e.ts.slice(0,10);
+        if (from && d < from) return false;
+        if (to   && d > to)   return false;
+        if (action && e.action !== action) return false;
+        if (result && e.result !== result) return false;
+        if (search && ![e.machine_id, e.hostname, e.user, e.id].some(v => v && v.toLowerCase().includes(search))) return false;
+        return true;
+      });
+      _page = 1;
+      renderTable();
+    }
+
+    function clearFilter() {
+      document.getElementById('filter-from').value = '2026-04-01';
+      document.getElementById('filter-to').value   = '2026-05-31';
+      document.getElementById('filter-machine').value = '';
+      document.getElementById('filter-action').value  = '';
+      document.getElementById('filter-result').value  = '';
+      _filtered = [...AUDIT_EVENTS];
+      _page = 1;
+      renderTable();
+    }
+
+    function renderTable() {
+      const total = _filtered.length;
+      const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      _page = Math.min(_page, pages);
+      const start = (_page - 1) * PAGE_SIZE;
+      const slice = _filtered.slice(start, start + PAGE_SIZE);
+
+      document.getElementById('audit-tbody').innerHTML = slice.map(e => `
+        <tr onclick="openPanel('${e.id}')">
+          <td style="white-space:nowrap;color:var(--az-text-secondary);font-size:.75rem;">${fmtTs(e.ts)}</td>
+          <td><span style="font-family:monospace;font-size:.72rem;color:var(--az-text-muted);">${e.id}</span></td>
+          <td>
+            <a href="demo.html" class="az-resource-link" onclick="event.stopPropagation();">${trunc(e.machine_id, 14)}</a>
+            <div style="font-size:.7rem;color:var(--az-text-muted);">${e.hostname || '—'}</div>
+          </td>
+          <td style="font-size:.75rem;color:var(--az-text-secondary);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.user}</td>
+          <td>${actionBadge(e.action)}</td>
+          <td>${resultBadge(e.result)}</td>
+          <td style="font-family:monospace;font-size:.72rem;color:var(--az-text-muted);">${e.ip}</td>
+        </tr>`).join('');
+
+      // Pagination info
+      document.getElementById('pagination-info').textContent =
+        `Showing ${total === 0 ? 0 : start + 1}–${Math.min(start + PAGE_SIZE, total)} of ${total} events`;
+
+      // Pagination buttons
+      const btns = [];
+      btns.push(`<button class="az-page-btn" ${_page===1?'disabled':''} onclick="goPage(${_page-1})"><i class="bi bi-chevron-left"></i></button>`);
+      for (let i = 1; i <= pages; i++) {
+        if (pages > 7 && Math.abs(i - _page) > 2 && i !== 1 && i !== pages) {
+          if (i === _page - 3 || i === _page + 3) btns.push('<button class="az-page-btn" disabled>…</button>');
+          continue;
+        }
+        btns.push(`<button class="az-page-btn ${i===_page?'active':''}" onclick="goPage(${i})">${i}</button>`);
+      }
+      btns.push(`<button class="az-page-btn" ${_page===pages?'disabled':''} onclick="goPage(${_page+1})"><i class="bi bi-chevron-right"></i></button>`);
+      document.getElementById('pagination-btns').innerHTML = btns.join('');
+    }
+
+    function goPage(p) { _page = p; renderTable(); }
+
+    // ── Detail panel ──────────────────────────────────────────────────────────
+    function openPanel(id) {
+      const e = AUDIT_EVENTS.find(x => x.id === id);
+      if (!e) return;
+      document.getElementById('panel-subtitle').textContent = e.id;
+
+      const rows = [
+        ['Event ID',   `<span style="font-family:monospace;color:var(--az-link);">${e.id}</span>`],
+        ['Timestamp',  fmtTs(e.ts)],
+        ['Machine ID', `<span style="font-family:monospace;font-size:.72rem;word-break:break-all;color:var(--az-link);">${e.machine_id}</span>`],
+        ['Hostname',   e.hostname || '—'],
+        ['User / Agent', `<span style="font-family:monospace;font-size:.75rem;">${e.user}</span>`],
+        ['Action',     actionBadge(e.action)],
+        ['Result',     resultBadge(e.result)],
+        ['Source IP',  `<span style="font-family:monospace;">${e.ip}</span>`],
+      ];
+
+      document.getElementById('panel-body').innerHTML =
+        rows.map(([k,v]) => `
+          <div class="az-panel-row">
+            <span class="az-panel-label">${k}</span>
+            <span class="az-panel-value">${v}</span>
+          </div>`).join('') +
+        `<div style="margin-top:12px;font-size:.72rem;color:var(--az-text-muted);font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding-bottom:4px;">Event Payload</div>
+         <pre class="az-panel-json">${JSON.stringify(e.detail, null, 2)}</pre>`;
+
+      document.getElementById('az-overlay').style.display = 'block';
+      document.getElementById('az-panel').classList.add('open');
+    }
+
+    function closePanel() {
+      document.getElementById('az-overlay').style.display = 'none';
+      document.getElementById('az-panel').classList.remove('open');
+    }
+
+    // ── Toast ──────────────────────────────────────────────────────────────────
+    function toast(msg, type = 'info') {
+      const accent = { info:'#0078d4', success:'#4ec94e', warn:'#f0c040', error:'#e74c3c' };
+      const el = document.createElement('div');
+      el.style.cssText = `background:#2a2a2a;border:1px solid rgba(255,255,255,0.12);border-left:3px solid ${accent[type]||accent.info};border-radius:2px;padding:10px 14px;font-size:.8rem;color:rgba(255,255,255,0.9);pointer-events:auto;box-shadow:0 4px 16px rgba(0,0,0,.4);font-family:'Segoe UI',sans-serif;`;
+      el.textContent = msg;
+      document.getElementById('az-toast-host').appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    renderTable();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

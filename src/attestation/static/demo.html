@@ -1,157 +1,309 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ITL Attestation — Demo</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = { darkMode: 'class' }
-  </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <title>ITL Attestation — Machine List</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <style>
-    * { font-family: 'Inter', sans-serif; }
-    body {
-      background: #04070f;
-      background-image:
-        radial-gradient(ellipse 80% 60% at 20% -10%, rgba(56,189,248,0.09) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 50% at 80% 110%, rgba(99,102,241,0.07) 0%, transparent 60%);
-      min-height: 100vh;
+    :root {
+      --az-header-bg:      #1c1c1c;
+      --az-nav-bg:         #1b3a57;
+      --az-body-bg:        #1a1a1a;
+      --az-surface:        #222222;
+      --az-surface-raised: #2a2a2a;
+      --az-surface-hover:  #2e3f52;
+      --az-border:         rgba(255,255,255,0.08);
+      --az-border-strong:  rgba(255,255,255,0.15);
+      --az-accent:         #0078d4;
+      --az-accent-hover:   #106ebe;
+      --az-text:           #ffffff;
+      --az-text-secondary: rgba(255,255,255,0.65);
+      --az-text-muted:     rgba(255,255,255,0.38);
+      --az-link:           #6cb0f5;
+      --az-link-hover:     #90c7ff;
+      --az-header-height:  48px;
+      --az-sidebar-width:  220px;
     }
-    .glass { background: rgba(255,255,255,0.04); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.07); }
-    .glass-sm { background: rgba(255,255,255,0.06); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08); }
-    .glass-hover:hover { background: rgba(255,255,255,0.07); transition: background 0.15s; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-    .pulse-dot { animation: pulse-opacity 2s ease-in-out infinite; }
-    @keyframes pulse-opacity { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-    .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:9999px; font-size:.7rem; font-weight:600; letter-spacing:.05em; text-transform:uppercase; }
-    .fade-in { animation: fadeIn .3s ease; }
-    @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
-    .action-btn { padding:3px 10px; border-radius:6px; font-size:.72rem; font-weight:500; transition:all .15s; border:1px solid transparent; cursor:pointer; }
-    .action-btn:hover { filter:brightness(1.2); }
-    .action-btn:active { transform:scale(.96); }
-    .demo-ribbon { position:fixed; top:10px; left:50%; transform:translateX(-50%); background:rgba(245,158,11,.15); border:1px solid rgba(245,158,11,.3); color:rgb(251,191,36); font-size:.65rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:3px 14px; border-radius:9999px; backdrop-filter:blur(8px); z-index:100; pointer-events:none; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--az-body-bg); color: var(--az-text); margin: 0; }
+
+    /* ── Layout ── */
+    .az-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: var(--az-header-height); background: var(--az-header-bg); border-bottom: 1px solid var(--az-border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+    .az-header-left, .az-header-right { display: flex; align-items: center; gap: 8px; }
+    .az-logo { display: flex; align-items: center; gap: 8px; color: var(--az-text); font-size: .9rem; font-weight: 600; white-space: nowrap; margin-right: 12px; }
+    .az-logo-mark { width: 20px; height: 20px; background: var(--az-accent); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: .75rem; color: #fff; }
+    .az-icon-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: none; border: none; border-radius: 4px; color: var(--az-text-secondary); cursor: pointer; font-size: .9rem; transition: background .15s, color .15s; }
+    .az-icon-btn:hover { background: rgba(255,255,255,0.1); color: var(--az-text); }
+    .az-user-pill { padding: 4px 10px; border-radius: 4px; font-size: .75rem; color: var(--az-text-secondary); cursor: pointer; border: 1px solid transparent; }
+    .az-user-pill:hover { border-color: var(--az-border-strong); color: var(--az-text); }
+    .az-demo-pill { background: rgba(237,137,54,.18); border: 1px solid rgba(237,137,54,.35); color: #f6ad55; font-size: .65rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 10px; border-radius: 2px; }
+
+    .az-page-wrapper { display: flex; margin-top: var(--az-header-height); height: calc(100vh - var(--az-header-height)); }
+    .az-nav { width: var(--az-sidebar-width); min-width: var(--az-sidebar-width); background: var(--az-nav-bg); height: 100%; overflow-y: auto; border-right: 1px solid var(--az-border); padding: 8px 0; flex-shrink: 0; }
+    .az-nav-create { display: flex; align-items: center; gap: 10px; padding: 8px 16px; margin: 0 8px 4px; border-radius: 4px; color: var(--az-text); text-decoration: none; font-size: .82rem; background: rgba(0,120,212,0.15); border: 1px solid rgba(0,120,212,0.3); }
+    .az-nav-create:hover { background: rgba(0,120,212,0.25); color: var(--az-text); }
+    .az-nav-create i { color: var(--az-accent); }
+    .az-nav-item { display: flex; align-items: center; gap: 12px; padding: 8px 16px; color: var(--az-text-secondary); text-decoration: none; font-size: .82rem; transition: background .1s, color .1s; white-space: nowrap; }
+    .az-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--az-text); }
+    .az-nav-item.active { background: rgba(0,120,212,0.2); color: var(--az-text); border-left: 3px solid var(--az-accent); padding-left: 13px; }
+    .az-nav-item i { font-size: .9rem; flex-shrink: 0; }
+    .az-nav-divider { padding: 12px 16px 4px; font-size: .68rem; font-weight: 600; color: var(--az-text-muted); letter-spacing: .5px; text-transform: uppercase; }
+
+    .az-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--az-body-bg); }
+
+    /* ── Breadcrumb + Page header ── */
+    .az-breadcrumb { padding: 8px 24px; font-size: .75rem; color: var(--az-text-secondary); background: var(--az-surface-raised); border-bottom: 1px solid var(--az-border); flex-shrink: 0; }
+    .az-breadcrumb a { color: var(--az-link); text-decoration: none; }
+    .az-breadcrumb a:hover { color: var(--az-link-hover); text-decoration: underline; }
+    .az-bc-sep { margin: 0 6px; color: var(--az-text-muted); }
+    .az-page-header { display: flex; align-items: center; gap: 14px; padding: 14px 24px 10px; border-bottom: 1px solid var(--az-border); background: var(--az-surface); flex-shrink: 0; }
+    .az-page-icon { width: 38px; height: 38px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #fff; background: var(--az-accent); }
+    .az-page-title { margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--az-text); }
+    .az-page-subtitle { font-size: .75rem; color: var(--az-text-secondary); margin-top: 1px; }
+
+    /* ── Stat tiles ── */
+    .az-stat-row { display: flex; gap: 12px; padding: 14px 24px; background: var(--az-surface); border-bottom: 1px solid var(--az-border); flex-shrink: 0; flex-wrap: wrap; }
+    .az-stat-tile { background: var(--az-surface-raised); border: 1px solid var(--az-border); border-radius: 4px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; min-width: 120px; }
+    .az-stat-icon { width: 32px; height: 32px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .az-stat-value { font-size: 1.35rem; font-weight: 700; color: var(--az-text); line-height: 1; }
+    .az-stat-label { font-size: .7rem; color: var(--az-text-secondary); margin-top: 2px; }
+
+    /* ── Command bar ── */
+    .az-command-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 8px 24px; background: var(--az-surface-raised); border-bottom: 1px solid var(--az-border); flex-shrink: 0; }
+    .az-cmd-btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 2px; font-size: .8rem; font-family: inherit; background: transparent; color: var(--az-text-secondary); border: 1px solid transparent; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
+    .az-cmd-btn:hover { background: rgba(255,255,255,0.06); color: var(--az-text); border-color: var(--az-border-strong); }
+    .az-cmd-btn.primary { background: var(--az-accent); color: #fff; border-color: var(--az-accent); }
+    .az-cmd-btn.primary:hover { background: var(--az-accent-hover); border-color: var(--az-accent-hover); }
+    .az-cmd-sep { width: 1px; height: 20px; background: var(--az-border-strong); margin: 0 4px; }
+
+    /* ── Filter bar ── */
+    .az-filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 24px; background: var(--az-surface); border-bottom: 1px solid var(--az-border); flex-shrink: 0; }
+    .az-filter-input-wrap { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.06); border: 1px solid var(--az-border-strong); border-radius: 2px; padding: 4px 10px; min-width: 240px; }
+    .az-filter-input-wrap i { color: var(--az-text-muted); font-size: .8rem; }
+    .az-filter-input { background: none; border: none; color: var(--az-text); font-size: .8rem; width: 100%; font-family: inherit; }
+    .az-filter-input:focus { outline: none; }
+    .az-filter-input::placeholder { color: var(--az-text-muted); }
+    .az-filter-sep { width: 1px; height: 20px; background: var(--az-border-strong); margin: 0 4px; }
+    .az-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 2px; font-size: .75rem; background: rgba(0,120,212,0.15); border: 1px solid rgba(0,120,212,0.3); color: var(--az-link); cursor: pointer; transition: background .12s; }
+    .az-chip:hover, .az-chip.active { background: rgba(0,120,212,0.28); border-color: rgba(0,120,212,0.55); color: #fff; }
+    .az-chip-plain { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 2px; font-size: .75rem; background: rgba(255,255,255,0.06); border: 1px solid var(--az-border-strong); color: var(--az-text-secondary); cursor: pointer; }
+    .az-chip-plain:hover, .az-chip-plain.active { background: rgba(255,255,255,0.12); color: var(--az-text); }
+
+    /* ── Data table ── */
+    .az-table-wrapper { flex: 1; overflow: auto; }
+    .az-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .az-table thead th { padding: 9px 14px; text-align: left; font-weight: 600; font-size: .75rem; color: var(--az-text-secondary); background: var(--az-surface-raised); border-bottom: 1px solid var(--az-border-strong); position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+    .az-table tbody tr { border-bottom: 1px solid var(--az-border); transition: background .1s; cursor: pointer; }
+    .az-table tbody tr:hover { background: var(--az-surface-hover); }
+    .az-table tbody td { padding: 9px 14px; color: var(--az-text); vertical-align: middle; }
+    .az-resource-link { color: var(--az-link); text-decoration: none; font-weight: 500; font-family: 'Courier New', monospace; font-size: .75rem; }
+    .az-resource-link:hover { color: var(--az-link-hover); text-decoration: underline; }
+
+    /* ── Badges ── */
+    .az-status { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 500; white-space: nowrap; }
+    .az-status i { font-size: .45rem; flex-shrink: 0; }
+    .az-status.success   { color: rgba(255,255,255,0.9); } .az-status.success i   { color: #4ec94e; }
+    .az-status.warning   { color: rgba(255,255,255,0.9); } .az-status.warning i   { color: #f0c040; }
+    .az-status.info      { color: rgba(255,255,255,0.9); } .az-status.info i      { color: #6cb0f5; }
+    .az-status.secondary { color: rgba(255,255,255,0.5); } .az-status.secondary i { color: #808080; }
+    .az-type-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 2px; font-size: .72rem; font-weight: 500; background: rgba(0,120,212,0.15); border: 1px solid rgba(0,120,212,0.25); color: var(--az-link); }
+
+    /* ── Action buttons in table ── */
+    .az-act-btn { padding: 3px 10px; border-radius: 2px; font-size: .72rem; font-weight: 500; cursor: pointer; border: 1px solid var(--az-border-strong); background: transparent; color: var(--az-text-secondary); transition: background .12s, color .12s; }
+    .az-act-btn:hover { background: rgba(255,255,255,0.08); color: var(--az-text); }
+    .az-act-btn.approve { border-color: rgba(78,201,78,.35); color: #4ec94e; }
+    .az-act-btn.approve:hover { background: rgba(78,201,78,.12); }
+    .az-act-btn.lock    { border-color: rgba(240,192,64,.35); color: #f0c040; }
+    .az-act-btn.lock:hover { background: rgba(240,192,64,.1); }
+    .az-act-btn.unlock  { border-color: rgba(108,176,245,.35); color: var(--az-link); }
+    .az-act-btn.unlock:hover { background: rgba(108,176,245,.1); }
+    .az-act-btn.revoke  { border-color: rgba(231,76,60,.35); color: #e74c3c; }
+    .az-act-btn.revoke:hover { background: rgba(231,76,60,.1); }
+
+    /* ── Detail panel ── */
+    .az-panel { position: fixed; right: 0; top: 0; height: 100%; width: 480px; z-index: 1050; background: var(--az-surface); border-left: 1px solid var(--az-border-strong); transform: translateX(100%); transition: transform .25s ease; overflow-y: auto; display: flex; flex-direction: column; }
+    .az-panel.open { transform: translateX(0); }
+    .az-panel-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid var(--az-border); background: var(--az-surface-raised); flex-shrink: 0; }
+    .az-panel-title { font-size: .95rem; font-weight: 600; color: var(--az-text); }
+    .az-panel-subtitle { font-size: .72rem; color: var(--az-text-secondary); margin-top: 2px; font-family: monospace; }
+    .az-panel-body { flex: 1; }
+    .az-panel-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 9px 20px; border-bottom: 1px solid var(--az-border); font-size: .8rem; }
+    .az-panel-label { color: var(--az-text-secondary); flex-shrink: 0; width: 140px; }
+    .az-panel-value { color: var(--az-text); text-align: right; word-break: break-all; }
+    .az-panel-actions { padding: 14px 20px; border-top: 1px solid var(--az-border); display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+
+    /* ── Toast ── */
+    #az-toast-host { position: fixed; bottom: 24px; right: 24px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; width: 340px; }
+
+    /* ── Pagination ── */
+    .az-pagination-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 24px; border-top: 1px solid var(--az-border); background: var(--az-surface-raised); font-size: .78rem; color: var(--az-text-secondary); flex-shrink: 0; }
+    .az-page-btns { display: flex; gap: 3px; }
+    .az-page-btn { padding: 3px 9px; border: 1px solid var(--az-border-strong); border-radius: 2px; background: transparent; color: var(--az-text-secondary); font-size: .75rem; cursor: pointer; }
+    .az-page-btn:hover { background: rgba(255,255,255,0.06); color: var(--az-text); }
+    .az-page-btn.active { background: var(--az-accent); color: #fff; border-color: var(--az-accent); }
+    .az-page-btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .pulse { animation: pulse-dot 2s ease-in-out infinite; }
   </style>
 </head>
-<body class="text-slate-200 antialiased">
+<body>
 
-  <div class="demo-ribbon">Demo — Static Preview</div>
-
-  <!-- Nav -->
-  <nav class="glass sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <svg class="w-7 h-7 text-sky-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
-      </svg>
-      <div>
-        <div class="text-sm font-semibold text-white leading-tight">ITL Attestation</div>
-        <div class="text-xs text-slate-500 leading-tight">Control Plane — Management</div>
+  <!-- Header -->
+  <header class="az-header">
+    <div class="az-header-left">
+      <div class="az-logo">
+        <div class="az-logo-mark"><i class="bi bi-shield-check"></i></div>
+        <span>ITL Attestation</span>
       </div>
     </div>
-    <div class="flex items-center gap-4">
-      <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
-        <span class="text-xs text-emerald-500">Healthy</span>
+    <div class="az-header-right">
+      <span style="color:var(--az-text-secondary);font-size:.75rem;">
+        <i class="bi bi-circle-fill pulse" style="color:#4ec94e;font-size:.45rem;vertical-align:middle;"></i> Healthy
+      </span>
+      <div class="az-demo-pill">Demo — Static Preview</div>
+      <a href="demo-dashboard.html" class="az-icon-btn" title="Dashboard"><i class="bi bi-speedometer2"></i></a>
+      <a href="demo-audit.html" class="az-icon-btn" title="Audit Log"><i class="bi bi-journal-text"></i></a>
+      <button class="az-icon-btn" title="Notifications"><i class="bi bi-bell"></i></button>
+      <div class="az-user-pill">n.weistra@itlusions.nl</div>
+    </div>
+  </header>
+
+  <!-- Layout -->
+  <div class="az-page-wrapper">
+    <!-- Left nav -->
+    <aside class="az-nav">
+      <a href="#" class="az-nav-create"><i class="bi bi-plus-circle"></i><span>Register machine</span></a>
+      <a href="demo-dashboard.html" class="az-nav-item"><i class="bi bi-speedometer2"></i><span>Overview</span></a>
+      <a href="demo.html" class="az-nav-item active"><i class="bi bi-hdd-stack"></i><span>Machines</span></a>
+      <a href="demo-audit.html" class="az-nav-item"><i class="bi bi-journal-text"></i><span>Audit log</span></a>
+      <div class="az-nav-divider">Settings</div>
+      <a href="#" class="az-nav-item"><i class="bi bi-sliders"></i><span>Configuration</span></a>
+      <a href="#" class="az-nav-item"><i class="bi bi-shield-lock"></i><span>Policies</span></a>
+    </aside>
+
+    <!-- Main content -->
+    <main class="az-content">
+
+      <!-- Breadcrumb -->
+      <div class="az-breadcrumb">
+        <a href="#">Home</a><span class="az-bc-sep">›</span>
+        <a href="#">ITL Control Plane</a><span class="az-bc-sep">›</span>
+        <a href="#">Attestation</a><span class="az-bc-sep">›</span>
+        <span>Machines</span>
       </div>
-      <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-400">
-        <div class="relative">
-          <input type="checkbox" class="sr-only peer" checked />
-          <div class="w-8 h-4 bg-sky-600 rounded-full"></div>
-          <div class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full translate-x-4"></div>
+
+      <!-- Page header -->
+      <div class="az-page-header">
+        <div class="az-page-icon"><i class="bi bi-hdd-stack"></i></div>
+        <div>
+          <h1 class="az-page-title">Machine Attestation</h1>
+          <div class="az-page-subtitle">TPM-based hardware attestation — ITL Control Plane</div>
         </div>
-        Auto-refresh
-      </label>
-      <div class="glass-sm text-xs text-slate-500 rounded-lg px-3 py-1.5">••••••••••••</div>
-      <button class="glass-sm text-xs text-sky-400 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
-        </svg>
-        Refresh
-      </button>
-    </div>
-  </nav>
+      </div>
 
-  <main class="max-w-screen-2xl mx-auto px-6 py-8 space-y-6">
+      <!-- Stat tiles -->
+      <div class="az-stat-row">
+        <div class="az-stat-tile">
+          <div class="az-stat-icon" style="background:rgba(255,255,255,0.06);color:var(--az-text-secondary);"><i class="bi bi-hdd-stack"></i></div>
+          <div><div class="az-stat-value">8</div><div class="az-stat-label">Total</div></div>
+        </div>
+        <div class="az-stat-tile">
+          <div class="az-stat-icon" style="background:rgba(240,192,64,.12);color:#f0c040;"><i class="bi bi-clock-history"></i></div>
+          <div><div class="az-stat-value">2</div><div class="az-stat-label">Pending</div></div>
+        </div>
+        <div class="az-stat-tile">
+          <div class="az-stat-icon" style="background:rgba(108,176,245,.12);color:var(--az-link);"><i class="bi bi-clipboard-check"></i></div>
+          <div><div class="az-stat-value">1</div><div class="az-stat-label">Registered</div></div>
+        </div>
+        <div class="az-stat-tile">
+          <div class="az-stat-icon" style="background:rgba(78,201,78,.12);color:#4ec94e;"><i class="bi bi-shield-check"></i></div>
+          <div><div class="az-stat-value">4</div><div class="az-stat-label">Attested</div></div>
+        </div>
+        <div class="az-stat-tile">
+          <div class="az-stat-icon" style="background:rgba(240,192,64,.12);color:#f0c040;"><i class="bi bi-lock"></i></div>
+          <div><div class="az-stat-value">1</div><div class="az-stat-label">Locked</div></div>
+        </div>
+        <div class="az-stat-tile">
+          <div class="az-stat-icon" style="background:rgba(231,76,60,.1);color:#e74c3c;"><i class="bi bi-x-circle"></i></div>
+          <div><div class="az-stat-value">0</div><div class="az-stat-label">Revoked</div></div>
+        </div>
+      </div>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-white/5 fade-in">
-        <div class="p-2 rounded-lg bg-white/5"><svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg></div>
-        <div><div class="text-xl font-bold text-white">8</div><div class="text-xs text-slate-500">Total</div></div>
+      <!-- Command bar -->
+      <div class="az-command-bar">
+        <button class="az-cmd-btn primary"><i class="bi bi-plus"></i> Register</button>
+        <button class="az-cmd-btn"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+        <button class="az-cmd-btn"><i class="bi bi-download"></i> Export CSV</button>
+        <div class="az-cmd-sep"></div>
+        <span style="font-size:.75rem;color:var(--az-text-muted);margin-left:4px;">Showing <strong style="color:var(--az-text-secondary);">8</strong> machines</span>
       </div>
-      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-amber-500/10 fade-in">
-        <div class="p-2 rounded-lg bg-amber-500/10"><svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-        <div><div class="text-xl font-bold text-white">2</div><div class="text-xs text-slate-500">Pending</div></div>
-      </div>
-      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-blue-500/10 fade-in">
-        <div class="p-2 rounded-lg bg-blue-500/10"><svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V19.5a2.25 2.25 0 002.25 2.25H15"/></svg></div>
-        <div><div class="text-xl font-bold text-white">1</div><div class="text-xs text-slate-500">Registered</div></div>
-      </div>
-      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-emerald-500/10 fade-in">
-        <div class="p-2 rounded-lg bg-emerald-500/10"><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg></div>
-        <div><div class="text-xl font-bold text-white">4</div><div class="text-xs text-slate-500">Attested</div></div>
-      </div>
-      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-orange-500/10 fade-in">
-        <div class="p-2 rounded-lg bg-orange-500/10"><svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg></div>
-        <div><div class="text-xl font-bold text-white">1</div><div class="text-xs text-slate-500">Locked</div></div>
-      </div>
-      <div class="glass rounded-xl p-4 flex items-center gap-3 bg-red-500/10 fade-in">
-        <div class="p-2 rounded-lg bg-red-500/10"><svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg></div>
-        <div><div class="text-xl font-bold text-white">0</div><div class="text-xs text-slate-500">Revoked</div></div>
-      </div>
-    </div>
 
-    <!-- Filter bar -->
-    <div class="glass rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
-      <div class="relative flex-1 min-w-48">
-        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-        <input type="text" placeholder="Search machine ID, serial, MAC, hostname…" class="w-full bg-transparent pl-8 pr-3 py-1.5 text-xs text-slate-300 placeholder-slate-600 outline-none" />
+      <!-- Filter bar -->
+      <div class="az-filter-bar">
+        <div class="az-filter-input-wrap">
+          <i class="bi bi-funnel"></i>
+          <input type="text" class="az-filter-input" placeholder="Filter by machine ID, serial, MAC, hostname…" id="search-input" oninput="applyFilter()" />
+        </div>
+        <div class="az-filter-sep"></div>
+        <span class="az-chip-plain active" onclick="setStatus('')">All</span>
+        <span class="az-chip" onclick="setStatus('pending_approval')">Pending</span>
+        <span class="az-chip" onclick="setStatus('registered')">Registered</span>
+        <span class="az-chip" onclick="setStatus('attested')">Attested</span>
+        <span class="az-chip" onclick="setStatus('locked')">Locked</span>
+        <span class="az-chip" onclick="setStatus('revoked')">Revoked</span>
       </div>
-      <div class="h-5 w-px bg-white/10"></div>
-      <div class="flex gap-2 flex-wrap">
-        <span class="badge bg-white/15 text-slate-200 border border-white/20 cursor-pointer" style="outline:2px solid rgba(56,189,248,.5)">All</span>
-        <span class="badge bg-amber-500/10 text-amber-400 border border-amber-500/20 cursor-pointer hover:bg-amber-500/20">Pending</span>
-        <span class="badge bg-blue-500/10 text-blue-400 border border-blue-500/20 cursor-pointer hover:bg-blue-500/20">Registered</span>
-        <span class="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20">Attested</span>
-        <span class="badge bg-orange-500/10 text-orange-400 border border-orange-500/20 cursor-pointer hover:bg-orange-500/20">Locked</span>
-        <span class="badge bg-red-500/10 text-red-400 border border-red-500/20 cursor-pointer hover:bg-red-500/20">Revoked</span>
-      </div>
-      <div class="ml-auto text-xs text-slate-500">8 machines</div>
-    </div>
 
-    <!-- Table -->
-    <div class="glass rounded-xl overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-xs">
+      <!-- Table -->
+      <div class="az-table-wrapper">
+        <table class="az-table">
           <thead>
-            <tr class="border-b border-white/5 text-slate-500 uppercase tracking-wider text-[.65rem]">
-              <th class="px-4 py-3 text-left">Machine</th>
-              <th class="px-4 py-3 text-left">Hardware</th>
-              <th class="px-4 py-3 text-left">Role</th>
-              <th class="px-4 py-3 text-left">Status</th>
-              <th class="px-4 py-3 text-left">EK Fingerprint</th>
-              <th class="px-4 py-3 text-left">Registered</th>
-              <th class="px-4 py-3 text-left">Attested</th>
-              <th class="px-4 py-3 text-right">Actions</th>
+            <tr>
+              <th>Machine</th>
+              <th>Hardware</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>EK Fingerprint</th>
+              <th>Registered</th>
+              <th>Attested</th>
+              <th style="text-align:right;">Actions</th>
             </tr>
           </thead>
           <tbody id="demo-tbody"></tbody>
         </table>
       </div>
+
+      <!-- Pagination -->
+      <div class="az-pagination-bar">
+        <span>Showing 1–8 of 8</span>
+        <div class="az-page-btns">
+          <button class="az-page-btn" disabled>&#8249;</button>
+          <button class="az-page-btn active">1</button>
+          <button class="az-page-btn" disabled>&#8250;</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Detail panel overlay -->
+  <div id="az-overlay" onclick="closeDetail()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1040;"></div>
+  <aside id="az-panel" class="az-panel">
+    <div class="az-panel-header">
+      <div>
+        <div class="az-panel-title">Machine Detail</div>
+        <div class="az-panel-subtitle" id="panel-subtitle"></div>
+      </div>
+      <button class="az-icon-btn" onclick="closeDetail()"><i class="bi bi-x-lg"></i></button>
     </div>
-
-  </main>
-
-  <!-- Detail panel -->
-  <div id="detail-overlay" onclick="closeDetail()" class="fixed inset-0 bg-black/50 z-40 hidden backdrop-blur-sm"></div>
-  <aside id="detail-panel" class="fixed right-0 top-0 h-full w-[480px] z-50 translate-x-full transition-transform duration-300 glass border-l border-white/10 overflow-y-auto">
-    <div class="p-6 space-y-5" id="detail-content"></div>
+    <div id="panel-body" class="az-panel-body"></div>
+    <div class="az-panel-actions" id="panel-actions"></div>
   </aside>
 
-  <!-- Toast -->
-  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+  <!-- Toast host -->
+  <div id="az-toast-host"></div>
 
   <script>
     // ── Demo data ────────────────────────────────────────────────────────────
@@ -168,17 +320,17 @@
 
     // ── Helpers ──────────────────────────────────────────────────────────────
     const STATUS_CFG = {
-      pending_approval: { label:'Pending',    bg:'bg-amber-500/15',   text:'text-amber-400',   dot:'bg-amber-400' },
-      registered:       { label:'Registered', bg:'bg-blue-500/15',    text:'text-blue-400',    dot:'bg-blue-400' },
-      attested:         { label:'Attested',   bg:'bg-emerald-500/15', text:'text-emerald-400', dot:'bg-emerald-400' },
-      rejected:         { label:'Rejected',   bg:'bg-red-500/15',     text:'text-red-400',     dot:'bg-red-400' },
-      locked:           { label:'Locked',     bg:'bg-orange-500/15',  text:'text-orange-400',  dot:'bg-orange-400' },
-      revoked:          { label:'Revoked',    bg:'bg-red-900/30',     text:'text-red-500',     dot:'bg-red-600' },
+      pending_approval: { label:'Pending',    cls:'warning' },
+      registered:       { label:'Registered', cls:'info' },
+      attested:         { label:'Attested',   cls:'success' },
+      rejected:         { label:'Rejected',   cls:'secondary' },
+      locked:           { label:'Locked',     cls:'warning' },
+      revoked:          { label:'Revoked',    cls:'secondary' },
     };
-    const ROLE_CFG = {
-      controlplane:   { label:'Control Plane', bg:'bg-violet-500/15', text:'text-violet-400' },
-      'worker-infra': { label:'Worker Infra',  bg:'bg-cyan-500/15',   text:'text-cyan-400' },
-      'worker-app':   { label:'Worker App',    bg:'bg-sky-500/15',    text:'text-sky-400' },
+    const ROLE_LABELS = {
+      controlplane:   'Control Plane',
+      'worker-infra': 'Worker Infra',
+      'worker-app':   'Worker App',
     };
 
     function fmt(dt) {
@@ -188,61 +340,87 @@
     function trunc(s, n=12) { return s ? s.slice(0,n)+'…' : '—'; }
 
     function statusBadge(s) {
-      const c = STATUS_CFG[s] || { label:s, bg:'bg-slate-500/15', text:'text-slate-400', dot:'bg-slate-400' };
-      return `<span class="badge ${c.bg} ${c.text}"><span class="w-1.5 h-1.5 rounded-full ${c.dot} inline-block${s==='attested'?' pulse-dot':''}"></span>${c.label}</span>`;
+      const c = STATUS_CFG[s] || { label:s, cls:'secondary' };
+      return `<span class="az-status ${c.cls}"><i class="bi bi-circle-fill"></i>${c.label}</span>`;
     }
     function roleBadge(r) {
-      const c = ROLE_CFG[r] || { label:r, bg:'bg-slate-500/15', text:'text-slate-400' };
-      return `<span class="badge ${c.bg} ${c.text}">${c.label}</span>`;
+      return `<span class="az-type-badge">${ROLE_LABELS[r] || r}</span>`;
     }
 
     function buildActions(m) {
       const b = [];
       if (['pending_approval','registered'].includes(m.status))
-        b.push(`<button class="action-btn bg-emerald-500/20 text-emerald-400 border-emerald-500/30" onclick="demoAction('approve','${m.machine_id}')">Approve</button>`);
+        b.push(`<button class="az-act-btn approve" onclick="demoAction('approve','${m.machine_id}')">Approve</button>`);
       if (['attested','registered'].includes(m.status))
-        b.push(`<button class="action-btn bg-orange-500/20 text-orange-400 border-orange-500/30" onclick="demoAction('lock','${m.machine_id}')">Lock</button>`);
+        b.push(`<button class="az-act-btn lock" onclick="demoAction('lock','${m.machine_id}')">Lock</button>`);
       if (m.status === 'locked')
-        b.push(`<button class="action-btn bg-blue-500/20 text-blue-400 border-blue-500/30" onclick="demoAction('unlock','${m.machine_id}')">Unlock</button>`);
+        b.push(`<button class="az-act-btn unlock" onclick="demoAction('unlock','${m.machine_id}')">Unlock</button>`);
       if (!['revoked','rejected'].includes(m.status))
-        b.push(`<button class="action-btn bg-red-500/20 text-red-400 border-red-500/30" onclick="demoAction('revoke','${m.machine_id}')">Revoke</button>`);
+        b.push(`<button class="az-act-btn revoke" onclick="demoAction('revoke','${m.machine_id}')">Revoke</button>`);
       return b.join('');
     }
 
     // ── Toast ────────────────────────────────────────────────────────────────
-    function toast(msg, type='info') {
-      const colors = { info:'bg-sky-500/20 border-sky-500/30 text-sky-300', success:'bg-emerald-500/20 border-emerald-500/30 text-emerald-300', error:'bg-red-500/20 border-red-500/30 text-red-300', warn:'bg-amber-500/20 border-amber-500/30 text-amber-300' };
+    function toast(msg, type = 'info') {
+      const accent = { info:'#0078d4', success:'#4ec94e', warn:'#f0c040', error:'#e74c3c' };
       const el = document.createElement('div');
-      el.className = `pointer-events-auto glass-sm rounded-xl px-4 py-3 text-xs border fade-in ${colors[type]} max-w-xs`;
+      el.style.cssText = `background:#2a2a2a;border:1px solid rgba(255,255,255,0.12);border-left:3px solid ${accent[type]||accent.info};border-radius:2px;padding:10px 14px;font-size:.8rem;color:rgba(255,255,255,0.9);pointer-events:auto;box-shadow:0 4px 16px rgba(0,0,0,.4);font-family:'Segoe UI',sans-serif;`;
       el.textContent = msg;
-      document.getElementById('toast-container').appendChild(el);
+      document.getElementById('az-toast-host').appendChild(el);
       setTimeout(() => el.remove(), 4000);
     }
 
     function demoAction(act, id) {
       const labels = { approve:'Approve', lock:'Lock', unlock:'Unlock', revoke:'Revoke' };
-      toast(`Demo: ${labels[act]} action triggered for ${id.slice(0,8)}… (no-op in preview)`, 'warn');
+      toast(`Demo: ${labels[act]} triggered for ${id.slice(0,8)}… (no-op in preview)`, 'warn');
     }
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // ── Filter state ──────────────────────────────────────────────────────────
+    let _filterStatus = '';
+
+    function setStatus(s) {
+      _filterStatus = s;
+      document.querySelectorAll('.az-chip,.az-chip-plain').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.az-chip,.az-chip-plain').forEach(p => {
+        const txt = p.textContent.trim().toLowerCase();
+        const match = (s === '' && txt === 'all') || (s !== '' && STATUS_CFG[s]?.label.toLowerCase() === txt);
+        p.classList.toggle('active', match);
+      });
+      applyFilter();
+    }
+
+    function applyFilter() {
+      const q = (document.getElementById('search-input')?.value || '').toLowerCase();
+      document.querySelectorAll('#demo-tbody tr').forEach(row => {
+        const id = row.dataset.id;
+        if (!id) return;
+        const m = MACHINES.find(x => x.machine_id === id);
+        if (!m) return;
+        const matchStatus = !_filterStatus || m.status === _filterStatus;
+        const matchSearch = !q || [m.machine_id, m.hw_serial, m.hw_mac, m.hostname, m.hw_product].some(v => v && v.toLowerCase().includes(q));
+        row.style.display = (matchStatus && matchSearch) ? '' : 'none';
+      });
+    }
+
+    // ── Render table ──────────────────────────────────────────────────────────
     function renderTable() {
       document.getElementById('demo-tbody').innerHTML = MACHINES.map(m => `
-        <tr class="border-b border-white/5 glass-hover cursor-pointer fade-in" onclick="openDetail('${m.machine_id}')">
-          <td class="px-4 py-3">
-            <div class="font-mono text-sky-300 text-[.68rem]">${trunc(m.machine_id, 16)}</div>
-            <div class="text-slate-500 text-[.65rem] mt-0.5">${m.hostname || '—'}</div>
+        <tr data-id="${m.machine_id}" onclick="openDetail('${m.machine_id}')">
+          <td>
+            <a href="demo-machine.html" class="az-resource-link" onclick="event.stopPropagation();" title="Open detail">${trunc(m.machine_id, 16)}</a>
+            <div style="font-size:.72rem;color:var(--az-text-muted);margin-top:2px;">${m.hostname || '—'}</div>
           </td>
-          <td class="px-4 py-3">
-            <div class="text-slate-300">${m.hw_product}</div>
-            <div class="text-slate-500 font-mono text-[.65rem]">${m.hw_serial} · ${m.hw_mac}</div>
+          <td>
+            <div style="font-size:.82rem;">${m.hw_product}</div>
+            <div style="font-family:monospace;font-size:.7rem;color:var(--az-text-muted);">${m.hw_serial} &middot; ${m.hw_mac}</div>
           </td>
-          <td class="px-4 py-3">${roleBadge(m.role)}</td>
-          <td class="px-4 py-3">${statusBadge(m.status)}</td>
-          <td class="px-4 py-3"><span class="font-mono text-slate-500 text-[.65rem]" title="${m.ek_fingerprint}">${trunc(m.ek_fingerprint, 20)}</span></td>
-          <td class="px-4 py-3 text-slate-500 whitespace-nowrap">${fmt(m.registered_at)}</td>
-          <td class="px-4 py-3 text-slate-500 whitespace-nowrap">${fmt(m.attested_at)}</td>
-          <td class="px-4 py-3 text-right" onclick="event.stopPropagation()">
-            <div class="flex justify-end gap-1.5 flex-wrap">${buildActions(m)}</div>
+          <td>${roleBadge(m.role)}</td>
+          <td>${statusBadge(m.status)}</td>
+          <td><span style="font-family:monospace;font-size:.7rem;color:var(--az-text-muted);" title="${m.ek_fingerprint}">${trunc(m.ek_fingerprint, 20)}</span></td>
+          <td style="white-space:nowrap;color:var(--az-text-secondary);">${fmt(m.registered_at)}</td>
+          <td style="white-space:nowrap;color:var(--az-text-secondary);">${fmt(m.attested_at)}</td>
+          <td style="text-align:right;" onclick="event.stopPropagation()">
+            <div style="display:flex;justify-content:flex-end;gap:4px;flex-wrap:wrap;">${buildActions(m)}</div>
           </td>
         </tr>`).join('');
     }
@@ -252,59 +430,47 @@
       const m = MACHINES.find(x => x.machine_id === id);
       if (!m) return;
 
+      document.getElementById('panel-subtitle').textContent = trunc(m.machine_id, 20);
+
       const rows = [
-        ['Machine ID',     `<span class="font-mono text-sky-300 break-all">${m.machine_id}</span>`],
+        ['Machine ID',     `<span style="font-family:monospace;color:var(--az-link);word-break:break-all;">${m.machine_id}</span>`],
         ['Status',         statusBadge(m.status)],
         ['Role',           roleBadge(m.role)],
         ['Hostname',       m.hostname || '—'],
         ['Assigned IP',    m.assigned_ip || '—'],
         ['HW Product',     m.hw_product],
-        ['HW Serial',      `<span class="font-mono">${m.hw_serial}</span>`],
-        ['MAC Address',    `<span class="font-mono">${m.hw_mac}</span>`],
-        ['HW UUID',        `<span class="font-mono text-[.65rem] break-all">${m.hw_uuid}</span>`],
+        ['HW Serial',      `<span style="font-family:monospace;">${m.hw_serial}</span>`],
+        ['MAC Address',    `<span style="font-family:monospace;">${m.hw_mac}</span>`],
+        ['HW UUID',        `<span style="font-family:monospace;font-size:.7rem;word-break:break-all;">${m.hw_uuid}</span>`],
         ['EK Source',      m.ek_source],
-        ['EK Fingerprint', `<span class="font-mono text-[.65rem] break-all text-slate-400">${m.ek_fingerprint}</span>`],
+        ['EK Fingerprint', `<span style="font-family:monospace;font-size:.7rem;word-break:break-all;color:var(--az-text-secondary);">${m.ek_fingerprint}</span>`],
         ['Registered',     fmt(m.registered_at)],
         ['Attested',       fmt(m.attested_at)],
         ['Locked',         fmt(m.locked_at)],
         ['Revoked',        fmt(m.revoked_at)],
-        ['Token consumed', m.token_consumed ? '<span class="text-amber-400">Yes</span>' : '<span class="text-slate-500">No</span>'],
-        ['Wipe pending',   m.wipe_pending ? '<span class="text-red-400 font-semibold">YES</span>' : '<span class="text-slate-500">No</span>'],
+        ['Token consumed', m.token_consumed ? '<span style="color:#f0c040;font-weight:600;">Yes</span>' : '<span style="color:var(--az-text-muted);">No</span>'],
+        ['Wipe pending',   m.wipe_pending ? '<span style="color:#e74c3c;font-weight:700;">YES</span>' : '<span style="color:var(--az-text-muted);">No</span>'],
       ];
 
-      document.getElementById('detail-content').innerHTML = `
-        <div class="flex items-start justify-between mb-2">
-          <div>
-            <div class="text-sm font-semibold text-white mb-1">Machine Detail</div>
-            <div class="font-mono text-sky-400 text-xs">${trunc(m.machine_id, 20)}</div>
-          </div>
-          <button onclick="closeDetail()" class="text-slate-500 hover:text-white transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <div class="space-y-2">
-          ${rows.map(([k,v]) => `
-            <div class="glass-sm rounded-lg px-3 py-2 flex justify-between gap-4">
-              <span class="text-xs text-slate-500 shrink-0">${k}</span>
-              <span class="text-xs text-slate-300 text-right">${v}</span>
-            </div>`).join('')}
-        </div>
-        <div class="pt-4 border-t border-white/10">
-          <div class="text-xs text-slate-500 mb-3">Actions</div>
-          <div class="flex flex-wrap gap-2">${buildActions(m)}</div>
-        </div>
-      `;
+      document.getElementById('panel-body').innerHTML = rows.map(([k,v]) => `
+        <div class="az-panel-row">
+          <span class="az-panel-label">${k}</span>
+          <span class="az-panel-value">${v}</span>
+        </div>`).join('');
 
-      document.getElementById('detail-overlay').classList.remove('hidden');
-      document.getElementById('detail-panel').classList.remove('translate-x-full');
+      document.getElementById('panel-actions').innerHTML = buildActions(m);
+
+      document.getElementById('az-overlay').style.display = 'block';
+      document.getElementById('az-panel').classList.add('open');
     }
 
     function closeDetail() {
-      document.getElementById('detail-overlay').classList.add('hidden');
-      document.getElementById('detail-panel').classList.add('translate-x-full');
+      document.getElementById('az-overlay').style.display = 'none';
+      document.getElementById('az-panel').classList.remove('open');
     }
 
     renderTable();
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
