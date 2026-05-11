@@ -97,8 +97,10 @@
 
     /* ── PROSE ── */
     .prose h1 {
-      font-size: 2rem;
+      font-size: clamp(1.6rem, 4vw, 2.25rem);
       font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
       color: var(--text);
       margin-bottom: 12px;
       padding-bottom: 12px;
@@ -106,8 +108,9 @@
     }
 
     .prose h2 {
-      font-size: 1.4rem;
+      font-size: clamp(1.1rem, 3vw, 1.4rem);
       font-weight: 600;
+      letter-spacing: -0.01em;
       color: var(--text);
       margin: 40px 0 12px;
       padding-bottom: 6px;
