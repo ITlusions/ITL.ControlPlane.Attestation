@@ -255,6 +255,18 @@
       line-height: 1.6;
     }
 
+    /* ── MERMAID ── */
+    .mermaid {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      margin: 16px 0;
+      overflow-x: auto;
+      text-align: center;
+    }
+    .mermaid svg { max-width: 100%; height: auto; }
+
     /* Rouge syntax highlighting — dark theme */
     .highlight .k,  .highlight .kd, .highlight .kn { color: #ff7b72; }
     .highlight .s,  .highlight .s1, .highlight .s2 { color: #a5d6ff; }
@@ -382,6 +394,37 @@
   <a href="https://github.com/ITlusions/ITL.ControlPlane.Attestation" target="_blank">GitHub</a>
   &nbsp;·&nbsp; Built with Jekyll
 </footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  (function () {
+    // Kramdown renders ```mermaid as <pre><code class="language-mermaid">
+    // Rewrite to <div class="mermaid"> so Mermaid.js can process them.
+    document.querySelectorAll('pre > code.language-mermaid').forEach(function (code) {
+      var div = document.createElement('div');
+      div.className = 'mermaid';
+      div.textContent = code.textContent;
+      code.parentElement.replaceWith(div);
+    });
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        background:            '#0d1117',
+        primaryColor:          '#1f2d3d',
+        primaryTextColor:      '#e6edf3',
+        primaryBorderColor:    '#30363d',
+        lineColor:             '#8b949e',
+        secondaryColor:        '#21262d',
+        tertiaryColor:         '#161b22',
+        edgeLabelBackground:   '#21262d',
+        clusterBkg:            '#161b22',
+        titleColor:            '#58a6ff',
+        nodeTextColor:         '#e6edf3'
+      }
+    });
+  })();
+</script>
 
 <script>
   const navToggle = document.getElementById("nav-toggle");
