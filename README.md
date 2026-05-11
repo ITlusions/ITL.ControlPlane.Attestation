@@ -1,5 +1,10 @@
 # ITL.ControlPlane.Attestation
 
+![Status](https://img.shields.io/badge/status-alpha-orange?style=flat-square)
+![Development](https://img.shields.io/badge/development-in%20progress-yellow?style=flat-square)
+
+> **Alpha** — This project is under active development. APIs, data models, and behaviour may change without notice.
+
 TPM EK-based hardware identity registration, machine lifecycle management, and enrollment CA for ITL Control Plane nodes.
 
 Machines are registered by TPM Endorsement Key fingerprint before deployment. On first boot the `itl-tpm-register` Talos extension self-attests and receives a signed MachineConfig — no manual bootstrap required.
