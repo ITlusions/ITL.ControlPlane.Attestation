@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}{{ machine.hostname | default(machine.id) }}{% endblock %}
+
+{% block content %}
+{% set status_class = {
+  'attested':         'f-badge-success',
+  'registered':       'f-badge-info',
+  'pending_approval': 'f-badge-warning',
+  'locked':           'f-badge-warning',
+  'revoked':          'f-badge-danger',
+  'rejected':         'f-badge-muted'
+}.get(machine.status, 'f-badge-muted') %}
+
+<!-- Breadcrumb -->
+<div class="f-breadcrumb">
+  <a href="{{ url_for('dashboard') }}">Home</a>
+  <span class="f-bc-sep">›</span>
+  <a href="{{ url_for('machines_list') }}">Machines</a>
+  <span class="f-bc-sep">›</span>
+  <span>{{ machine.id | trunc(20) }}</span>
+</div>
+
+<!-- Page header -->
+<div class="f-page-header">
+  <div class="f-page-icon">
+    <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
+      <path d="M12 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2M5 4h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1m-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5M5 8h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1m0 2h3a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1"/>
+    </svg>
+  </div>
+  <div>
+    <h1 class="f-page-title">{{ machine.hostname | default(machine.id) }}</h1>
+    <div class="f-page-sub" style="font-family:var(--f-font-mono);font-size:11px;">{{ machine.id }}</div>
+  </div>
+  <div class="f-page-hdr-end">
+    <span class="f-badge {{ status_class }}"><span class="f-badge-dot"></span>{{ machine.status }}</span>
+    <span class="f-role-badge">{{ {'controlplane':'Control Plane','worker-infra':'Worker Infra','worker-app':'Worker App'}.get(machine.role, machine.role) }}</span>
+    <!-- Actions -->
+    {% if machine.status in ('pending_approval', 'registered') %}
+    <button class="f-btn f-btn-primary" onclick="machineAction('approve','{{ machine.id }}')">Approve</button>
+    {% endif %}
+    {% if machine.status in ('registered', 'attested') %}
+    <button class="f-btn f-btn-secondary" onclick="machineAction('lock','{{ machine.id }}')">Lock</button>
+    {% endif %}
+    {% if machine.status == 'locked' %}
+    <button class="f-btn f-btn-secondary" onclick="machineAction('unlock','{{ machine.id }}')">Unlock</button>
+    {% endif %}
+    {% if machine.status in ('pending_approval', 'registered', 'attested', 'locked') %}
+    <button class="f-btn f-btn-danger" onclick="machineActionAndRedirect('revoke','{{ machine.id }}')">Revoke</button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Detail body -->
+<div class="f-detail-body">
+  <div class="f-detail-panels">
+
+    <!-- Identity -->
+    <div>
+      <div class="f-section-title">Identity</div>
+      <div class="f-detail-grid">
+        <div class="f-detail-row"><div class="dk">Machine ID</div><div class="dv" style="font-family:var(--f-font-mono);font-size:11px;word-break:break-all;">{{ machine.id }}</div></div>
+        <div class="f-detail-row"><div class="dk">Hostname</div><div class="dv">{{ machine.hostname | default('—') }}</div></div>
+        <div class="f-detail-row"><div class="dk">Cluster</div><div class="dv">{{ machine.cluster | default('—') }}</div></div>
+        <div class="f-detail-row"><div class="dk">Namespace</div><div class="dv">{{ machine.namespace | default('—') }}</div></div>
+        <div class="f-detail-row"><div class="dk">Role</div><div class="dv"><span class="f-role-badge">{{ {'controlplane':'Control Plane','worker-infra':'Worker Infra','worker-app':'Worker App'}.get(machine.role, machine.role) }}</span></div></div>
+        <div class="f-detail-row"><div class="dk">Status</div><div class="dv"><span class="f-badge {{ status_class }}"><span class="f-badge-dot"></span>{{ machine.status }}</span></div></div>
+      </div>
+    </div>
+
+    <!-- Hardware -->
+    <div>
+      <div class="f-section-title">Hardware</div>
+      <div class="f-detail-grid">
+        <div class="f-detail-row"><div class="dk">Manufacturer</div><div class="dv">{{ machine.hw_manufacturer | default('—') }}</div></div>
+        <div class="f-detail-row"><div class="dk">Model</div><div class="dv">{{ machine.hw_model | default('—') }}</div></div>
+        <div class="f-detail-row"><div class="dk">Serial</div><div class="dv" style="font-family:var(--f-font-mono);font-size:11px;">{{ machine.hw_serial | default('—') }}</div></div>
+        <div class="f-detail-row"><div class="dk">TPM Version</div><div class="dv">{{ machine.tpm_version | default('—') }}</div></div>
+      </div>
+    </div>
+
+    <!-- Security Anchors -->
+    <div>
+      <div class="f-section-title">Security Anchors</div>
+      <div class="f-detail-grid">
+        <div class="f-detail-row"><div class="dk">EK Certificate</div><div class="dv" style="font-family:var(--f-font-mono);font-size:10px;word-break:break-all;line-height:1.6;">{{ machine.ek_cert | default('—', true) }}</div></div>
+        <div class="f-detail-row"><div class="dk">AK Name</div><div class="dv" style="font-family:var(--f-font-mono);font-size:11px;word-break:break-all;">{{ machine.ak_name | default('—', true) }}</div></div>
+        <div class="f-detail-row"><div class="dk">PCR Values</div><div class="dv" style="font-family:var(--f-font-mono);font-size:10px;line-height:1.7;white-space:pre-line;">{{ machine.pcr_values | default('Not yet measured', true) }}</div></div>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div>
+      <div class="f-section-title">Timeline</div>
+      <div class="f-detail-grid">
+        <div class="f-detail-row"><div class="dk">Registered</div><div class="dv">{{ machine.registered_at | datefmt }}</div></div>
+        <div class="f-detail-row"><div class="dk">Last Attested</div><div class="dv">{{ machine.last_attested_at | datefmt }}</div></div>
+        <div class="f-detail-row"><div class="dk">Status Changed</div><div class="dv">{{ machine.status_changed_at | datefmt }}</div></div>
+        <div class="f-detail-row"><div class="dk">Created By</div><div class="dv">{{ machine.created_by | default('—', true) }}</div></div>
+        <div class="f-detail-row"><div class="dk">Notes</div><div class="dv" style="color:rgba(255,255,255,.5);">{{ machine.notes | default('No notes', true) }}</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:4px;">
+    <a href="{{ url_for('machines_list') }}" class="f-btn f-btn-subtle">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0"/></svg>
+      Back to Machines
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function machineActionAndRedirect(action, machineId) {
+  fetch("/api/machines/" + encodeURIComponent(machineId) + "/" + action, { method: "POST" })
+    .then(r => {
+      if (!r.ok) return r.json().then(d => { throw new Error(d.error || "HTTP " + r.status); });
+      return r.json();
+    })
+    .then(() => { location.reload(); })
+    .catch(err => toast(err.message, "error"));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Configuration{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="f-page-header">
+  <div class="f-page-icon">
+    <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
+      <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"/>
+      <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52z"/>
+    </svg>
+  </div>
+  <div>
+    <h1 class="f-page-title">Configuration</h1>
+    <div class="f-page-sub">Service settings — read-only in Demo Mode</div>
+  </div>
+  <div class="f-page-hdr-end">
+    <span class="f-topbar-pill">Read Only</span>
+  </div>
+</div>
+
+<!-- Config body -->
+<div class="f-config-body">
+  {% for group in settings %}
+  <div class="f-config-group">
+    <div class="f-section-title">{{ group.title }}</div>
+    <div class="f-config-items">
+      {% for item in group['items'] %}
+      <div class="f-config-item">
+        <div class="f-config-key">{{ item.key }}</div>
+        <div class="f-config-value">
+          {% if item.secret %}
+          <span style="letter-spacing:.15em;color:rgba(255,255,255,.3);">••••••••••••</span>
+          {% else %}
+          {{ item.value | default('—') }}
+          {% endif %}
+        </div>
+        <div class="f-config-desc">{{ item.description | default('') }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div style="padding:40px;text-align:center;color:rgba(255,255,255,.3);">No configuration settings loaded.</div>
+  {% endfor %}
+</div>
+{% endblock %}

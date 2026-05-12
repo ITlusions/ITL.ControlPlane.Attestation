@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="f-page-header">
+  <div class="f-page-icon">
+    <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
+      <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zm6.5.5A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5z"/>
+    </svg>
+  </div>
+  <div>
+    <h1 class="f-page-title">Audit Log</h1>
+    <div class="f-page-sub">{{ events | length }} events — all machine lifecycle actions</div>
+  </div>
+</div>
+
+<!-- Command bar -->
+<div class="f-command-bar">
+  <span class="f-result-count">{{ events | length }} events</span>
+</div>
+
+<!-- Filter bar -->
+<div class="f-pivot-bar">
+  <div class="f-pivot-search">
+    <svg class="f-search-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.099zm-5.242 1.156a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11"/></svg>
+    <input type="text" id="f-audit-search" placeholder="Search events…" autocomplete="off">
+  </div>
+</div>
+
+<!-- Data grid -->
+<div class="f-grid-wrap">
+  <table class="f-grid" id="f-audit-table">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Actor</th>
+        <th>Action</th>
+        <th>Machine ID</th>
+        <th>Result</th>
+        <th>Detail</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ev in events %}
+      <tr class="audit-row">
+        <td><span class="f-ts">{{ ev.ts | datefmt }}</span></td>
+        <td style="font-size:13px;color:rgba(255,255,255,.8);">{{ ev.actor | default('system') }}</td>
+        <td>
+          <span class="f-audit-action f-audit-{{ ev.action | lower }}">{{ ev.action | upper }}</span>
+        </td>
+        <td>
+          {% if ev.machine_id %}
+          <a href="{{ url_for('machine_detail', machine_id=ev.machine_id) }}" class="f-machine-id">{{ ev.machine_id | trunc(14) }}</a>
+          {% else %}
+          <span style="color:rgba(255,255,255,.3);">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if ev.result in ('ok', 'success') %}
+          <span class="f-audit-result-ok">
+            <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" style="vertical-align:-1px;margin-right:3px;"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0"/></svg>ok
+          </span>
+          {% else %}
+          <span class="f-audit-result-fail">
+            <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" style="vertical-align:-1px;margin-right:3px;"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/></svg>{{ ev.result }}
+          </span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px;color:rgba(255,255,255,.5);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ ev.detail | default('') }}">{{ ev.detail | default('—') }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="padding:32px;text-align:center;color:rgba(255,255,255,.3);">No audit events recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Footer -->
+<div class="f-footer">
+  <span>{{ events | length }} total events</span>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("f-audit-search").addEventListener("input", function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll(".audit-row").forEach(row => {
+    row.style.display = !q || row.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+});
+</script>
+{% endblock %}

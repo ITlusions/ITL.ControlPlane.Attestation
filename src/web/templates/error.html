@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} {{ message }}{% endblock %}
+
+{% block content %}
+<div class="f-error-center">
+  <div class="f-error-code">{{ code }}</div>
+  <div class="f-error-msg">{{ message }}</div>
+  <div class="f-error-sub">
+    {% if code == 404 %}
+    The page or resource you requested does not exist.
+    {% elif code == 500 %}
+    An unexpected error occurred on the server.
+    {% else %}
+    An error occurred while processing your request.
+    {% endif %}
+  </div>
+  <div style="margin-top:8px;">
+    <a href="{{ url_for('dashboard') }}" class="f-btn f-btn-secondary">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0"/></svg>
+      Back to Dashboard
+    </a>
+  </div>
+</div>
+{% endblock %}
