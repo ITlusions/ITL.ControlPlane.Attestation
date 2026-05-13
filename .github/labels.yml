@@ -1,0 +1,84 @@
+labels:
+  - name: bug
+    color: d73a4a
+    description: Something isn't working
+
+  - name: enhancement
+    color: a2eeef
+    description: New feature or request
+
+  - name: documentation
+    color: 0075ca
+    description: Improvements or additions to documentation
+
+  - name: dependencies
+    color: 0366d6
+    description: Dependency version updates
+
+  - name: python
+    color: 3572A5
+    description: Python dependency update
+
+  - name: github-actions
+    color: 2088FF
+    description: GitHub Actions dependency update
+
+  - name: attestation
+    color: e4e669
+    description: Related to the TPM attestation workflow
+
+  - name: security
+    color: ee0701
+    description: Security vulnerability or hardening
+
+  - name: tpm
+    color: 5319e7
+    description: TPM 2.0 or vTPM specific issue
+
+  - name: crypto
+    color: 0078d4
+    description: Cryptographic operations, keys, or certificates
+
+  - name: hardening
+    color: b60205
+    description: Military-grade hardening gap or mitigation
+
+  - name: question
+    color: d876e3
+    description: Further information is requested
+
+  - name: wontfix
+    color: ffffff
+    description: This will not be worked on
+
+  - name: duplicate
+    color: cfd3d7
+    description: This issue or pull request already exists
+
+  - name: good first issue
+    color: 7057ff
+    description: Good for newcomers
+
+  - name: help wanted
+    color: 008672
+    description: Extra attention is needed
+
+  - name: type:epic
+    color: 6e40c9
+    description: Large body of work spanning multiple sprints
+
+  - name: type:story
+    color: 0075ca
+    description: User story -- a piece of deliverable value
+
+  - name: type:task
+    color: e4e669
+    description: Technical task or chore
+
+  - name: type:bug
+    color: d73a4a
+    description: Something isn't working
+
+  - name: type:spike
+    color: f9d0c4
+    description: Research or investigation task
