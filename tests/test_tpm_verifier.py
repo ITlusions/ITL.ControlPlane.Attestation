@@ -62,6 +62,16 @@ def rsa_key():
 
 @pytest.fixture()
 def valid_ek_cert_pem(rsa_key):
+    """Return a base64-encoded PEM cert as expected by verify_ek_pem / compute_ek_fingerprint."""
+    import base64
+    cert = _make_self_signed_cert(rsa_key)
+    pem_bytes = cert.public_bytes(serialization.Encoding.PEM)
+    return base64.b64encode(pem_bytes).decode()
+
+
+@pytest.fixture()
+def valid_ek_cert_raw_pem(rsa_key):
+    """Raw PEM string (not base64-wrapped) for tests that need the bare PEM."""
     cert = _make_self_signed_cert(rsa_key)
     return cert.public_bytes(serialization.Encoding.PEM).decode()
 
@@ -96,39 +106,42 @@ class TestComputeEkFingerprint:
 class TestVerifyEkPem:
     def test_valid_cert_returns_true(self, valid_ek_cert_pem):
         from attestation.pki.tpm_verifier import verify_ek_pem
-        assert verify_ek_pem(valid_ek_cert_pem) is True
+        assert verify_ek_pem(valid_ek_cert_pem, "cert") is True
 
     def test_expired_cert_raises(self, rsa_key):
+        import base64
         from attestation.pki.tpm_verifier import verify_ek_pem
         cert = _make_self_signed_cert(
             rsa_key,
             not_before_delta=datetime.timedelta(days=-10),
             not_after_delta=datetime.timedelta(days=-1),
         )
-        pem = cert.public_bytes(serialization.Encoding.PEM).decode()
+        b64_pem = base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode()
         with pytest.raises(ValueError, match="expired"):
-            verify_ek_pem(pem)
+            verify_ek_pem(b64_pem, "cert")
 
     def test_not_yet_valid_cert_raises(self, rsa_key):
+        import base64
         from attestation.pki.tpm_verifier import verify_ek_pem
         cert = _make_self_signed_cert(
             rsa_key,
             not_before_delta=datetime.timedelta(days=1),
             not_after_delta=datetime.timedelta(days=365),
         )
-        pem = cert.public_bytes(serialization.Encoding.PEM).decode()
+        b64_pem = base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode()
         with pytest.raises(ValueError, match="not yet valid"):
-            verify_ek_pem(pem)
+            verify_ek_pem(b64_pem, "cert")
 
     def test_missing_key_encipherment_raises(self, rsa_key):
+        import base64
         from attestation.pki.tpm_verifier import verify_ek_pem
         cert = _make_self_signed_cert(
             rsa_key,
             key_usage_kwargs={"key_encipherment": False, "digital_signature": True},
         )
-        pem = cert.public_bytes(serialization.Encoding.PEM).decode()
+        b64_pem = base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode()
         with pytest.raises(ValueError, match="[Kk]ey.*[Ee]ncipherment|[Kk]ey[Uu]sage"):
-            verify_ek_pem(pem)
+            verify_ek_pem(b64_pem, "cert")
 
     def test_garbage_input_raises(self):
         from attestation.pki.tpm_verifier import verify_ek_pem

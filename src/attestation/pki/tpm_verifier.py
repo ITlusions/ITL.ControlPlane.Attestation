@@ -211,9 +211,10 @@ def verify_ek_pem(b64_pem: str, ek_source: str) -> bool:
         except Exception as exc:
             raise ValueError(f"Cannot parse EK public key: {exc}") from exc
 
-    # Unknown source — accept permissively but log a warning
-    logger.warning("Unknown EK source '%s' — skipping structural check", ek_source)
-    return True
+    # HIGH-02/RT-04: Reject unknown ek_source immediately — do not silently pass
+    raise ValueError(
+        f"Unknown ek_source value '{ek_source}' \u2014 expected 'cert' or 'pub'"
+    )
 
 
 def compute_ek_fingerprint(b64_pem: str) -> str:

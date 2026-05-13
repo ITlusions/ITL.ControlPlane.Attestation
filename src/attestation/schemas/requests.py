@@ -18,6 +18,13 @@ class RegisterRequest(BaseModel):
     hw_product:     str           = "unknown"
     desired_role:   Optional[str] = None
 
+    @field_validator("ek_source")
+    @classmethod
+    def validate_ek_source(cls, v: str) -> str:
+        if v not in ("cert", "pub"):
+            raise ValueError("ek_source must be 'cert' or 'pub'")
+        return v
+
     @field_validator("ek_fingerprint")
     @classmethod
     def validate_fingerprint(cls, v: str) -> str:
@@ -46,6 +53,13 @@ class SelfRegisterRequest(BaseModel):
     hw_product:     str           = "unknown"
     desired_role:   Optional[str] = None
 
+    @field_validator("ek_source")
+    @classmethod
+    def validate_ek_source(cls, v: str) -> str:
+        if v not in ("cert", "pub"):
+            raise ValueError("ek_source must be 'cert' or 'pub'")
+        return v
+
     @field_validator("ek_fingerprint")
     @classmethod
     def validate_fingerprint(cls, v: str) -> str:
@@ -63,11 +77,17 @@ class AttestRequest(BaseModel):
     nonce_signature: Optional[str] = None  # base64 ECDSA-SHA384 or RSA-PKCS1v15 sig over nonce
     pcr_quote:      Optional[str] = None  # base64-encoded TPM2B_ATTEST (issue #6)
     pcr_signature:  Optional[str] = None  # base64-encoded TPMT_SIGNATURE
-    pcr_nonce:      Optional[str] = None
     hw_uuid:        str           = "unknown"
     hw_mac:         str           = "unknown"
     hw_serial:      str           = "unknown"
     hw_product:     str           = "unknown"
+
+    @field_validator("ek_source")
+    @classmethod
+    def validate_ek_source(cls, v: str) -> str:
+        if v not in ("cert", "pub"):
+            raise ValueError("ek_source must be 'cert' or 'pub'")
+        return v
 
     @field_validator("ek_fingerprint")
     @classmethod

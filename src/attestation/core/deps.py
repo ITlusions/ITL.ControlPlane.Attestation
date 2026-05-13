@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 from functools import lru_cache
 
 from fastapi import Depends, HTTPException, Request
@@ -37,6 +38,8 @@ def require_admin(request: Request) -> None:
     settings = get_settings()
     if not settings.admin_token:
         raise HTTPException(503, "Admin token not configured — set ITL_ADMIN_TOKEN")
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer ") or auth[7:] != settings.admin_token:
+    auth  = request.headers.get("Authorization", "")
+    token = auth[7:] if auth.startswith("Bearer ") else ""
+    # CRIT-04: constant-time comparison prevents timing side-channel leakage
+    if not hmac.compare_digest(token, settings.admin_token):
         raise HTTPException(403, "Invalid or missing admin token")

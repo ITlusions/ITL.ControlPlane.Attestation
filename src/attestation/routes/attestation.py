@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from ..core.deps import get_machine_repo
 from ..handlers.attestation import AttestationHandler
@@ -23,7 +23,10 @@ def attest_challenge(store: NonceStore = Depends(get_nonce_store)) -> dict:
     The client must include ``nonce_id`` in the subsequent POST /attest.
     Nonces are single-use and expire after 60 seconds.
     """
-    nonce_id, nonce_bytes, expires_at = store.issue()
+    try:
+        nonce_id, nonce_bytes, expires_at = store.issue()
+    except RuntimeError as exc:
+        raise HTTPException(429, str(exc))
     import base64
     return {
         "nonce_id":   nonce_id,

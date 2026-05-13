@@ -97,14 +97,19 @@ class QuoteVerifier:
         sig_raw   = self._decode_b64(sig_b64,   "signature")
 
         self._verify_signature(ak_pub, quote_raw, sig_raw)
-        nonce_from_quote = self._parse_and_validate_attest(quote_raw)
+        nonce_from_quote, pcr_digest_from_quote = self._parse_and_validate_attest(quote_raw)
 
         if nonce_bytes is not None:
             if nonce_from_quote != nonce_bytes:
                 raise QuoteVerificationError("Nonce mismatch — possible replay attack")
 
-        pcr_digest = self._compute_pcr_digest(pcr_values)
-        self._check_pcr_digest_in_quote(quote_raw, pcr_digest)
+        if pcr_values:
+            pcr_digest_computed = self._compute_pcr_digest(pcr_values)
+            # Compare pcrDigest extracted from the TPMS_ATTEST struct (not a substring scan)
+            if pcr_digest_from_quote != pcr_digest_computed:
+                raise QuoteVerificationError(
+                    "PCR digest in TPMS_ATTEST does not match supplied pcr_values"
+                )
 
         if pcr_policy:
             self._check_pcr_policy(pcr_values, pcr_policy)
@@ -125,9 +130,10 @@ class QuoteVerifier:
                     f"AK uses unsupported EC curve {key.curve.name}; expected P-384"
                 )
         elif isinstance(key, rsa.RSAPublicKey):
-            if key.key_size < 2048:
+            # CNSA 2.0 §2.1: minimum RSA key size for signatures is 3072 bits
+            if key.key_size < 3072:
                 raise QuoteVerificationError(
-                    f"AK RSA key size {key.key_size} is below minimum 2048"
+                    f"AK RSA key size {key.key_size} is below CNSA 2.0 minimum of 3072"
                 )
         else:
             raise QuoteVerificationError(f"Unsupported AK key type: {type(key).__name__}")
@@ -150,26 +156,69 @@ class QuoteVerifier:
             if isinstance(ak_pub, ec.EllipticCurvePublicKey):
                 ak_pub.verify(sig, data, ec.ECDSA(hashes.SHA384()))
             else:
-                ak_pub.verify(sig, data, padding.PKCS1v15(), hashes.SHA256())
+                # CNSA 2.0: RSA-PSS with SHA-384; PKCS1v15 not acceptable
+                ak_pub.verify(
+                    sig, data,
+                    padding.PSS(
+                        mgf=padding.MGF1(hashes.SHA384()),
+                        salt_length=padding.PSS.MAX_LENGTH,
+                    ),
+                    hashes.SHA384(),
+                )
         except InvalidSignature as exc:
             raise QuoteVerificationError("AK signature verification failed") from exc
+
+    @staticmethod
+    def _read_tpm2b(buf: bytes, offset: int) -> tuple[bytes, int]:
+        """Read a TPM2B (2-byte big-endian length + data) from buf at offset.
+
+        Returns (data_bytes, new_offset).  Raises QuoteVerificationError on
+        bounds violations rather than propagating struct.error.
+        """
+        if offset + 2 > len(buf):
+            raise QuoteVerificationError(
+                f"TPMS_ATTEST truncated reading TPM2B length at offset {offset}"
+            )
+        try:
+            length, = struct.unpack_from(">H", buf, offset)
+        except struct.error as exc:
+            raise QuoteVerificationError(f"TPMS_ATTEST struct error at offset {offset}: {exc}") from exc
+        offset += 2
+        if offset + length > len(buf):
+            raise QuoteVerificationError(
+                f"TPMS_ATTEST truncated reading {length} bytes of TPM2B data at offset {offset}"
+            )
+        return buf[offset: offset + length], offset + length
 
     @staticmethod
     def _parse_and_validate_attest(quote_raw: bytes) -> bytes:
         """Parse TPMS_ATTEST and return qualifyingData bytes.
 
-        Layout (minimal):
-          UINT32 magic          — must be 0xFF544347
-          UINT16 type           — must be 0x8018 (TPM_ST_ATTEST_QUOTE)
-          TPM2B qualifyingData  — 2-byte length + payload (our nonce)
-          ... (clock, firmwareVersion, attested.quote = pcrSelect + pcrDigest)
+        Full layout (TPM2 spec Part 1 §10.12.8):
+          UINT32 magic            — 0xFF544347
+          UINT16 type             — 0x8018 (TPM_ST_ATTEST_QUOTE)
+          TPM2B_NAME qualifiedSigner
+          TPM2B_DATA qualifyingData   ← our nonce lives here
+          TPMS_CLOCK_INFO (17 bytes: UINT64 clock + UINT32 resetCount +
+                           UINT32 restartCount + UINT8 safe)
+          UINT64 firmwareVersion
+          TPMS_QUOTE_INFO attested:
+            TPML_PCR_SELECTION pcrSelect:
+              UINT32 count
+              count × TPMS_PCR_SELECTION:
+                UINT16 hash + UINT8 sizeofSelect + BYTE[sizeofSelect]
+            TPM2B_DIGEST pcrDigest  ← extracted and returned
         """
-        if len(quote_raw) < 10:
+        _MIN_HEADER = 6  # magic(4) + type(2)
+        if len(quote_raw) < _MIN_HEADER:
             raise QuoteVerificationError("TPMS_ATTEST too short")
 
         offset = 0
-        magic,     = struct.unpack_from(">I", quote_raw, offset); offset += 4
-        tpm_type,  = struct.unpack_from(">H", quote_raw, offset); offset += 2
+        try:
+            magic,    = struct.unpack_from(">I", quote_raw, offset); offset += 4
+            tpm_type, = struct.unpack_from(">H", quote_raw, offset); offset += 2
+        except struct.error as exc:
+            raise QuoteVerificationError(f"TPMS_ATTEST header parse error: {exc}") from exc
 
         if magic != _TPM_GENERATED_VALUE:
             raise QuoteVerificationError(
@@ -180,14 +229,47 @@ class QuoteVerifier:
                 f"TPMS_ATTEST type mismatch: expected {_TPM_ST_ATTEST_QUOTE:#06x}, got {tpm_type:#06x}"
             )
 
-        # Skip qualifiedSigner (TPM2B — 2-byte length prefix)
-        qs_len, = struct.unpack_from(">H", quote_raw, offset); offset += 2 + qs_len
+        # qualifiedSigner — skip
+        _, offset = QuoteVerifier._read_tpm2b(quote_raw, offset)
+        # qualifyingData — our nonce
+        qualifying_data, offset = QuoteVerifier._read_tpm2b(quote_raw, offset)
 
-        # qualifyingData (TPM2B — our nonce)
-        qd_len, = struct.unpack_from(">H", quote_raw, offset); offset += 2
-        qualifying_data = quote_raw[offset: offset + qd_len]; offset += qd_len
+        # clockInfo: UINT64 + UINT32 + UINT32 + UINT8 = 17 bytes
+        # firmwareVersion: UINT64 = 8 bytes
+        _SKIP = 17 + 8
+        if offset + _SKIP > len(quote_raw):
+            raise QuoteVerificationError("TPMS_ATTEST too short for clockInfo/firmwareVersion")
+        offset += _SKIP
 
-        return qualifying_data
+        # TPML_PCR_SELECTION.count (UINT32)
+        if offset + 4 > len(quote_raw):
+            raise QuoteVerificationError("TPMS_ATTEST truncated before pcrSelect count")
+        try:
+            pcr_select_count, = struct.unpack_from(">I", quote_raw, offset); offset += 4
+        except struct.error as exc:
+            raise QuoteVerificationError(f"TPMS_ATTEST pcrSelect count error: {exc}") from exc
+
+        if pcr_select_count > 16:  # sanity check
+            raise QuoteVerificationError(
+                f"TPMS_ATTEST pcrSelect count {pcr_select_count} exceeds maximum 16"
+            )
+
+        # Skip each TPMS_PCR_SELECTION: UINT16 hash + UINT8 sizeofSelect + BYTE[sizeofSelect]
+        for _ in range(pcr_select_count):
+            if offset + 3 > len(quote_raw):
+                raise QuoteVerificationError("TPMS_ATTEST truncated in TPMS_PCR_SELECTION")
+            try:
+                sizeof_select, = struct.unpack_from(">B", quote_raw, offset + 2)
+            except struct.error as exc:
+                raise QuoteVerificationError(f"TPMS_PCR_SELECTION parse error: {exc}") from exc
+            offset += 3 + sizeof_select
+            if offset > len(quote_raw):
+                raise QuoteVerificationError("TPMS_ATTEST truncated after TPMS_PCR_SELECTION")
+
+        # TPM2B_DIGEST pcrDigest — extract at exact offset
+        pcrDigest, offset = QuoteVerifier._read_tpm2b(quote_raw, offset)  # noqa: F841
+
+        return qualifying_data, pcrDigest
 
     @staticmethod
     def _compute_pcr_digest(pcr_values: dict[str, str]) -> bytes:
@@ -205,21 +287,6 @@ class QuoteVerifier:
                     f"Invalid hex value for PCR {key}: {exc}"
                 ) from exc
         return h.digest()
-
-    @staticmethod
-    def _check_pcr_digest_in_quote(quote_raw: bytes, pcr_digest: bytes) -> None:
-        """Verify that pcr_digest appears verbatim somewhere in the TPMS_ATTEST.
-
-        This is a conservative check — a full TPM2 parser would extract the
-        TPML_PCR_SELECTION.pcrDigest field precisely.  For the initial
-        implementation we scan the raw bytes; the digest is 32 bytes and
-        appears exactly once in a well-formed quote.
-        """
-        if pcr_digest not in quote_raw:
-            raise QuoteVerificationError(
-                "PCR digest from supplied pcr_values not found in TPMS_ATTEST — "
-                "values may have been tampered with"
-            )
 
     @staticmethod
     def _check_pcr_policy(

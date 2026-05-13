@@ -27,18 +27,18 @@ class _NonceEntry:
     created_at:  datetime
     consumed:    bool = False
 
-    def is_expired(self, now: Optional[datetime] = None) -> bool:
-        now = now or datetime.now(timezone.utc)
-        return now > self.created_at + timedelta(seconds=_NONCE_TTL_SECONDS)
+    def is_expired(self, now: datetime, ttl_seconds: int) -> bool:
+        return now > self.created_at + timedelta(seconds=ttl_seconds)
 
 
 class NonceStore:
     """In-memory nonce store with eviction of expired entries."""
 
-    def __init__(self, ttl_seconds: int = _NONCE_TTL_SECONDS) -> None:
-        self._store: dict[str, _NonceEntry] = {}
-        self._lock  = threading.Lock()
-        self._ttl   = ttl_seconds
+    def __init__(self, ttl_seconds: int = _NONCE_TTL_SECONDS, max_outstanding: int = 10_000) -> None:
+        self._store:           dict[str, _NonceEntry] = {}
+        self._lock             = threading.Lock()
+        self._ttl              = ttl_seconds
+        self._max_outstanding  = max_outstanding
 
     # ------------------------------------------------------------------
     # Public API
@@ -49,12 +49,21 @@ class NonceStore:
 
         Returns:
             (nonce_id, nonce_bytes, expires_at)
+
+        Raises:
+            RuntimeError if the nonce store has reached max_outstanding capacity
+            (caller should return HTTP 429).
         """
         nonce_id    = secrets.token_hex(16)          # 32 hex chars
         nonce_bytes = secrets.token_bytes(32)        # 256-bit nonce
         now         = datetime.now(timezone.utc)
         with self._lock:
             self._evict_expired(now)
+            if len(self._store) >= self._max_outstanding:
+                raise RuntimeError(
+                    f"Nonce store capacity ({self._max_outstanding}) exceeded — "
+                    "too many outstanding challenges"
+                )
             self._store[nonce_id] = _NonceEntry(nonce_bytes=nonce_bytes, created_at=now)
         expires_at = now + timedelta(seconds=self._ttl)
         return nonce_id, nonce_bytes, expires_at
@@ -72,7 +81,7 @@ class NonceStore:
             entry = self._store.get(nonce_id)
             if entry is None:
                 raise KeyError(f"Unknown nonce_id: {nonce_id}")
-            if entry.is_expired(now):
+            if entry.is_expired(now, self._ttl):
                 del self._store[nonce_id]
                 raise TimeoutError(f"Nonce {nonce_id} has expired")
             if entry.consumed:
@@ -94,7 +103,7 @@ class NonceStore:
 
     def _evict_expired(self, now: datetime) -> None:
         """Remove all expired entries (must be called while holding ``_lock``)."""
-        expired = [k for k, v in self._store.items() if v.is_expired(now)]
+        expired = [k for k, v in self._store.items() if v.is_expired(now, self._ttl)]
         for k in expired:
             del self._store[k]
 

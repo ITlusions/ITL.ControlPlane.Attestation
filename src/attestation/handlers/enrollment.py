@@ -139,10 +139,12 @@ class EnrollmentHandler:
                 encrypted_key_b64 = encrypt_with_rsa_pubkey(key_pem.encode(), req.wrapping_key_pem)
                 logger.info("Enrollment key transport-encrypted for machine=%s", machine_id)
             except ValueError as exc:
-                logger.warning(
-                    "Wrapping key encryption failed for machine=%s (%s) — returning plaintext key",
-                    machine_id, exc,
-                )
+                # RT-06: Hard-fail — never return plaintext private key when wrapping was requested
+                raise HTTPException(
+                    422,
+                    f"Wrapping key encryption failed: {exc}. "
+                    "Correct or omit wrapping_key_pem to receive an unencrypted key.",
+                ) from exc
 
         logger.info(
             "Enrollment cert issued via request-cert: machine=%s role=%s ek=%s... encrypted=%s",

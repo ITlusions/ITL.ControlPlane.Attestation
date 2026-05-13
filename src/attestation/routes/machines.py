@@ -16,6 +16,14 @@ from ..schemas.responses import AttestResponse, CertResponse, MachineDetail
 router = APIRouter(tags=["machines"])
 
 
+class EnrollRequest(BaseModel):
+    """Pydantic schema for POST /enroll (HIGH-06)."""
+
+    cert_pem:         str
+    nonce:            str
+    nonce_signature:  str
+
+
 @router.get("", response_model=list[MachineDetail])
 def list_machines(_: None = Depends(require_admin), machine_repo: SqlMachineRepository = Depends(get_machine_repo)):
     """List all registered machines (admin)."""
@@ -86,9 +94,9 @@ def import_machine(
 
 
 @router.post("/enroll", response_model=AttestResponse)
-def enroll_machine(body: dict, machine_repo: SqlMachineRepository = Depends(get_machine_repo)):
+def enroll_machine(req: EnrollRequest, machine_repo: SqlMachineRepository = Depends(get_machine_repo)):
     """Certificate-based machine enrollment for offline-provisioned nodes."""
-    return EnrollmentHandler(machine_repo).enroll(body)
+    return EnrollmentHandler(machine_repo).enroll(req.model_dump())
 
 
 @router.post("/{machine_id}/request-cert", response_model=CertResponse)
@@ -108,11 +116,12 @@ def request_cert(
 class AkActivateRequest(BaseModel):
     """Request body for POST /api/v1/machines/{id}/ak-activate."""
 
-    ak_pub:     str  # SubjectPublicKeyInfo PEM of the AK
-    quote:      str  # base64-encoded TPM2B_ATTEST (TPMS_ATTEST)
-    quote_sig:  str  # base64-encoded signature over sha384/sha256(quote)
-    pcr_values: dict[str, str]  # {"sha256:0": "<hex>", ...}
-    nonce_id:   str | None = None  # anti-replay nonce from GET /attest/challenge
+    ek_cert_pem: str          # Must match the machine's stored EK fingerprint (HIGH-03)
+    ak_pub:      str          # SubjectPublicKeyInfo PEM of the AK
+    quote:       str          # base64-encoded TPM2B_ATTEST (TPMS_ATTEST)
+    quote_sig:   str          # base64-encoded signature over sha384/sha256(quote)
+    pcr_values:  dict[str, str]  # {"sha256:0": "<hex>", ...}
+    nonce_id:    str | None = None  # anti-replay nonce from GET /attest/challenge
 
 
 class AkActivateResponse(BaseModel):
@@ -150,7 +159,23 @@ def ak_activate(
 
     machine = machine_repo.get_by_machine_id(machine_id)
     if machine is None:
-        raise HTTPException(404, f"Machine {machine_id!r} not found")
+        raise HTTPException(404, "Machine not found")
+
+    # HIGH-03: Verify that the caller knows the EK cert matching this machine's
+    # stored fingerprint.  This prevents unauthenticated AK hijacking by an
+    # attacker who guesses or enumerates a valid machine_id.
+    from ..pki.tpm_verifier import compute_ek_fingerprint, fingerprints_match
+    try:
+        presented_fp = compute_ek_fingerprint(req.ek_cert_pem)
+    except (ValueError, Exception) as exc:
+        raise HTTPException(422, f"Cannot parse ek_cert_pem: {exc}") from exc
+    if not fingerprints_match(presented_fp, machine.ek_fingerprint):
+        raise HTTPException(403, "ek_cert_pem does not match this machine's registered EK fingerprint")
+
+    # Also reject AK activation for machines in revoked / rejected / locked states
+    from ..models.machine import MachineStatus
+    if machine.status in (MachineStatus.revoked, MachineStatus.rejected):
+        raise HTTPException(403, f"Cannot activate AK for machine in status '{machine.status.value}'")
 
     verifier = QuoteVerifier()
     try:

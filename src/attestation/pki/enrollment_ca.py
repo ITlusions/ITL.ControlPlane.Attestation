@@ -40,6 +40,7 @@ from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey, generate_private_key as rsa_generate
 from cryptography.hazmat.primitives.asymmetric.ec import (
     EllipticCurvePrivateKey,
+    EllipticCurvePublicKey,
     SECP384R1,
     ECDSA,
     generate_private_key as ec_generate,
@@ -241,17 +242,27 @@ def verify_enrollment_cert(cert_pem: str) -> dict:
         raise ValueError("Certificate not issued by ITL Enrollment CA")
 
     ca_pub = _ca_cert.public_key()
-    if not isinstance(ca_pub, RSAPublicKey):
-        raise ValueError("Unexpected CA key type")
-    try:
-        ca_pub.verify(
-            cert.signature,
-            cert.tbs_certificate_bytes,
-            asym_padding.PKCS1v15(),
-            cert.signature_hash_algorithm,
-        )
-    except InvalidSignature as exc:
-        raise ValueError("Certificate signature invalid") from exc
+    if isinstance(ca_pub, RSAPublicKey):
+        try:
+            ca_pub.verify(
+                cert.signature,
+                cert.tbs_certificate_bytes,
+                asym_padding.PKCS1v15(),
+                cert.signature_hash_algorithm,
+            )
+        except InvalidSignature as exc:
+            raise ValueError("Certificate signature invalid") from exc
+    elif isinstance(ca_pub, EllipticCurvePublicKey):
+        try:
+            ca_pub.verify(
+                cert.signature,
+                cert.tbs_certificate_bytes,
+                ECDSA(cert.signature_hash_algorithm),
+            )
+        except InvalidSignature as exc:
+            raise ValueError("Certificate signature invalid") from exc
+    else:
+        raise ValueError(f"Unexpected CA key type: {type(ca_pub).__name__}")
 
     now = datetime.now(timezone.utc)
     if now < cert.not_valid_before_utc:
@@ -289,18 +300,27 @@ def verify_nonce_signature(cert_pem: str, nonce: str, nonce_signature_b64: str) 
         raise ValueError(f"Cannot decode cert or signature: {exc}") from exc
 
     pub_key = cert.public_key()
-    if not isinstance(pub_key, RSAPublicKey):
-        raise ValueError("Unexpected public key type in enrollment cert")
-
-    try:
-        pub_key.verify(
-            sig,
-            nonce.encode("utf-8"),
-            asym_padding.PKCS1v15(),
-            hashes.SHA256(),
-        )
-    except InvalidSignature as exc:
-        raise ValueError("Nonce signature invalid — key mismatch or tampered nonce") from exc
+    if isinstance(pub_key, RSAPublicKey):
+        try:
+            pub_key.verify(
+                sig,
+                nonce.encode("utf-8"),
+                asym_padding.PKCS1v15(),
+                hashes.SHA256(),
+            )
+        except InvalidSignature as exc:
+            raise ValueError("Nonce signature invalid — key mismatch or tampered nonce") from exc
+    elif isinstance(pub_key, EllipticCurvePublicKey):
+        try:
+            pub_key.verify(
+                sig,
+                nonce.encode("utf-8"),
+                ECDSA(hashes.SHA384()),
+            )
+        except InvalidSignature as exc:
+            raise ValueError("Nonce signature invalid — key mismatch or tampered nonce") from exc
+    else:
+        raise ValueError(f"Unexpected public key type in enrollment cert: {type(pub_key).__name__}")
 
 
 def encrypt_with_rsa_pubkey(plaintext: bytes, rsa_pub_pem: str) -> str:

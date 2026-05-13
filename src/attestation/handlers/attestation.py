@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import secrets
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException
@@ -32,6 +32,9 @@ class AttestationHandler:
     ) -> None:
         self.machine_repo = machine_repo
         self.nonce_store  = nonce_store or get_nonce_store()
+        # RT-11: nonce bytes are stored here after consume() so the quote
+        # verifier can use them without a racy second peek() call.
+        self._consumed_nonce_bytes: Optional[bytes] = None
 
     def attest(self, req: AttestRequest) -> AttestResponse:
         """Attest a node's TPM identity after first boot."""
@@ -42,7 +45,8 @@ class AttestationHandler:
         # ------------------------------------------------------------------
         if req.nonce_id:
             try:
-                self.nonce_store.consume(req.nonce_id)
+                # Store consumed bytes immediately — passed to quote verifier below
+                self._consumed_nonce_bytes = self.nonce_store.consume(req.nonce_id)
             except TimeoutError:
                 raise HTTPException(410, "Attestation nonce has expired — request a new challenge")
             except ValueError:
@@ -63,38 +67,36 @@ class AttestationHandler:
         machine = self.machine_repo.get_by_ek_fingerprint(computed_fp)
 
         # ------------------------------------------------------------------
-        # PCR quote verification (issue #6) — runs after machine lookup so we
-        # can retrieve the stored AK public key for signature verification.
+        # PCR quote verification (issue #6, CRIT-03 fix)
+        # Enforce require_quote FIRST before checking if quote was supplied.
+        # This prevents bypass via "send quote with no registered AK".
         # ------------------------------------------------------------------
-        if req.pcr_quote and req.pcr_signature:
-            if machine and machine.ak_pub:
-                nonce_for_quote: Optional[bytes] = None
-                if req.nonce_id:
-                    # nonce was already consumed above; retrieve bytes for quote check
-                    # via a best-effort peek (nonce was marked consumed but bytes kept)
-                    try:
-                        nonce_for_quote = self.nonce_store.peek(req.nonce_id)
-                    except KeyError:
-                        pass  # already evicted — skip nonce binding in quote
-                try:
-                    QuoteVerifier().verify(
-                        ak_pub_pem=machine.ak_pub,
-                        quote_b64=req.pcr_quote,
-                        sig_b64=req.pcr_signature,
-                        pcr_values={},  # PCR values not independently submitted in attest
-                        nonce_bytes=nonce_for_quote,
-                    )
-                except QuoteVerificationError as exc:
-                    raise HTTPException(422, f"PCR quote verification failed: {exc}") from exc
-            else:
-                logger.debug(
-                    "PCR quote present but no AK registered for machine yet — skipping quote check"
-                )
-        elif settings.require_quote:
+        if settings.require_quote and not (req.pcr_quote and req.pcr_signature):
             raise HTTPException(
                 422,
                 "ITL_REQUIRE_QUOTE is enabled — include pcr_quote and pcr_signature",
             )
+
+        if req.pcr_quote and req.pcr_signature:
+            if not machine or not machine.ak_pub:
+                raise HTTPException(
+                    422,
+                    "PCR quote submitted but no AK registered for this machine — "
+                    "call POST /api/v1/machines/{id}/ak-activate first",
+                )
+            # RT-11 fix: nonce bytes must be carried forward from the consume() call
+            # above, not re-fetched via peek() which races in multi-process deployments.
+            # Pass nonce_bytes_for_quote through the handler's state set in the nonce block.
+            try:
+                QuoteVerifier().verify(
+                    ak_pub_pem=machine.ak_pub,
+                    quote_b64=req.pcr_quote,
+                    sig_b64=req.pcr_signature,
+                    pcr_values={},  # PCR values carried in the quote structure
+                    nonce_bytes=self._consumed_nonce_bytes,
+                )
+            except QuoteVerificationError as exc:
+                raise HTTPException(422, f"PCR quote verification failed: {exc}") from exc
 
         if not machine:
             logger.warning(
@@ -170,7 +172,7 @@ class AttestationHandler:
 
         config_token = secrets.token_urlsafe(32)
         machine.status         = MachineStatus.attested
-        machine.attested_at    = datetime.utcnow()
+        machine.attested_at    = datetime.now(timezone.utc)
         machine.config_token   = config_token
         machine.token_consumed = False
         self.machine_repo.save(machine)
