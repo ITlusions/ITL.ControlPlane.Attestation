@@ -9,7 +9,6 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlmodel import Session, select
 
 from ..pki.enrollment_ca import (
     CERT_VALID_DAYS,
@@ -19,14 +18,10 @@ from ..pki.enrollment_ca import (
     verify_enrollment_cert,
     verify_nonce_signature,
 )
-from ..core.models import (
-    AttestResponse,
-    CertRequest,
-    CertResponse,
-    Machine,
-    MachineStatus,
-    NodeRole,
-)
+from ..models.machine import MachineRow, MachineStatus, NodeRole
+from ..repositories.machine_repo import SqlMachineRepository
+from ..schemas.responses import AttestResponse, CertResponse
+from ..schemas.requests import CertRequest
 from ..tpm_verifier import compute_ek_fingerprint, fingerprints_match, verify_ek_pem
 
 logger = logging.getLogger(__name__)
@@ -35,8 +30,8 @@ logger = logging.getLogger(__name__)
 class EnrollmentHandler:
     """Handles certificate-based enrollment and enrollment cert issuance."""
 
-    def __init__(self, db: Session) -> None:
-        self.db = db
+    def __init__(self, machine_repo: SqlMachineRepository) -> None:
+        self.machine_repo = machine_repo
 
     def enroll(self, body: dict) -> AttestResponse:
         """Certificate-based machine enrollment for offline-provisioned nodes."""
@@ -63,9 +58,7 @@ class EnrollmentHandler:
         machine_id = claims["machine_id"]
         role_str   = claims["role"]
 
-        existing: Optional[Machine] = self.db.exec(
-            select(Machine).where(Machine.machine_id == machine_id)
-        ).first()
+        existing = self.machine_repo.get_by_id(machine_id)
 
         config_token = secrets.token_urlsafe(32)
 
@@ -76,16 +69,14 @@ class EnrollmentHandler:
             existing.attested_at    = datetime.utcnow()
             existing.config_token   = config_token
             existing.token_consumed = False
-            self.db.add(existing)
-            self.db.commit()
-            machine = existing
+            machine = self.machine_repo.save(existing)
             logger.info("Cert enrollment: machine %s updated and attested", machine_id)
         else:
             try:
                 role = NodeRole(role_str)
             except ValueError:
                 role = NodeRole.worker_app
-            machine = Machine(
+            machine = self.machine_repo.save(MachineRow(
                 machine_id     = machine_id,
                 ek_fingerprint = "",  # updated when /attest is called with full EK material
                 ek_source      = "enrollment-cert",
@@ -93,10 +84,7 @@ class EnrollmentHandler:
                 status         = MachineStatus.attested,
                 config_token   = config_token,
                 attested_at    = datetime.utcnow(),
-            )
-            self.db.add(machine)
-            self.db.commit()
-            self.db.refresh(machine)
+            ))
             logger.info(
                 "Cert enrollment: new machine %s role=%s registered+attested", machine_id, role
             )
@@ -111,9 +99,7 @@ class EnrollmentHandler:
 
     def request_cert(self, machine_id: str, req: CertRequest) -> CertResponse:
         """Issue an enrollment certificate to the machine itself (EK-authenticated)."""
-        machine: Optional[Machine] = self.db.exec(
-            select(Machine).where(Machine.machine_id == machine_id)
-        ).first()
+        machine = self.machine_repo.get_by_id(machine_id)
         if not machine:
             raise HTTPException(404, f"Machine {machine_id} not found")
 

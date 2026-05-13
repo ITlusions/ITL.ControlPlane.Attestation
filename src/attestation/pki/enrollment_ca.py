@@ -37,7 +37,13 @@ from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey, generate_private_key
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey, generate_private_key as rsa_generate
+from cryptography.hazmat.primitives.asymmetric.ec import (
+    EllipticCurvePrivateKey,
+    SECP384R1,
+    ECDSA,
+    generate_private_key as ec_generate,
+)
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 logger = logging.getLogger(__name__)
@@ -48,8 +54,30 @@ CA_CERT_PATH = CA_DIR / "enrollment-ca.crt"
 
 CERT_VALID_DAYS = int(os.environ.get("ITL_ENROLLMENT_CERT_DAYS", "30"))
 
+# Issue #8 — CNSA 2.0: ecdsa-p384 is the default; rsa-4096 kept for legacy deployments
+_CA_ALGORITHM = os.environ.get("ITL_ENROLLMENT_CA_ALGORITHM", "ecdsa-p384").lower()
+
 _ca_key:  Optional[object] = None
 _ca_cert: Optional[x509.Certificate] = None
+
+
+def _generate_ca_key() -> object:
+    """Generate a CA private key based on ``ITL_ENROLLMENT_CA_ALGORITHM``."""
+    if _CA_ALGORITHM == "rsa-4096":
+        return rsa_generate(public_exponent=65537, key_size=4096)
+    return ec_generate(SECP384R1())
+
+
+def _generate_cert_key() -> object:
+    """Generate an end-entity private key (ECDSA P-384, issue #8)."""
+    return ec_generate(SECP384R1())
+
+
+def _signing_hash() -> hashes.HashAlgorithm:
+    """SHA-384 for ECDSA P-384; SHA-256 for RSA-4096 (issue #8)."""
+    if _CA_ALGORITHM == "rsa-4096":
+        return hashes.SHA256()
+    return hashes.SHA384()
 
 
 def init_enrollment_ca() -> None:
@@ -64,8 +92,8 @@ def init_enrollment_ca() -> None:
         logger.info("Enrollment CA loaded from %s (serial=%s)", CA_DIR, _ca_cert.serial_number)
         return
 
-    logger.info("Generating new Enrollment CA at %s", CA_DIR)
-    _ca_key = generate_private_key(public_exponent=65537, key_size=4096)
+    logger.info("Generating new Enrollment CA at %s (algorithm=%s)", CA_DIR, _CA_ALGORITHM)
+    _ca_key = _generate_ca_key()
 
     subject = issuer = x509.Name([
         x509.NameAttribute(NameOID.COUNTRY_NAME,      "NL"),
@@ -85,14 +113,14 @@ def init_enrollment_ca() -> None:
         .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
         .add_extension(
             x509.KeyUsage(
-                digital_signature=False, key_cert_sign=True, crl_sign=True,
+                digital_signature=True,  key_cert_sign=True, crl_sign=True,
                 content_commitment=False, key_encipherment=False,
                 data_encipherment=False,  key_agreement=False,
                 encipher_only=False,      decipher_only=False,
             ),
             critical=True,
         )
-        .sign(_ca_key, hashes.SHA256())
+        .sign(_ca_key, _signing_hash())
     )
 
     CA_KEY_PATH.write_bytes(
@@ -128,7 +156,7 @@ def issue_enrollment_cert(
     if _ca_key is None or _ca_cert is None:
         raise RuntimeError("Enrollment CA not initialised")
 
-    key = generate_private_key(public_exponent=65537, key_size=2048)
+    key = _generate_cert_key()
 
     subject = x509.Name([
         x509.NameAttribute(NameOID.COUNTRY_NAME,             "NL"),
@@ -151,7 +179,7 @@ def issue_enrollment_cert(
         .add_extension(
             x509.KeyUsage(
                 digital_signature=True,  key_cert_sign=False, crl_sign=False,
-                content_commitment=False, key_encipherment=True,
+                content_commitment=False, key_encipherment=False,
                 data_encipherment=False,  key_agreement=False,
                 encipher_only=False,      decipher_only=False,
             ),
@@ -179,7 +207,7 @@ def issue_enrollment_cert(
             critical=False,
         )
 
-    cert = builder.sign(_ca_key, hashes.SHA256())
+    cert = builder.sign(_ca_key, _signing_hash())
 
     cert_pem = cert.public_bytes(serialization.Encoding.PEM).decode()
     key_pem  = key.private_bytes(

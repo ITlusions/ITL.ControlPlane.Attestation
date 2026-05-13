@@ -9,62 +9,53 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlmodel import Session, select
 
-from ..core.config import settings
+from ..core.config import get_settings
 from ..talos.config_generator import generate_machine_config
 from ..pki.enrollment_ca import issue_enrollment_cert
 from ..talos.iso_factory import get_itl_iso_url
-from ..core.models import (
-    ApproveRequest,
-    LockRequest,
-    Machine,
-    MachineDetail,
-    MachineStatus,
-    NodeRole,
-    RevokeRequest,
-)
+from ..models.machine import MachineRow, MachineStatus, NodeRole
+from ..repositories.machine_repo import SqlMachineRepository
+from ..schemas.requests import ApproveRequest, LockRequest, RevokeRequest
+from ..schemas.responses import MachineDetail
 
 logger = logging.getLogger(__name__)
-
-
-def _machine_detail(m: Machine) -> MachineDetail:
-    return MachineDetail(
-        machine_id     = m.machine_id,
-        ek_fingerprint = m.ek_fingerprint,
-        hw_uuid        = m.hw_uuid,
-        hw_mac         = m.hw_mac,
-        hw_serial      = m.hw_serial,
-        hw_product     = m.hw_product,
-        role           = m.role.value,
-        status         = m.status.value,
-        hostname       = m.hostname,
-        assigned_ip    = m.assigned_ip,
-        registered_at  = m.registered_at,
-        attested_at    = m.attested_at,
-        locked_at      = m.locked_at,
-        revoked_at     = m.revoked_at,
-        wipe_pending   = m.wipe_pending,
-    )
 
 
 class MachineAdminHandler:
     """Handles all admin operations on machine records."""
 
-    def __init__(self, db: Session) -> None:
-        self.db = db
+    def __init__(self, machine_repo: SqlMachineRepository) -> None:
+        self.machine_repo = machine_repo
 
-    def _get_or_404(self, machine_id: str) -> Machine:
-        machine: Optional[Machine] = self.db.exec(
-            select(Machine).where(Machine.machine_id == machine_id)
-        ).first()
+    @staticmethod
+    def _machine_detail(m: MachineRow) -> MachineDetail:
+        return MachineDetail(
+            machine_id     = m.machine_id,
+            ek_fingerprint = m.ek_fingerprint,
+            hw_uuid        = m.hw_uuid,
+            hw_mac         = m.hw_mac,
+            hw_serial      = m.hw_serial,
+            hw_product     = m.hw_product,
+            role           = m.role.value,
+            status         = m.status.value,
+            hostname       = m.hostname,
+            assigned_ip    = m.assigned_ip,
+            registered_at  = m.registered_at,
+            attested_at    = m.attested_at,
+            locked_at      = m.locked_at,
+            revoked_at     = m.revoked_at,
+            wipe_pending   = m.wipe_pending,
+        )
+
+    def _get_or_404(self, machine_id: str) -> MachineRow:
+        machine = self.machine_repo.get_by_id(machine_id)
         if not machine:
             raise HTTPException(404, f"Machine {machine_id} not found")
         return machine
 
     def list_machines(self) -> list[MachineDetail]:
-        machines = self.db.exec(select(Machine)).all()
-        return [_machine_detail(m) for m in machines]
+        return [self._machine_detail(m) for m in self.machine_repo.list_all()]
 
     def approve(self, machine_id: str, req: ApproveRequest) -> MachineDetail:
         machine = self._get_or_404(machine_id)
@@ -75,11 +66,9 @@ class MachineAdminHandler:
         machine.assigned_ip    = req.assigned_ip
         machine.config_token   = config_token
         machine.token_consumed = False
-        self.db.add(machine)
-        self.db.commit()
-        self.db.refresh(machine)
+        machine = self.machine_repo.save(machine)
         logger.info("Machine %s approved with role=%s hostname=%s", machine_id, req.role, req.hostname)
-        return _machine_detail(machine)
+        return self._machine_detail(machine)
 
     def revoke(self, machine_id: str, req: RevokeRequest) -> MachineDetail:
         machine = self._get_or_404(machine_id)
@@ -88,12 +77,10 @@ class MachineAdminHandler:
         machine.revoked_at     = datetime.utcnow()
         machine.config_token   = None
         machine.token_consumed = True
-        self.db.add(machine)
-        self.db.commit()
-        self.db.refresh(machine)
+        machine = self.machine_repo.save(machine)
         action = "wipe scheduled on next attestation contact" if req.wipe else "blocked"
         logger.warning("Machine %s REVOKED — action=%s reason=%r", machine_id, action, req.reason)
-        return _machine_detail(machine)
+        return self._machine_detail(machine)
 
     def lock(self, machine_id: str, req: LockRequest) -> MachineDetail:
         machine = self._get_or_404(machine_id)
@@ -105,11 +92,9 @@ class MachineAdminHandler:
         machine.locked_at      = datetime.utcnow()
         machine.config_token   = None
         machine.token_consumed = True
-        self.db.add(machine)
-        self.db.commit()
-        self.db.refresh(machine)
+        machine = self.machine_repo.save(machine)
         logger.warning("Machine %s LOCKED — reason=%r", machine_id, req.reason)
-        return _machine_detail(machine)
+        return self._machine_detail(machine)
 
     def unlock(self, machine_id: str) -> MachineDetail:
         machine = self._get_or_404(machine_id)
@@ -120,11 +105,9 @@ class MachineAdminHandler:
             )
         machine.status    = MachineStatus.attested
         machine.locked_at = None
-        self.db.add(machine)
-        self.db.commit()
-        self.db.refresh(machine)
+        machine = self.machine_repo.save(machine)
         logger.info("Machine %s UNLOCKED — restored to attested", machine_id)
-        return _machine_detail(machine)
+        return self._machine_detail(machine)
 
     def offline_bundle(self, machine_id: str) -> dict:
         machine = self._get_or_404(machine_id)
@@ -132,9 +115,9 @@ class MachineAdminHandler:
         config_token = secrets.token_urlsafe(32)
         machine.config_token   = config_token
         machine.token_consumed = False
-        self.db.add(machine)
-        self.db.commit()
+        machine = self.machine_repo.save(machine)
 
+        settings = get_settings()
         config_url = f"{settings.service_base_url}/api/v1/config/{config_token}"
         iso_url    = get_itl_iso_url(config_url)
 
@@ -186,9 +169,7 @@ class MachineAdminHandler:
         if not ek_fp:
             raise HTTPException(422, "ek_fingerprint is required in the receipt")
 
-        existing: Optional[Machine] = self.db.exec(
-            select(Machine).where(Machine.ek_fingerprint == ek_fp)
-        ).first()
+        existing = self.machine_repo.get_by_ek_fingerprint(ek_fp)
 
         config_token = secrets.token_urlsafe(32)
 
@@ -202,16 +183,14 @@ class MachineAdminHandler:
             existing.hw_mac         = receipt.get("hw_mac",     existing.hw_mac)
             existing.hw_serial      = receipt.get("hw_serial",  existing.hw_serial)
             existing.hw_product     = receipt.get("hw_product", existing.hw_product)
-            self.db.add(existing)
-            self.db.commit()
-            machine = existing
+            machine = self.machine_repo.save(existing)
         else:
             try:
                 role = NodeRole(role_str)
             except ValueError:
                 role = NodeRole.worker_app
 
-            machine = Machine(
+            machine = self.machine_repo.save(MachineRow(
                 machine_id     = machine_id,
                 ek_fingerprint = ek_fp,
                 ek_source      = receipt.get("ek_source", "offline-import"),
@@ -222,10 +201,7 @@ class MachineAdminHandler:
                 role           = role,
                 status         = MachineStatus.registered,
                 config_token   = config_token,
-            )
-            self.db.add(machine)
-            self.db.commit()
-            self.db.refresh(machine)
+            ))
             logger.info(
                 "Offline import: new machine %s role=%s ek=%s...",
                 machine.machine_id, role, ek_fp[:12],
@@ -235,6 +211,6 @@ class MachineAdminHandler:
             "machine_id":  machine.machine_id,
             "role":        machine.role.value,
             "status":      machine.status.value,
-            "config_url":  f"{settings.service_base_url}/api/v1/config/{config_token}",
+            "config_url":  f"{get_settings().service_base_url}/api/v1/config/{config_token}",
             "message":     "Machine imported from offline receipt — ready for attestation",
         }

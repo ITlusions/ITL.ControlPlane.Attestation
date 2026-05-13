@@ -8,6 +8,7 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "sqlmodel>=0.0.21",
     "pydantic>=2.9",
+    "pydantic-settings>=2.0",
     "cryptography>=43",
     "httpx>=0.28",
     "python-multipart>=0.0.12",

@@ -3,22 +3,23 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from sqlmodel import Session
 
-from ..core.deps import get_db
+from ..core.deps import get_machine_repo
 from ..handlers.registration import RegistrationHandler
-from ..core.models import RegisterRequest, RegisterResponse, SelfRegisterRequest, SelfRegisterResponse
+from ..repositories.machine_repo import SqlMachineRepository
+from ..schemas.requests import RegisterRequest, SelfRegisterRequest
+from ..schemas.responses import RegisterResponse, SelfRegisterResponse
 
 router = APIRouter(tags=["registration"])
 
 
 @router.post("/register", response_model=RegisterResponse)
-def register(req: RegisterRequest, db: Session = Depends(get_db)):
+def register(req: RegisterRequest, machine_repo: SqlMachineRepository = Depends(get_machine_repo)):
     """Register a machine by TPM EK fingerprint (USB agent flow)."""
-    return RegistrationHandler(db).register(req)
+    return RegistrationHandler(machine_repo).register(req)
 
 
 @router.post("/self-register", response_model=SelfRegisterResponse)
-def self_register(req: SelfRegisterRequest, db: Session = Depends(get_db)):
+def self_register(req: SelfRegisterRequest, machine_repo: SqlMachineRepository = Depends(get_machine_repo)):
     """Extension-initiated registration — no USB agent required."""
-    return RegistrationHandler(db).self_register(req)
+    return RegistrationHandler(machine_repo).self_register(req)

@@ -7,11 +7,11 @@ from typing import Optional
 
 from fastapi import HTTPException
 from fastapi.responses import Response
-from sqlmodel import Session, select
 
-from ..core.config import settings
+from ..core.config import get_settings
 from ..talos.config_generator import generate_machine_config, generate_pending_config
-from ..core.models import Machine, MachineStatus
+from ..models.machine import MachineStatus
+from ..repositories.machine_repo import SqlMachineRepository
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 class ConfigDeliveryHandler:
     """Handles GET /api/v1/config and GET /api/v1/config/{token}."""
 
-    def __init__(self, db: Session) -> None:
-        self.db = db
+    def __init__(self, machine_repo: SqlMachineRepository) -> None:
+        self.machine_repo = machine_repo
 
     def get_config_by_mac(self, mac: str) -> Response:
         """Resolve MachineConfig by MAC address (generic ISO boot flow).
@@ -31,16 +31,14 @@ class ConfigDeliveryHandler:
         """
         mac_normalised = mac.strip().lower().replace("-", ":")
 
-        machine: Optional[Machine] = self.db.exec(
-            select(Machine).where(Machine.hw_mac == mac_normalised)
-        ).first()
+        machine = self.machine_repo.get_by_mac(mac_normalised)
 
         if not machine:
             logger.warning(
                 "Config request from unknown MAC %s — returning pending config", mac_normalised
             )
             return Response(
-                content=generate_pending_config(settings.service_base_url),
+                content=generate_pending_config(get_settings().service_base_url),
                 media_type="text/plain",
             )
 
@@ -56,7 +54,7 @@ class ConfigDeliveryHandler:
                 machine.status.value, machine.machine_id, mac_normalised,
             )
             return Response(
-                content=generate_pending_config(settings.service_base_url),
+                content=generate_pending_config(get_settings().service_base_url),
                 media_type="text/plain",
             )
 
@@ -82,9 +80,7 @@ class ConfigDeliveryHandler:
 
     def get_config_by_token(self, token: str) -> Response:
         """One-time Talos MachineConfig endpoint keyed on a single-use token."""
-        machine: Optional[Machine] = self.db.exec(
-            select(Machine).where(Machine.config_token == token)
-        ).first()
+        machine = self.machine_repo.get_by_config_token(token)
 
         if not machine:
             raise HTTPException(404, "Config token not found")
@@ -95,13 +91,12 @@ class ConfigDeliveryHandler:
             )
         else:
             machine.token_consumed = True
-            self.db.add(machine)
-            self.db.commit()
+            self.machine_repo.save(machine)
             logger.info("Config token consumed for machine %s", machine.machine_id)
 
         if machine.status == MachineStatus.pending_approval:
             return Response(
-                content=generate_pending_config(settings.service_base_url),
+                content=generate_pending_config(get_settings().service_base_url),
                 media_type="text/plain",
             )
 

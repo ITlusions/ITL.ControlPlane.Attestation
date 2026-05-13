@@ -9,11 +9,15 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlmodel import Session, select
 
-from ..core.config import settings
-from ..core.models import AttestRequest, AttestResponse, Machine, MachineStatus, NodeRole
-from ..tpm_verifier import compute_ek_fingerprint, fingerprints_match
+from ..core.config import get_settings
+from ..models.machine import MachineRow, MachineStatus, NodeRole
+from ..repositories.machine_repo import SqlMachineRepository
+from ..schemas.requests import AttestRequest
+from ..schemas.responses import AttestResponse
+from ..pki.tpm_verifier import compute_ek_fingerprint, fingerprints_match
+from ..pki.nonce_store import NonceStore, get_nonce_store
+from ..pki.quote_verifier import QuoteVerifier, QuoteVerificationError
 
 logger = logging.getLogger(__name__)
 
@@ -21,24 +25,82 @@ logger = logging.getLogger(__name__)
 class AttestationHandler:
     """Handles POST /api/v1/attest — TPM EK identity verification."""
 
-    def __init__(self, db: Session) -> None:
-        self.db = db
+    def __init__(
+        self,
+        machine_repo: SqlMachineRepository,
+        nonce_store:  Optional[NonceStore] = None,
+    ) -> None:
+        self.machine_repo = machine_repo
+        self.nonce_store  = nonce_store or get_nonce_store()
 
     def attest(self, req: AttestRequest) -> AttestResponse:
         """Attest a node's TPM identity after first boot."""
+        settings = get_settings()
+
+        # ------------------------------------------------------------------
+        # Nonce validation (issue #7)
+        # ------------------------------------------------------------------
+        if req.nonce_id:
+            try:
+                self.nonce_store.consume(req.nonce_id)
+            except TimeoutError:
+                raise HTTPException(410, "Attestation nonce has expired — request a new challenge")
+            except ValueError:
+                raise HTTPException(409, "Attestation nonce has already been used — replay detected")
+            except KeyError:
+                raise HTTPException(422, "Unknown nonce_id — request a fresh challenge first")
+        elif settings.require_nonce:
+            raise HTTPException(
+                422,
+                "ITL_REQUIRE_NONCE is enabled — include nonce_id from GET /api/v1/attest/challenge",
+            )
+
+
         computed_fp = compute_ek_fingerprint(req.ek_cert_pem)
         if not fingerprints_match(computed_fp, req.ek_fingerprint):
             raise HTTPException(422, "EK fingerprint mismatch")
 
-        machine: Optional[Machine] = self.db.exec(
-            select(Machine).where(Machine.ek_fingerprint == computed_fp)
-        ).first()
+        machine = self.machine_repo.get_by_ek_fingerprint(computed_fp)
+
+        # ------------------------------------------------------------------
+        # PCR quote verification (issue #6) — runs after machine lookup so we
+        # can retrieve the stored AK public key for signature verification.
+        # ------------------------------------------------------------------
+        if req.pcr_quote and req.pcr_signature:
+            if machine and machine.ak_pub:
+                nonce_for_quote: Optional[bytes] = None
+                if req.nonce_id:
+                    # nonce was already consumed above; retrieve bytes for quote check
+                    # via a best-effort peek (nonce was marked consumed but bytes kept)
+                    try:
+                        nonce_for_quote = self.nonce_store.peek(req.nonce_id)
+                    except KeyError:
+                        pass  # already evicted — skip nonce binding in quote
+                try:
+                    QuoteVerifier().verify(
+                        ak_pub_pem=machine.ak_pub,
+                        quote_b64=req.pcr_quote,
+                        sig_b64=req.pcr_signature,
+                        pcr_values={},  # PCR values not independently submitted in attest
+                        nonce_bytes=nonce_for_quote,
+                    )
+                except QuoteVerificationError as exc:
+                    raise HTTPException(422, f"PCR quote verification failed: {exc}") from exc
+            else:
+                logger.debug(
+                    "PCR quote present but no AK registered for machine yet — skipping quote check"
+                )
+        elif settings.require_quote:
+            raise HTTPException(
+                422,
+                "ITL_REQUIRE_QUOTE is enabled — include pcr_quote and pcr_signature",
+            )
 
         if not machine:
             logger.warning(
                 "Attestation from unknown EK %s... — creating pending record", computed_fp[:12]
             )
-            machine = Machine(
+            machine = self.machine_repo.save(MachineRow(
                 machine_id     = str(uuid.uuid4()),
                 ek_fingerprint = computed_fp,
                 ek_source      = req.ek_source,
@@ -48,10 +110,7 @@ class AttestationHandler:
                 hw_product     = req.hw_product,
                 role           = NodeRole.worker_app,
                 status         = MachineStatus.pending_approval,
-            )
-            self.db.add(machine)
-            self.db.commit()
-            self.db.refresh(machine)
+            ))
             return AttestResponse(
                 machine_id = machine.machine_id,
                 status     = "pending_approval",
@@ -114,10 +173,10 @@ class AttestationHandler:
         machine.attested_at    = datetime.utcnow()
         machine.config_token   = config_token
         machine.token_consumed = False
-        self.db.add(machine)
-        self.db.commit()
+        self.machine_repo.save(machine)
         logger.info("Machine attested: id=%s role=%s", machine.machine_id, machine.role)
 
+        settings = get_settings()
         config_url = f"{settings.service_base_url}/api/v1/config/{config_token}"
 
         return AttestResponse(

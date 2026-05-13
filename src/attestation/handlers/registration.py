@@ -8,19 +8,13 @@ import uuid
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlmodel import Session, select
 
-from ..core.config import settings
+from ..core.config import get_settings
 from ..talos.iso_factory import get_itl_iso_url
-from ..core.models import (
-    Machine,
-    MachineStatus,
-    NodeRole,
-    RegisterRequest,
-    RegisterResponse,
-    SelfRegisterRequest,
-    SelfRegisterResponse,
-)
+from ..models.machine import MachineRow, MachineStatus, NodeRole
+from ..repositories.machine_repo import SqlMachineRepository
+from ..schemas.requests import RegisterRequest, SelfRegisterRequest
+from ..schemas.responses import RegisterResponse, SelfRegisterResponse
 from ..pki.tpm_verifier import compute_ek_fingerprint, fingerprints_match, verify_ek_pem
 
 logger = logging.getLogger(__name__)
@@ -29,35 +23,32 @@ logger = logging.getLogger(__name__)
 class RegistrationHandler:
     """Handles USB-agent registration and extension self-registration."""
 
-    def __init__(self, db: Session) -> None:
-        self.db = db
+    def __init__(self, machine_repo: SqlMachineRepository) -> None:
+        self.machine_repo = machine_repo
 
     def register(self, req: RegisterRequest) -> RegisterResponse:
         """Register a machine by TPM EK fingerprint (USB agent flow)."""
-        if req.ek_cert_pem:
-            try:
-                verify_ek_pem(req.ek_cert_pem, req.ek_source)
-            except ValueError as exc:
-                raise HTTPException(422, f"Invalid EK material: {exc}") from exc
-
-            computed_fp = compute_ek_fingerprint(req.ek_cert_pem)
-            if not fingerprints_match(computed_fp, req.ek_fingerprint):
-                raise HTTPException(
-                    422,
-                    f"EK fingerprint mismatch: agent reported {req.ek_fingerprint[:12]}... "
-                    f"but computed {computed_fp[:12]}...",
-                )
-            ek_fingerprint = computed_fp
-        else:
-            logger.warning(
-                "No EK material provided — registering without TPM verification (ek_source=%s)",
-                req.ek_source,
+        if not req.ek_cert_pem or not req.ek_cert_pem.strip():
+            raise HTTPException(
+                422,
+                "EK certificate material is required — registration without TPM evidence is not permitted",
             )
-            ek_fingerprint = req.ek_fingerprint
 
-        existing: Optional[Machine] = self.db.exec(
-            select(Machine).where(Machine.ek_fingerprint == ek_fingerprint)
-        ).first()
+        try:
+            verify_ek_pem(req.ek_cert_pem, req.ek_source)
+        except ValueError as exc:
+            raise HTTPException(422, f"Invalid EK material: {exc}") from exc
+
+        computed_fp = compute_ek_fingerprint(req.ek_cert_pem)
+        if not fingerprints_match(computed_fp, req.ek_fingerprint):
+            raise HTTPException(
+                422,
+                f"EK fingerprint mismatch: agent reported {req.ek_fingerprint[:12]}... "
+                f"but computed {computed_fp[:12]}...",
+            )
+        ek_fingerprint = computed_fp
+
+        existing = self.machine_repo.get_by_ek_fingerprint(ek_fingerprint)
 
         config_token = secrets.token_urlsafe(32)
 
@@ -71,16 +62,14 @@ class RegistrationHandler:
             existing.hw_mac         = req.hw_mac
             existing.hw_serial      = req.hw_serial
             existing.hw_product     = req.hw_product
-            self.db.add(existing)
-            self.db.commit()
-            machine = existing
+            machine = self.machine_repo.save(existing)
         else:
             role = (
                 NodeRole(req.desired_role)
                 if req.desired_role in NodeRole.__members__
                 else NodeRole.worker_app
             )
-            machine = Machine(
+            machine = self.machine_repo.save(MachineRow(
                 machine_id     = str(uuid.uuid4()),
                 ek_fingerprint = ek_fingerprint,
                 ek_source      = req.ek_source,
@@ -91,15 +80,13 @@ class RegistrationHandler:
                 role           = role,
                 status         = MachineStatus.registered,
                 config_token   = config_token,
-            )
-            self.db.add(machine)
-            self.db.commit()
-            self.db.refresh(machine)
+            ))
             logger.info(
                 "New machine registered: id=%s role=%s ek=%s...",
                 machine.machine_id, machine.role, ek_fingerprint[:12],
             )
 
+        settings = get_settings()
         config_url = f"{settings.service_base_url}/api/v1/config/{config_token}"
         iso_url    = get_itl_iso_url(config_url)
 
@@ -135,9 +122,7 @@ class RegistrationHandler:
             )
         ek_fingerprint = computed_fp
 
-        existing: Optional[Machine] = self.db.exec(
-            select(Machine).where(Machine.ek_fingerprint == ek_fingerprint)
-        ).first()
+        existing = self.machine_repo.get_by_ek_fingerprint(ek_fingerprint)
 
         if existing:
             logger.info(
@@ -167,7 +152,7 @@ class RegistrationHandler:
             if req.desired_role in NodeRole.__members__
             else NodeRole.worker_app
         )
-        machine = Machine(
+        machine = self.machine_repo.save(MachineRow(
             machine_id     = str(uuid.uuid4()),
             ek_fingerprint = ek_fingerprint,
             ek_source      = req.ek_source,
@@ -177,10 +162,7 @@ class RegistrationHandler:
             hw_product     = req.hw_product,
             role           = role,
             status         = MachineStatus.pending_approval,
-        )
-        self.db.add(machine)
-        self.db.commit()
-        self.db.refresh(machine)
+        ))
         logger.info(
             "Self-registration: new machine id=%s role=%s ek=%s... — awaiting operator approval",
             machine.machine_id, machine.role, ek_fingerprint[:12],
