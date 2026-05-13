@@ -80,7 +80,7 @@ param(
     [ValidateSet("basic","full")]
     [string] $Preset           = "full",
     [string] $CategoryOptions  = "Attestation,Security Hardening,TPM,Cryptography,Infrastructure,Testing,Documentation",
-    [int]    $SprintCount      = 0,
+    [int]    $SprintCount      = 6,
     [int]    $SprintLengthDays = 14,
     [string] $SprintStartDate  = (Get-Date -Format "yyyy-MM-dd"),
     [switch] $CreateLabels,
@@ -96,14 +96,22 @@ $ErrorActionPreference = "Stop"
 # ---------------------------------------------------------------------------
 function Invoke-Gql {
     param([string]$Query, [hashtable]$Variables = @{})
-    $ghArgs = [System.Collections.Generic.List[string]]::new()
-    $ghArgs.AddRange([string[]]@("api", "graphql", "-f", "query=$Query"))
-    foreach ($k in $Variables.Keys) { $ghArgs.Add("-F"); $ghArgs.Add("$k=$($Variables[$k])") }
-    $result = (& gh @ghArgs) | ConvertFrom-Json
-    if ($result.PSObject.Properties["errors"] -and $null -ne $result.errors) {
-        throw ($result.errors | ConvertTo-Json -Depth 5)
+    # Write the request body as JSON to a temp file to avoid Windows argument-quoting issues
+    # (embedded double quotes in complex mutations break gh CLI arg parsing on PS5/Windows).
+    $body = @{ query = $Query }
+    if ($Variables.Count -gt 0) { $body["variables"] = $Variables }
+    $tmpFile = [System.IO.Path]::GetTempFileName()
+    $enc = New-Object System.Text.UTF8Encoding $false   # UTF-8 without BOM
+    [System.IO.File]::WriteAllText($tmpFile, ($body | ConvertTo-Json -Depth 10), $enc)
+    try {
+        $result = (gh api graphql --input $tmpFile) | ConvertFrom-Json
+        if ($result.PSObject.Properties["errors"] -and $null -ne $result.errors) {
+            throw ($result.errors | ConvertTo-Json -Depth 5)
+        }
+        return $result.data
+    } finally {
+        Remove-Item $tmpFile -ErrorAction SilentlyContinue
     }
-    return $result.data
 }
 
 $baseSteps = 6
@@ -187,12 +195,42 @@ function Add-Field {
 }
 
 # Sprint -- ITERATION only available via GraphQL
+$sprintFieldId = $null
 if ($existingFields -notcontains "Sprint") {
     $iterQ = 'mutation($pid: ID!, $nm: String!) { createProjectV2Field(input: { projectId: $pid, dataType: ITERATION, name: $nm }) { projectV2Field { ... on ProjectV2IterationField { id name } } } }'
-    Invoke-Gql $iterQ @{ pid = $projectId; nm = "Sprint" } | Out-Null
+    $newSprintField = (Invoke-Gql $iterQ @{ pid = $projectId; nm = "Sprint" }).createProjectV2Field.projectV2Field
+    $sprintFieldId = $newSprintField.id
     Write-Host "  + Sprint (ITERATION)" -ForegroundColor Green
 } else {
     Write-Host "  SKIP  'Sprint' (exists)" -ForegroundColor DarkGray
+}
+
+# Populate sprint iterations
+if ($SprintCount -gt 0) {
+    if (-not $sprintFieldId) {
+        # Field already existed — query its ID and check if iterations exist
+        $fqSprint = 'query($login: String!, $num: Int!) { organization(login: $login) { projectV2(number: $num) { fields(first: 30) { nodes { __typename ... on ProjectV2IterationField { id name configuration { iterations { id } } } } } } } }'
+        $sprintNode = (Invoke-Gql $fqSprint @{ login = $Org; num = [int]$projectNumber }).organization.projectV2.fields.nodes |
+            Where-Object { $_.PSObject.Properties["name"] -and $_.name -eq "Sprint" } | Select-Object -First 1
+        if ($sprintNode) {
+            if ($sprintNode.configuration.iterations.Count -gt 0) {
+                Write-Host "  SKIP  Sprint iterations (already exist)" -ForegroundColor DarkGray
+            } else {
+                $sprintFieldId = $sprintNode.id
+            }
+        }
+    }
+    if ($sprintFieldId) {
+        $start    = [datetime]::ParseExact($SprintStartDate, "yyyy-MM-dd", $null)
+        $itersObj = 1..$SprintCount | ForEach-Object {
+            @{ startDate = $start.AddDays($SprintLengthDays * ($_ - 1)).ToString("yyyy-MM-dd"); duration = $SprintLengthDays; title = "Sprint $_" }
+        }
+        $updateQ = 'mutation($fid:ID!,$config:ProjectV2IterationFieldConfigurationInput!){updateProjectV2Field(input:{fieldId:$fid,iterationConfiguration:$config}){projectV2Field{...on ProjectV2IterationField{id configuration{iterations{id title startDate}}}}}}'
+        $cfg     = @{ startDate = $SprintStartDate; duration = $SprintLengthDays; iterations = $itersObj }
+        $iterResult = (Invoke-Gql $updateQ @{ fid = $sprintFieldId; config = $cfg }).updateProjectV2Field.projectV2Field.configuration.iterations
+        Write-Host "  + $($iterResult.Count) iterations added to Sprint field" -ForegroundColor Green
+        foreach ($it in $iterResult) { Write-Host "    $($it.title): $($it.startDate)" -ForegroundColor DarkGray }
+    }
 }
 
 # --- BASIC fields ---
@@ -236,7 +274,7 @@ if ($CreateViews) {
     Step "Generating views setup guide..."
 
     $fq     = 'query($login: String!, $num: Int!) { organization(login: $login) { projectV2(number: $num) { fields(first: 30) { nodes { __typename ... on ProjectV2Field { id name } ... on ProjectV2SingleSelectField { id name } ... on ProjectV2IterationField { id name } } } } } }'
-    $fNodes = (Invoke-Gql $fq @{ login = $Org; num = "$projectNumber" }).organization.projectV2.fields.nodes
+    $fNodes = (Invoke-Gql $fq @{ login = $Org; num = [int]$projectNumber }).organization.projectV2.fields.nodes
     $fMap   = @{}
     foreach ($f in $fNodes) {
         if ($f.PSObject.Properties["name"] -and $f.PSObject.Properties["id"]) { $fMap[$f.name] = $f.id }
