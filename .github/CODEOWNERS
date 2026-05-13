@@ -1,0 +1,15 @@
+# CODEOWNERS
+# Automatically requested as reviewers on every pull request.
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default -- all files
+*                                   @ITlusions/platform-team
+
+# Attestation core
+src/                                @ITlusions/platform-team
+
+# CI / GitHub Actions
+.github/workflows/                  @ITlusions/platform-team
+
+# Documentation
+docs/                               @ITlusions/platform-team
