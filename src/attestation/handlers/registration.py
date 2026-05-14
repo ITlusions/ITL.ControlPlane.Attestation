@@ -62,6 +62,7 @@ class RegistrationHandler:
             existing.hw_mac         = req.hw_mac
             existing.hw_serial      = req.hw_serial
             existing.hw_product     = req.hw_product
+            existing.ek_cert_pem    = req.ek_cert_pem
             machine = self.machine_repo.save(existing)
         else:
             role = (
@@ -73,6 +74,7 @@ class RegistrationHandler:
                 machine_id     = str(uuid.uuid4()),
                 ek_fingerprint = ek_fingerprint,
                 ek_source      = req.ek_source,
+                ek_cert_pem    = req.ek_cert_pem,
                 hw_uuid        = req.hw_uuid,
                 hw_mac         = req.hw_mac,
                 hw_serial      = req.hw_serial,
@@ -156,6 +158,7 @@ class RegistrationHandler:
             machine_id     = str(uuid.uuid4()),
             ek_fingerprint = ek_fingerprint,
             ek_source      = req.ek_source,
+            ek_cert_pem    = req.ek_cert_pem,
             hw_uuid        = req.hw_uuid,
             hw_mac         = req.hw_mac,
             hw_serial      = req.hw_serial,

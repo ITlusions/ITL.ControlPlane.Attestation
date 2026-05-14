@@ -75,6 +75,12 @@ class Settings(BaseSettings):
         default=30,
         validation_alias="ITL_ENROLLMENT_CERT_DAYS",
     )
+    # EK-bound config encryption (issue #9)
+    # When true, plaintext (application/yaml) config delivery returns 406 Not Acceptable.
+    require_encrypted_delivery: bool = Field(
+        default=False,
+        validation_alias="ITL_REQUIRE_ENCRYPTED_DELIVERY",
+    )
 
     # -----------------------------------------------------------------------
     # OIDC / Keycloak operator authentication (new requirement)

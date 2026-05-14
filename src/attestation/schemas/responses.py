@@ -127,3 +127,27 @@ class ApprovalDetail(BaseModel):
     created_at:  datetime
     expires_at:  datetime
     consumed:    bool
+
+
+class EncryptedConfigResponse(BaseModel):
+    """EK-bound AES-256-GCM encrypted MachineConfig envelope.
+
+    The AES-256 data key is wrapped with the machine's EK public key using
+    RSA-OAEP-SHA256.  Only the TPM that owns the registered EK private key can
+    unwrap the key and decrypt the config payload.
+
+    Client-side decryption (``itl-tpm-register`` Talos extension)::
+
+        # Unwrap AES key via TPM RSA decrypt (TPM2_RSA_Decrypt, OAEP)
+        tpm2_rsadecrypt -c 0x81010001 -s oaep -I wrapped_key.bin -o aes_key.bin
+
+        # Decrypt config (OpenSSL)
+        openssl enc -d -aes-256-gcm -K $(xxd -p aes_key.bin) -iv $IV \\
+            -in ciphertext.bin -out config.yaml
+    """
+
+    format:      str  # always "ek-aes256gcm-v1"
+    machine_id:  str
+    wrapped_key: str  # base64-encoded RSA-OAEP-SHA256 ciphertext of the 32-byte AES key
+    iv:          str  # base64-encoded 96-bit GCM nonce
+    ciphertext:  str  # base64-encoded AES-256-GCM ciphertext (includes 128-bit auth tag)

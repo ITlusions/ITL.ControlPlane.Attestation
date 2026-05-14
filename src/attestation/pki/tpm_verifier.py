@@ -230,3 +230,35 @@ def compute_ek_fingerprint(b64_pem: str) -> str:
 def fingerprints_match(fp_request: str, fp_stored: str) -> bool:
     """Constant-time comparison of two fingerprint hex strings."""
     return hmac.compare_digest(fp_request.lower(), fp_stored.lower())
+
+
+def load_ek_public_key(b64_pem: str) -> RSAPublicKey | EllipticCurvePublicKey:
+    """Extract the public key from a base64-encoded EK certificate or SubjectPublicKeyInfo PEM.
+
+    Tries X.509 certificate parsing first (``ek_source='cert'``), then falls
+    back to bare SubjectPublicKeyInfo DER/PEM (``ek_source='pub'``).
+
+    Returns a ``cryptography`` public key object suitable for RSA-OAEP-SHA256
+    key wrapping or EC operations.
+
+    Raises ``ValueError`` if the material cannot be parsed.
+    """
+    raw = decode_pem(b64_pem)
+
+    # Try X.509 certificate first
+    try:
+        cert = _parse_ek_cert(raw)
+        return cert.public_key()  # type: ignore[return-value]
+    except ValueError:
+        pass
+
+    # Fall back to bare SubjectPublicKeyInfo (DER then PEM)
+    from cryptography.hazmat.primitives.serialization import load_der_public_key, load_pem_public_key
+    try:
+        return load_der_public_key(raw)  # type: ignore[return-value]
+    except Exception:
+        pass
+    try:
+        return load_pem_public_key(raw)  # type: ignore[return-value]
+    except Exception as exc:
+        raise ValueError(f"Cannot extract public key from EK material: {exc}") from exc

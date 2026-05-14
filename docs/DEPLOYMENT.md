@@ -41,6 +41,7 @@ title: Deployment
 | **`ITL_DUAL_CONTROL_ROLES`** | *(empty)* | No | Comma-separated list of machine roles requiring 2-of-N operator approval before a machine is registered. E.g. `controlplane` or `controlplane,worker-infra`. |
 | **`ITL_DUAL_CONTROL_QUORUM`** | `2` | No | Number of distinct operator approvals required for dual-control roles. |
 | **`ITL_DUAL_CONTROL_WINDOW_SECONDS`** | `600` | No | How long (seconds) the first approval vote remains valid. If the second vote does not arrive within this window, the first vote expires and a new window starts. |
+| **`ITL_REQUIRE_ENCRYPTED_DELIVERY`** | `false` | No | When `true`, plaintext MachineConfig delivery returns HTTP 406. Clients must send `Accept: application/vnd.itl.config.encrypted+json`. Requires all machines to have an EK cert stored (re-register or re-attest to populate). |
 
 ---
 
@@ -155,6 +156,7 @@ The image is based on `python:3.12-slim` and installs system packages `gcc libss
 - [ ] `ITL_OIDC_OPERATOR_ROLE` matches the Keycloak realm-role assigned to operators
 - [ ] `ITL_DUAL_CONTROL_ROLES` set to the roles requiring 2-of-N approval (e.g. `controlplane`)
 - [ ] `ITL_ADMIN_TOKEN` set to a cryptographically random value (min 32 bytes hex) — stored in a secrets manager, **not** in version control
+- [ ] `ITL_REQUIRE_ENCRYPTED_DELIVERY=true` after all machines have registered / attested (EK certs stored)
 - [ ] Volume `/var/lib/itl-reg` mounted on persistent storage (not ephemeral)
 - [ ] CA key material backed up off-host
 - [ ] Role base configs pre-loaded into `ITL_CONFIG_CACHE_DIR`

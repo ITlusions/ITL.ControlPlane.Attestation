@@ -240,6 +240,8 @@ The `action` field instructs the Talos extension what to do:
 
 ## Config Delivery
 
+Both config endpoints support **EK-bound AES-256-GCM encrypted delivery**.  Set `Accept: application/vnd.itl.config.encrypted+json` to receive an encrypted envelope instead of plaintext YAML.  See [EK-bound Config Encryption](#ek-bound-config-encryption) below.
+
 ### `GET /api/v1/config?mac=<mac>`
 
 Generic ISO config endpoint. Used when a single Talos ISO is deployed without a pre-registered config token. Talos appends `?mac=<hw_mac>` automatically.
@@ -252,7 +254,13 @@ Returns the full role-specific MachineConfig YAML for `attested` machines. Retur
 |---|---|
 | `mac` | Hardware MAC address (colon-separated, case-insensitive) |
 
-**Response 200** — `application/yaml` (full MachineConfig for attested machines) or `text/plain` (pending config)
+**Request headers (optional)**
+
+| Header | Value | Effect |
+|---|---|---|
+| `Accept` | `application/vnd.itl.config.encrypted+json` | Return EK-bound encrypted envelope (see below) |
+
+**Response 200** — `application/yaml` (full MachineConfig for attested machines), `text/plain` (pending config), or `application/vnd.itl.config.encrypted+json` (encrypted envelope when requested)
 
 ---
 
@@ -262,13 +270,62 @@ One-time Talos MachineConfig endpoint. Baked into the custom ISO via the Talos I
 
 The token is consumed after the first successful fetch but remains re-fetchable (Talos may retry on reboot). Returns a pending config for machines still in `pending_approval`.
 
-**Response 200** — `application/yaml`
+**Request headers (optional)**
+
+| Header | Value | Effect |
+|---|---|---|
+| `Accept` | `application/vnd.itl.config.encrypted+json` | Return EK-bound encrypted envelope (see below) |
+
+**Response 200** — `application/yaml` or `application/vnd.itl.config.encrypted+json`
 
 **Errors**
 
 | Code | Reason |
 |---|---|
 | 404 | Token not found |
+| 406 | `ITL_REQUIRE_ENCRYPTED_DELIVERY=true` and request did not include the encrypted `Accept` header |
+
+---
+
+### EK-bound Config Encryption
+
+When `Accept: application/vnd.itl.config.encrypted+json` is sent, the service wraps a per-delivery AES-256 key with the machine's registered EK public key (RSA-OAEP-SHA256) and encrypts the MachineConfig payload with AES-256-GCM.  Only the TPM that owns the EK private key can unwrap the AES key and decrypt the config.
+
+**Encrypted envelope response**
+
+```json
+{
+  "format":      "ek-aes256gcm-v1",
+  "machine_id":  "550e8400-e29b-41d4-a716-446655440000",
+  "wrapped_key": "<base64 RSA-OAEP-SHA256 ciphertext of 32-byte AES key>",
+  "iv":          "<base64 96-bit GCM nonce>",
+  "ciphertext":  "<base64 AES-256-GCM ciphertext + 128-bit auth tag>"
+}
+```
+
+**Client-side decryption (`itl-tpm-register` Talos extension)**
+
+```bash
+# Unwrap AES key using TPM RSA decrypt (TPM2_RSA_Decrypt, OAEP-SHA256)
+tpm2_rsadecrypt -c 0x81010001 -s oaep -I wrapped_key.bin -o aes_key.bin
+
+# Decrypt config payload
+openssl enc -d -aes-256-gcm \
+    -K $(xxd -p aes_key.bin | tr -d '\n') \
+    -iv $(echo "$IV_BASE64" | base64 -d | xxd -p | tr -d '\n') \
+    -in ciphertext.bin -out config.yaml
+```
+
+**Environment variables**
+
+| Variable | Default | Description |
+|---|---|---|
+| `ITL_REQUIRE_ENCRYPTED_DELIVERY` | `false` | When `true`, plaintext config delivery returns 406. All clients must send `Accept: application/vnd.itl.config.encrypted+json`. |
+
+**Notes**
+
+- The EK certificate is stored when the machine first registers or attests.  Machines registered before this feature was introduced will not have a stored EK cert; encrypted delivery will fall back to plaintext (or return 406 if enforcement is enabled).
+- Only RSA EK keys are supported for key wrapping.  EC EK keys fall back to plaintext.
 
 ---
 

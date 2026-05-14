@@ -106,6 +106,7 @@ class AttestationHandler:
                 machine_id     = str(uuid.uuid4()),
                 ek_fingerprint = computed_fp,
                 ek_source      = req.ek_source,
+                ek_cert_pem    = req.ek_cert_pem,
                 hw_uuid        = req.hw_uuid,
                 hw_mac         = req.hw_mac,
                 hw_serial      = req.hw_serial,
@@ -175,6 +176,7 @@ class AttestationHandler:
         machine.attested_at    = datetime.now(timezone.utc)
         machine.config_token   = config_token
         machine.token_consumed = False
+        machine.ek_cert_pem    = req.ek_cert_pem
         self.machine_repo.save(machine)
         logger.info("Machine attested: id=%s role=%s", machine.machine_id, machine.role)
 
