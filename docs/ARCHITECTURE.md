@@ -107,7 +107,7 @@ src/attestation/
     attestation.py      — FastAPI router: GET /healthz, GET /api/v1/attest/challenge, POST /api/v1/attest
     config.py           — FastAPI router: GET /api/v1/config, /api/v1/config/{token}
     machines.py         — FastAPI router: GET/POST /api/v1/machines/**, GET /api/v1/machines/{id}/approvals
-    audit.py            — FastAPI router: GET /api/v1/audit (paginated append-only audit log)
+    audit.py            — FastAPI router: GET /api/v1/audit (paginated append-only audit log), GET /api/v1/audit/verify (chain integrity check)
   main.py               — Entry point: app = create_app()
 ```
 
@@ -137,6 +137,12 @@ Backward-compatible re-export shims at the package root (`config.py`, `deps.py`,
 
 Append-only — no UPDATE or DELETE is ever issued against this table. Every admin action writes one row.
 
+Each row includes two cryptographic fields that form a **tamper-evident hash chain**:
+- `prev_hash` — SHA-256 of the previous entry's canonical form (`"0"×64` for the genesis entry).
+- `entry_hash` — SHA-256 of this entry's canonical form (all content fields including `prev_hash`, excluding `id` and `entry_hash` itself).
+
+Any modification to a historical entry invalidates all subsequent hashes, detectable via `GET /api/v1/audit/verify`.
+
 | Field | Type | Description |
 |---|---|---|
 | `id` | integer PK | Auto-increment |
@@ -147,6 +153,8 @@ Append-only — no UPDATE or DELETE is ever issued against this table. Every adm
 | `prev_state` | optional string | Machine status before the action |
 | `new_state` | optional string | Machine status after the action (null for vote-only events) |
 | `detail` | optional string | Free-text note / reason supplied by operator |
+| `prev_hash` | string (SHA-256 hex) | SHA-256 of the previous row's canonical form; `"0"×64` for the first entry |
+| `entry_hash` | string (SHA-256 hex) | SHA-256 of this row's canonical form (excluding `id` and `entry_hash`) |
 
 ### Approval requests (`approval_request` table)
 
@@ -393,7 +401,7 @@ The following security gaps are tracked as GitHub issues:
 | [#4](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/4) | Enrollment does not cross-check EK fingerprint from cert URI SAN | Open |
 | [#6](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/6) | PCR quote verification — AK activation and quote verification implemented; PCR policy enforcement optional | Partially implemented |
 | [#7](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/7) | Nonce-based anti-replay for attestation — server-side nonce store implemented; enforcement opt-in via `ITL_REQUIRE_NONCE` | Partially implemented |
-| Per-operator identity + audit trail | Single shared admin token provided no accountability | **Fixed** — Keycloak OIDC per-operator auth + append-only audit log |
+| Per-operator identity + audit trail | Single shared admin token provided no accountability | **Fixed** — Keycloak OIDC per-operator auth + cryptographically chained append-only audit log |
 | Dual-control for critical roles | Single operator could unilaterally approve controlplane nodes | **Fixed** — `ITL_DUAL_CONTROL_ROLES` enforces 2-of-N quorum |
 
 See [SECURITY.md](SECURITY.md) for full threat model and mitigations.
