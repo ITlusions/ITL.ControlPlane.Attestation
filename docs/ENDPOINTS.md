@@ -10,6 +10,10 @@ Interactive docs: `https://attest.itlusions.com/docs`
 
 ---
 
+> **For Operators**: Most management operations are easier with the CLI: `pip install itl-attestation-cli`. See [DEPLOYMENT.md](DEPLOYMENT.md#cli-installation) for setup and [OPERATIONS.md](OPERATIONS.md) for workflow examples. This document describes the underlying REST API for integration and troubleshooting.
+
+---
+
 ## Authentication
 
 Admin endpoints authenticate operators in the following order of precedence:

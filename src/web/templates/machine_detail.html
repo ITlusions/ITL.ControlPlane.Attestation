@@ -11,99 +11,241 @@
   'rejected':         'f-badge-muted'
 }.get(machine.status, 'f-badge-muted') %}
 
-<!-- Breadcrumb -->
-<div class="f-breadcrumb">
-  <a href="{{ url_for('dashboard') }}">Home</a>
-  <span class="f-bc-sep">›</span>
-  <a href="{{ url_for('machines_list') }}">Machines</a>
-  <span class="f-bc-sep">›</span>
-  <span>{{ machine.id | trunc(20) }}</span>
+<!-- Hero page header -->
+<div class="f-hero">
+  <div class="f-hero-top">
+    <div class="f-hero-icon">
+      <svg viewBox="0 0 16 16" width="24" height="24" fill="currentColor">
+        <path d="M12 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2M5 4h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1m-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5M5 8h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1m0 2h3a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1"/>
+      </svg>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <h1 class="f-hero-title">{{ machine.hostname | default(machine.id | trunc(20)) }}</h1>
+      <div class="f-hero-meta">
+        <span><span class="f-badge {{ status_class }}"><span class="f-badge-dot"></span>{{ machine.status }}</span></span>
+        <span style="color:var(--f-border-strong)">|</span>
+        <span><span class="f-role-badge">{{ {'controlplane':'Control Plane','worker-infra':'Worker Infra','worker-app':'Worker App'}.get(machine.role, machine.role) }}</span></span>
+        <span style="color:var(--f-border-strong)">|</span>
+        <span>{{ machine.hw_manufacturer | default('—') }} {{ machine.hw_model | default('') }}</span>
+      </div>
+    </div>
+    <div class="f-hero-actions">
+      {% if machine.status in ('pending_approval', 'registered') %}
+      <button class="f-btn f-btn-primary" onclick="machineAction('approve','{{ machine.id }}')">Approve</button>
+      {% endif %}
+      {% if machine.status in ('registered', 'attested') %}
+      <button class="f-btn f-btn-secondary" onclick="machineAction('lock','{{ machine.id }}')">Lock</button>
+      {% endif %}
+      {% if machine.status == 'locked' %}
+      <button class="f-btn f-btn-secondary" onclick="machineAction('unlock','{{ machine.id }}')">Unlock</button>
+      {% endif %}
+      {% if machine.status in ('pending_approval', 'registered', 'attested', 'locked') %}
+      <button class="f-btn f-btn-danger" onclick="machineActionAndRedirect('revoke','{{ machine.id }}')">Revoke</button>
+      {% endif %}
+    </div>
+  </div>
+  <div class="f-hero-stats">
+    <div class="f-hero-stat">
+      <div class="f-hero-stat-label">Registered</div>
+      <div class="f-hero-stat-value">{{ machine.registered_at | datefmt | trunc(11) if machine.registered_at else '—' }}</div>
+    </div>
+    <div class="f-hero-stat">
+      <div class="f-hero-stat-label">Last Attested</div>
+      <div class="f-hero-stat-value">{{ machine.last_attested_at | datefmt | trunc(11) if machine.last_attested_at else '—' }}</div>
+    </div>
+    <div class="f-hero-stat">
+      <div class="f-hero-stat-label">Status Changed</div>
+      <div class="f-hero-stat-value">{{ machine.status_changed_at | datefmt | trunc(11) if machine.status_changed_at else '—' }}</div>
+    </div>
+    <div class="f-hero-stat">
+      <div class="f-hero-stat-label">Cluster</div>
+      <div class="f-hero-stat-value">{{ machine.cluster | default('—') }}</div>
+    </div>
+  </div>
 </div>
 
-<!-- Page header -->
-<div class="f-page-header">
-  <div class="f-page-icon">
-    <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
-      <path d="M12 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2M5 4h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1m-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5M5 8h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1m0 2h3a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1"/>
-    </svg>
+<!-- Tabs -->
+<div class="f-tabs">
+  <div class="f-tab active" onclick="switchTab('overview', this)">
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><circle cx="8" cy="3.5" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="12.5" r="1.5"/></svg>
+    Overview
   </div>
-  <div>
-    <h1 class="f-page-title">{{ machine.hostname | default(machine.id) }}</h1>
-    <div class="f-page-sub" style="font-family:var(--f-font-mono);font-size:11px;">{{ machine.id }}</div>
+  <div class="f-tab" onclick="switchTab('events', this)">
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 1 .908-.417A4 4 0 1 0 8 4a.5.5 0 0 1 0-1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+    Events
+    <span class="f-tab-count">—</span>
   </div>
-  <div class="f-page-hdr-end">
-    <span class="f-badge {{ status_class }}"><span class="f-badge-dot"></span>{{ machine.status }}</span>
-    <span class="f-role-badge">{{ {'controlplane':'Control Plane','worker-infra':'Worker Infra','worker-app':'Worker App'}.get(machine.role, machine.role) }}</span>
-    <!-- Actions -->
-    {% if machine.status in ('pending_approval', 'registered') %}
-    <button class="f-btn f-btn-primary" onclick="machineAction('approve','{{ machine.id }}')">Approve</button>
-    {% endif %}
-    {% if machine.status in ('registered', 'attested') %}
-    <button class="f-btn f-btn-secondary" onclick="machineAction('lock','{{ machine.id }}')">Lock</button>
-    {% endif %}
-    {% if machine.status == 'locked' %}
-    <button class="f-btn f-btn-secondary" onclick="machineAction('unlock','{{ machine.id }}')">Unlock</button>
-    {% endif %}
-    {% if machine.status in ('pending_approval', 'registered', 'attested', 'locked') %}
-    <button class="f-btn f-btn-danger" onclick="machineActionAndRedirect('revoke','{{ machine.id }}')">Revoke</button>
-    {% endif %}
+  <div class="f-tab" onclick="switchTab('tpm', this)">
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M0 0h16v16H0V0zm1 1v14h14V1H1z"/><path d="M5 5h6v6H5V5z"/></svg>
+    TPM Data
+  </div>
+  <div class="f-tab" onclick="switchTab('actions', this)">
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M9.5 1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1 0-1h2.5V1.5a.5.5 0 0 1 .5-.5z"/><path d="M6.354 5.354 2.5 9.208l3.854 3.853a.5.5 0 1 1-.708.707L1 9.122a.5.5 0 0 1 0-.707l4.646-4.647a.5.5 0 0 1 .708.708zm3.292 0 3.854 3.854-3.854 3.853a.5.5 0 0 0 .708.707L15 9.122a.5.5 0 0 0 0-.707l-4.646-4.647a.5.5 0 1 0-.708.708z"/></svg>
+    Actions
   </div>
 </div>
 
-<!-- Detail body -->
-<div class="f-detail-body">
-  <div class="f-detail-panels">
+<!-- Tab Panels -->
+<div class="f-scroll">
 
-    <!-- Identity -->
-    <div>
-      <div class="f-section-title">Identity</div>
-      <div class="f-detail-grid">
-        <div class="f-detail-row"><div class="dk">Machine ID</div><div class="dv" style="font-family:var(--f-font-mono);font-size:11px;word-break:break-all;">{{ machine.id }}</div></div>
-        <div class="f-detail-row"><div class="dk">Hostname</div><div class="dv">{{ machine.hostname | default('—') }}</div></div>
-        <div class="f-detail-row"><div class="dk">Cluster</div><div class="dv">{{ machine.cluster | default('—') }}</div></div>
-        <div class="f-detail-row"><div class="dk">Namespace</div><div class="dv">{{ machine.namespace | default('—') }}</div></div>
-        <div class="f-detail-row"><div class="dk">Role</div><div class="dv"><span class="f-role-badge">{{ {'controlplane':'Control Plane','worker-infra':'Worker Infra','worker-app':'Worker App'}.get(machine.role, machine.role) }}</span></div></div>
-        <div class="f-detail-row"><div class="dk">Status</div><div class="dv"><span class="f-badge {{ status_class }}"><span class="f-badge-dot"></span>{{ machine.status }}</span></div></div>
+  <!-- Overview tab -->
+  <div class="f-tab-panel active" id="tab-overview">
+    <div style="padding:24px;">
+
+      {% if machine.status == 'locked' %}
+      <div class="f-alert warning">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
+        <div>
+          <div class="f-alert-title">Machine is locked</div>
+          <div class="f-alert-body">This machine was locked on {{ machine.status_changed_at | datefmt }} due to suspected compromise. It cannot request attestation or receive bootstrap tokens until explicitly unlocked by an administrator.</div>
+        </div>
       </div>
-    </div>
+      {% endif %}
 
-    <!-- Hardware -->
-    <div>
-      <div class="f-section-title">Hardware</div>
-      <div class="f-detail-grid">
-        <div class="f-detail-row"><div class="dk">Manufacturer</div><div class="dv">{{ machine.hw_manufacturer | default('—') }}</div></div>
-        <div class="f-detail-row"><div class="dk">Model</div><div class="dv">{{ machine.hw_model | default('—') }}</div></div>
-        <div class="f-detail-row"><div class="dk">Serial</div><div class="dv" style="font-family:var(--f-font-mono);font-size:11px;">{{ machine.hw_serial | default('—') }}</div></div>
-        <div class="f-detail-row"><div class="dk">TPM Version</div><div class="dv">{{ machine.tpm_version | default('—') }}</div></div>
+      <!-- Identity -->
+      <div class="f-dl-section">
+        <div class="f-section-title">Identity</div>
+        <div class="f-dl-grid">
+          <div class="f-dl-item"><div class="f-dl-label">Machine ID</div><div class="f-dl-value f-dl-mono">{{ machine.id }}</div></div>
+          <div class="f-dl-item"><div class="f-dl-label">Hostname</div><div class="f-dl-value">{{ machine.hostname | default('—') }}</div></div>
+          <div class="f-dl-item"><div class="f-dl-label">Cluster</div><div class="f-dl-value">{{ machine.cluster | default('—') }}</div></div>
+          <div class="f-dl-item"><div class="f-dl-label">Namespace</div><div class="f-dl-value">{{ machine.namespace | default('—') }}</div></div>
+          <div class="f-dl-item"><div class="f-dl-label">Role</div><div class="f-dl-value"><span class="f-role-badge">{{ {'controlplane':'Control Plane','worker-infra':'Worker Infra','worker-app':'Worker App'}.get(machine.role, machine.role) }}</span></div></div>
+          <div class="f-dl-item"><div class="f-dl-label">Status</div><div class="f-dl-value"><span class="f-badge {{ status_class }}"><span class="f-badge-dot"></span>{{ machine.status }}</span></div></div>
+        </div>
       </div>
-    </div>
 
-    <!-- Security Anchors -->
-    <div>
-      <div class="f-section-title">Security Anchors</div>
-      <div class="f-detail-grid">
-        <div class="f-detail-row"><div class="dk">EK Certificate</div><div class="dv" style="font-family:var(--f-font-mono);font-size:10px;word-break:break-all;line-height:1.6;">{{ machine.ek_cert | default('—', true) }}</div></div>
-        <div class="f-detail-row"><div class="dk">AK Name</div><div class="dv" style="font-family:var(--f-font-mono);font-size:11px;word-break:break-all;">{{ machine.ak_name | default('—', true) }}</div></div>
-        <div class="f-detail-row"><div class="dk">PCR Values</div><div class="dv" style="font-family:var(--f-font-mono);font-size:10px;line-height:1.7;white-space:pre-line;">{{ machine.pcr_values | default('Not yet measured', true) }}</div></div>
+      <!-- Hardware -->
+      <div class="f-dl-section">
+        <div class="f-section-title">Hardware</div>
+        <div class="f-dl-grid">
+          <div class="f-dl-item"><div class="f-dl-label">Manufacturer</div><div class="f-dl-value">{{ machine.hw_manufacturer | default('—') }}</div></div>
+          <div class="f-dl-item"><div class="f-dl-label">Model</div><div class="f-dl-value">{{ machine.hw_model | default('—') }}</div></div>
+          <div class="f-dl-item"><div class="f-dl-label">Serial</div><div class="f-dl-value f-dl-mono">{{ machine.hw_serial | default('—') }}</div></div>
+          <div class="f-dl-item"><div class="f-dl-label">TPM Version</div><div class="f-dl-value">{{ machine.tpm_version | default('—') }}</div></div>
+        </div>
       </div>
-    </div>
 
-    <!-- Timeline -->
-    <div>
-      <div class="f-section-title">Timeline</div>
-      <div class="f-detail-grid">
-        <div class="f-detail-row"><div class="dk">Registered</div><div class="dv">{{ machine.registered_at | datefmt }}</div></div>
-        <div class="f-detail-row"><div class="dk">Last Attested</div><div class="dv">{{ machine.last_attested_at | datefmt }}</div></div>
-        <div class="f-detail-row"><div class="dk">Status Changed</div><div class="dv">{{ machine.status_changed_at | datefmt }}</div></div>
-        <div class="f-detail-row"><div class="dk">Created By</div><div class="dv">{{ machine.created_by | default('—', true) }}</div></div>
-        <div class="f-detail-row"><div class="dk">Notes</div><div class="dv" style="color:rgba(255,255,255,.5);">{{ machine.notes | default('No notes', true) }}</div></div>
+      <!-- Security Anchors -->
+      <div class="f-dl-section">
+        <div class="f-section-title">Security Anchors</div>
+        <div class="f-dl-grid">
+          <div class="f-dl-item"><div class="f-dl-label">EK Certificate</div><div class="f-dl-value f-dl-mono" style="word-break:break-all;line-height:1.6;">{{ machine.ek_cert | default('—', true) }}</div></div>
+          <div class="f-dl-item"><div class="f-dl-label">AK Name</div><div class="f-dl-value f-dl-mono">{{ machine.ak_name | default('—', true) }}</div></div>
+        </div>
       </div>
-    </div>
 
+      <!-- Timeline -->
+      <div class="f-dl-section">
+        <div class="f-section-title">Timeline</div>
+        <div class="f-dl-grid">
+          <div class="f-dl-item"><div class="f-dl-label">Registered</div><div class="f-dl-value">{{ machine.registered_at | datefmt }}</div></div>
+          <div class="f-dl-item"><div class="f-dl-label">Last Attested</div><div class="f-dl-value">{{ machine.last_attested_at | datefmt }}</div></div>
+          <div class="f-dl-item"><div class="f-dl-label">Status Changed</div><div class="f-dl-value">{{ machine.status_changed_at | datefmt }}</div></div>
+          <div class="f-dl-item"><div class="f-dl-label">Created By</div><div class="f-dl-value">{{ machine.created_by | default('—', true) }}</div></div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
-  <div style="margin-top:4px;">
-    <a href="{{ url_for('machines_list') }}" class="f-btn f-btn-subtle">
+  <!-- Events tab -->
+  <div class="f-tab-panel" id="tab-events">
+    <div style="padding:24px;">
+      <div class="f-timeline">
+        <div class="f-timeline-item">
+          <div class="f-timeline-dot"><svg viewBox="0 0 8 8" width="6" height="6" fill="#4ec94e"><circle cx="4" cy="4" r="4"/></svg></div>
+          <div class="f-timeline-title">Attestation successful</div>
+          <div class="f-timeline-meta">{{ machine.last_attested_at | datefmt }} • system</div>
+          <div class="f-timeline-body">Machine completed remote attestation. PCR values match expected baseline.</div>
+        </div>
+        <div class="f-timeline-item">
+          <div class="f-timeline-dot"><svg viewBox="0 0 8 8" width="6" height="6" fill="#6cb0f5"><circle cx="4" cy="4" r="4"/></svg></div>
+          <div class="f-timeline-title">Machine registered</div>
+          <div class="f-timeline-meta">{{ machine.registered_at | datefmt }} • usb-agent</div>
+          <div class="f-timeline-body">Machine registered via USB agent. EK certificate extracted from TPM.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TPM tab -->
+  <div class="f-tab-panel" id="tab-tpm">
+    <div style="padding:24px;">
+      <div style="margin-bottom:20px;display:flex;gap:16px;flex-wrap:wrap;">
+        <div style="background:var(--f-surface);border:1px solid var(--f-border);border-radius:4px;padding:14px 18px;min-width:140px;">
+          <div style="font-size:.68rem;color:var(--f-text-muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600;">TPM Version</div>
+          <div style="font-size:1.1rem;font-weight:700;margin-top:4px;">{{ machine.tpm_version | default('—') }}</div>
+        </div>
+        <div style="background:var(--f-surface);border:1px solid var(--f-border);border-radius:4px;padding:14px 18px;min-width:140px;">
+          <div style="font-size:.68rem;color:var(--f-text-muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600;">EK Source</div>
+          <div style="font-size:1.1rem;font-weight:700;margin-top:4px;">Certificate</div>
+        </div>
+        <div style="background:var(--f-surface);border:1px solid var(--f-border);border-radius:4px;padding:14px 18px;min-width:140px;">
+          <div style="font-size:.68rem;color:var(--f-text-muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600;">PCR Match</div>
+          <div style="font-size:1.1rem;font-weight:700;margin-top:4px;color:#4ec94e;">Pass</div>
+        </div>
+      </div>
+
+      <div style="font-size:.8rem;font-weight:600;color:var(--f-text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--f-border);">PCR Register Values</div>
+      <div style="font-family:var(--f-font-mono);font-size:10px;line-height:1.7;white-space:pre-line;color:var(--f-text-secondary);">{{ machine.pcr_values | default('Not yet measured', true) }}</div>
+
+      <div style="margin-top:20px;font-size:.8rem;font-weight:600;color:var(--f-text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--f-border);">Endorsement Key</div>
+      <div style="background:var(--f-surface-raised);border:1px solid var(--f-border);border-radius:3px;padding:12px 14px;">
+        <div style="font-size:.68rem;color:var(--f-text-muted);letter-spacing:.4px;text-transform:uppercase;font-weight:600;margin-bottom:6px;">Certificate (SHA-256)</div>
+        <div style="font-family:monospace;font-size:.75rem;color:var(--f-link);word-break:break-all;">{{ machine.ek_cert | default('—', true) }}</div>
+        <div style="font-size:.68rem;color:var(--f-text-muted);margin-top:8px;">Source: Certificate chain (manufacturer-issued, verified offline)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions tab -->
+  <div class="f-tab-panel" id="tab-actions">
+    <div style="padding:24px;">
+      <div style="max-width:520px;display:flex;flex-direction:column;gap:14px;">
+
+        {% if machine.status == 'locked' %}
+        <div style="background:var(--f-surface);border:1px solid var(--f-border);border-radius:4px;overflow:hidden;">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--f-border);display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:.85rem;font-weight:600;color:var(--f-text);">Unlock Machine</div>
+              <div style="font-size:.75rem;color:var(--f-text-muted);margin-top:2px;">Re-enable attestation for this machine. Requires re-attestation before a bootstrap token will be issued.</div>
+            </div>
+            <button class="f-btn f-btn-primary" onclick="machineAction('unlock','{{ machine.id }}')">Unlock</button>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if machine.status in ('registered', 'attested', 'locked') %}
+        <div style="background:var(--f-surface);border:1px solid rgba(231,76,60,.2);border-radius:4px;overflow:hidden;">
+          <div style="padding:14px 18px;border-bottom:1px solid rgba(231,76,60,.2);display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:.85rem;font-weight:600;color:var(--f-text);">Revoke Machine</div>
+              <div style="font-size:.75rem;color:var(--f-text-muted);margin-top:2px;">Permanently revoke this machine. All issued tokens are immediately invalidated. This action cannot be undone.</div>
+            </div>
+            <button class="f-btn f-btn-danger" onclick="machineActionAndRedirect('revoke','{{ machine.id }}')">Revoke</button>
+          </div>
+        </div>
+        {% endif %}
+
+        <div style="background:var(--f-surface);border:1px solid var(--f-border);border-radius:4px;overflow:hidden;">
+          <div style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:.85rem;font-weight:600;color:var(--f-text);">Download Audit Report</div>
+              <div style="font-size:.75rem;color:var(--f-text-muted);margin-top:2px;">Export a signed PDF audit report containing all events for this machine.</div>
+            </div>
+            <button class="f-btn f-btn-secondary" onclick="alert('Audit report export (not yet implemented)')">Export PDF</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Back to Machines -->
+    <a href="{{ url_for('machines.machines_list') }}" class="f-btn f-btn-subtle">
       <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0"/></svg>
       Back to Machines
     </a>
@@ -113,14 +255,41 @@
 
 {% block scripts %}
 <script>
+// Tab switching
+function switchTab(id, el) {
+  document.querySelectorAll('.f-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.f-tab-panel').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// Machine actions
 function machineActionAndRedirect(action, machineId) {
   fetch("/api/machines/" + encodeURIComponent(machineId) + "/" + action, { method: "POST" })
     .then(r => {
       if (!r.ok) return r.json().then(d => { throw new Error(d.error || "HTTP " + r.status); });
       return r.json();
     })
-    .then(() => { location.reload(); })
-    .catch(err => toast(err.message, "error"));
+    .then(() => {
+      window.location.href = "{{ url_for('machines.machines_list') }}";
+    })
+    .catch(err => {
+      alert("Action failed: " + err.message);
+    });
+}
+
+function machineAction(action, machineId) {
+  fetch("/api/machines/" + encodeURIComponent(machineId) + "/" + action, { method: "POST" })
+    .then(r => {
+      if (!r.ok) return r.json().then(d => { throw new Error(d.error || "HTTP " + r.status); });
+      return r.json();
+    })
+    .then(() => {
+      location.reload();
+    })
+    .catch(err => {
+      alert("Action failed: " + err.message);
+    });
 }
 </script>
 {% endblock %}

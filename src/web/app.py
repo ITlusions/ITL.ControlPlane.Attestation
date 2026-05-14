@@ -6,18 +6,32 @@ Run:
 """
 from __future__ import annotations
 
+import sys
 from datetime import datetime
+from pathlib import Path
 
-from flask import Flask, render_template
+# Add attestation service to path FIRST before any imports
+attestation_src = Path(__file__).parent.parent
+if str(attestation_src) not in sys.path:
+    sys.path.insert(0, str(attestation_src))
 
+from flask import Flask, g, render_template
+from sqlmodel import Session, SQLModel, create_engine
+
+from core.config import Settings, get_settings
+
+# Import SDK (which will register all models)
+import sdk  # noqa: E402
+from sdk.models import MachineStatus  # noqa: E402
+from sdk.repositories import AuditRepository, SqlMachineRepository  # noqa: E402
+
+# Import blueprints
 from api.audit import bp as audit_bp
 from api.configuration import bp as configuration_bp
 from api.dashboard import bp as dashboard_bp
 from api.machines import bp as machines_bp
 from api.policies import bp as policies_bp
-from core.config import Settings, get_settings
-from repositories.audit_repo import InMemoryAuditRepository
-from repositories.machine_repo import InMemoryMachineRepository
+from api.query import bp as query_bp
 from services.audit_service import AuditService
 from services.machine_service import MachineService
 
@@ -28,14 +42,30 @@ def create_app() -> Flask:
     app.config["SECRET_KEY"] = settings.secret_key
     app.config["DEBUG"] = settings.debug
 
-    # Repositories — singletons that hold in-memory state
-    machine_repo = InMemoryMachineRepository()
-    audit_repo = InMemoryAuditRepository()
-
-    # Services — injected with their repositories
-    app.extensions["machine_service"] = MachineService(machine_repo=machine_repo, audit_repo=audit_repo)
-    app.extensions["audit_service"] = AuditService(audit_repo=audit_repo)
+    # Database engine — shared SQLite connection with attestation service
+    engine = create_engine(
+        settings.db_url,
+        connect_args={"check_same_thread": False},
+    )
+    
+    # Create tables if they don't exist
+    SQLModel.metadata.create_all(engine)
+    
+    # Store engine in extensions for per-request session creation
+    app.extensions["db_engine"] = engine
     app.extensions["settings"] = settings
+
+    @app.before_request
+    def create_db_session():
+        """Create a database session for each request."""
+        g.db_session = Session(engine)
+        
+    @app.teardown_request
+    def close_db_session(exception=None):
+        """Close the database session after each request."""
+        session = g.pop("db_session", None)
+        if session is not None:
+            session.close()
 
     # Blueprints
     app.register_blueprint(dashboard_bp)
@@ -43,6 +73,7 @@ def create_app() -> Flask:
     app.register_blueprint(audit_bp)
     app.register_blueprint(configuration_bp)
     app.register_blueprint(policies_bp)
+    app.register_blueprint(query_bp)
 
     _register_template_filters(app)
     _register_error_handlers(app)
@@ -69,9 +100,14 @@ def _register_template_filters(app: Flask) -> None:
 
     @app.context_processor
     def inject_nav_stats() -> dict:
-        svc: MachineService = app.extensions["machine_service"]
-        s = svc.stats()
-        return {"nav_total": s["total"], "nav_pending": s["pending_approval"]}
+        """Inject navigation statistics into templates."""
+        if hasattr(g, "db_session"):
+            machine_repo = SqlMachineRepository(g.db_session)
+            machines = machine_repo.list_all()
+            total = len(machines)
+            pending = sum(1 for m in machines if m.status == MachineStatus.pending_approval)
+            return {"nav_total": total, "nav_pending": pending}
+        return {"nav_total": 0, "nav_pending": 0}
 
 
 def _register_error_handlers(app: Flask) -> None:

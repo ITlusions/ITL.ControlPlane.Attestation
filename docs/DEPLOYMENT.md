@@ -103,6 +103,109 @@ The CA key material is auto-generated on first startup. Back it up — losing it
 
 ---
 
+## CLI Installation
+
+The ITL Attestation CLI (`itl-attestation-cli`) is a separate PyPI package for operators to manage machines from the command line.
+
+### Install from PyPI
+
+```sh
+pip install itl-attestation-cli
+```
+
+### Verify installation
+
+```sh
+attestation --version
+```
+
+### Configuration
+
+The CLI is configured via environment variables or command-line options:
+
+| Variable | Default | Description |
+|---|---|---|
+| `ATTESTATION_API_URL` | `http://localhost:9000` | Attestation API base URL |
+| `KEYCLOAK_URL` | `https://sts.itlusions.com` | Keycloak base URL |
+| `KEYCLOAK_REALM` | `itlusions` | Keycloak realm |
+| `KEYCLOAK_CLIENT_ID` | `attestation-cli` | OIDC client ID |
+
+Create a `.env` file or export environment variables:
+
+```sh
+export ATTESTATION_API_URL=https://attest.itlusions.com
+export KEYCLOAK_URL=https://sts.itlusions.com
+export KEYCLOAK_REALM=itlusions
+export KEYCLOAK_CLIENT_ID=attestation-cli
+```
+
+### Authentication
+
+The CLI supports three authentication methods:
+
+**1. Interactive browser login (recommended):**
+```sh
+attestation auth login
+```
+Opens a browser for Keycloak login using PKCE flow. Most secure for public clients.
+
+**2. Command-line username/password:**
+```sh
+attestation auth login --method password -u admin@itlusions.com
+```
+Direct username/password exchange. Use with caution.
+
+**3. Device code flow (headless servers):**
+```sh
+attestation auth login --method device
+```
+Displays a URL and code to enter on another device. Ideal for SSH sessions.
+
+### Token caching
+
+Tokens are cached in `~/.itl/attestation-cache/` with MD5-hashed filenames. The CLI automatically refreshes expired tokens. Use `attestation auth cache-list` to view cached tokens and `attestation auth clear-cache` to remove them.
+
+### Quick start
+
+```sh
+# Login
+attestation auth login
+
+# List machines
+attestation machine list
+
+# Filter by status
+attestation machine list --status pending_approval
+
+# Approve a machine
+attestation machine approve <machine-id> --reason "Production deployment"
+
+# View audit logs
+attestation audit list
+
+# Verify cryptographic chain integrity
+attestation audit verify
+```
+
+### Output formats
+
+All commands support JSON output for scripting:
+
+```sh
+attestation machine list --output json
+attestation audit list --output json | jq '.entries[] | select(.action == "APPROVE")'
+```
+
+### CLI vs Web Dashboard vs curl
+
+| Method | Use case |
+|---|---|
+| **CLI** | Operator workstations, scripting, CI/CD |
+| **Web Dashboard** | Visual overview, compliance metrics, bulk operations |
+| **curl** | Emergency break-glass, automation without Python |
+
+---
+
 ## Role Base Configs
 
 The service cannot serve MachineConfigs until role base configs are present in `ITL_CONFIG_CACHE_DIR`. These files are produced by the `ITL.Talos.HardenedOS` CI pipeline and published as GitHub Release assets.

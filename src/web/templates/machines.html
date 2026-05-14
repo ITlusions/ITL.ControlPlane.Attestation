@@ -6,12 +6,13 @@
 <div class="f-page-header">
   <div class="f-page-icon">
     <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
-      <path d="M12 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2M5 4h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1m-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5M5 8h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1m0 2h3a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1"/>
+      <path d="M1 2a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm1 0v2h12V2zm-1 5a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm1 0v2h12V7zm-1 5a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm1 0v2h12v-2z"/>
+      <path d="M10.5 2.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m1 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m1 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0M10.5 7.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m1 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m1 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0M10.5 12.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m1 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m1 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0"/>
     </svg>
   </div>
   <div>
-    <h1 class="f-page-title">Machines</h1>
-    <div class="f-page-sub">{{ stats.total }} registered · {{ stats.attested }} attested · {{ stats.pending_approval }} pending</div>
+    <h1 class="f-page-title">Machine Attestation</h1>
+    <div class="f-page-sub">TPM-based hardware attestation — ITL Control Plane</div>
   </div>
 </div>
 
@@ -99,25 +100,25 @@
 <div class="f-command-bar">
   <button class="f-btn f-btn-primary" title="Register new machine (placeholder)">
     <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>
-    Register Machine
+    Register
   </button>
   <button class="f-btn f-btn-secondary" onclick="location.reload()">
     <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41m-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9"/><path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5 5 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z"/></svg>
     Refresh
   </button>
-  <a href="{{ url_for('machines_export') }}" class="f-btn f-btn-secondary">
+  <a href="{{ url_for('machines.machines_export') }}" class="f-btn f-btn-secondary">
     <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg>
     Export CSV
   </a>
   <div class="f-cmd-sep"></div>
-  <span class="f-result-count" id="f-result-count">{{ machines | length }} machines</span>
+  <span class="f-result-count" id="f-result-count">Showing <strong>{{ machines | length }}</strong> machines</span>
 </div>
 
 <!-- Filter / pivot bar -->
 <div class="f-pivot-bar">
   <div class="f-pivot-search">
-    <svg class="f-search-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.099zm-5.242 1.156a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11"/></svg>
-    <input type="text" id="f-search" placeholder="Search machines…" autocomplete="off">
+    <svg class="f-search-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>
+    <input type="text" id="f-search" placeholder="Filter by machine ID, serial, MAC, hostname…" autocomplete="off">
   </div>
   <div class="f-pivot-sep"></div>
   <button class="f-pivot-tab active" onclick="setStatusFilter(this,'')">All <span style="opacity:.6;font-size:11px;">({{ stats.total }})</span></button>
@@ -154,7 +155,7 @@
       }.get(m.status, 'f-badge-muted') %}
       <tr class="machine-row" data-id="{{ m.id }}" data-status="{{ m.status }}" onclick="openPanel('{{ m.id }}')">
         <td>
-          <a href="{{ url_for('machine_detail', machine_id=m.id) }}" class="f-machine-id" onclick="event.stopPropagation()">{{ m.id | trunc(14) }}</a>
+          <a href="{{ url_for('machines.machine_detail', machine_id=m.id) }}" class="f-machine-id" onclick="event.stopPropagation()">{{ m.id | trunc(14) }}</a>
           <div class="f-machine-host">{{ m.hostname | default('—') }}</div>
         </td>
         <td>

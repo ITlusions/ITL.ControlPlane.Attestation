@@ -72,46 +72,151 @@ flowchart TB
 
 ## Source Layout
 
+The platform is split into **three separate packages**:
+
+### 1. **SDK Package** (`src/sdk/` → `itl-attestation-sdk`)
+
+Central data layer shared by all services. Published as a standalone PyPI package.
+
+```
+src/sdk/
+  core/
+    config.py           — AttestationConfig (Pydantic BaseSettings) + config singleton
+    database.py         — Async SQLAlchemy engine + session factory + init_db()
+    exceptions.py       — Exception hierarchy (MachineNotFoundError, etc.)
+  models/
+    machine.py          — MachineRow SQLModel table + NodeRole / MachineStatus enums
+    operator.py         — AuditLogRow (append-only audit log with cryptographic chain) + ApprovalRequestRow
+  repositories/
+    machine_repo.py     — SqlMachineRepository: CRUD operations over MachineRow
+    operator_repo.py    — AuditRepository (INSERT-only + chain verification) + ApprovalRequestRepository
+  __init__.py           — Public exports: config, models, repositories, exceptions
+  pyproject.toml        — Package metadata (hatchling, dependencies, dev extras)
+  README.md             — SDK usage documentation
+```
+
+**Installation**: `pip install itl-attestation-sdk`
+
+**Usage**:
+```python
+from sdk.core import config
+from sdk.models import MachineRow, MachineStatus
+from sdk.repositories import SqlMachineRepository
+```
+
+### 2. **CLI Package** (`src/cli/` → `itl-attestation-cli`)
+
+Command-line interface for operators. Communicates with the attestation API via REST. Published as a standalone PyPI package.
+
+```
+src/cli/
+  keycloak_client.py    — OIDC authentication: interactive (PKCE), password, device code flows
+  token_cache.py        — File-based token cache (~/.itl/attestation-cache/)
+  api_client.py         — REST API client with Bearer token authentication
+  __main__.py           — Click CLI entry point with command groups:
+                           • attestation auth (login, logout, whoami, cache-list, clear-cache)
+                           • attestation machine (list, get, approve, lock, unlock, revoke)
+                           • attestation audit (list, verify)
+  __init__.py           — Public exports: KeycloakClient, OIDCToken, TokenCache, AttestationClient
+  pyproject.toml        — Package metadata (hatchling, dependencies: click, httpx)
+  README.md             — CLI usage documentation
+```
+
+**Installation**: `pip install itl-attestation-cli`
+
+**Usage**:
+```bash
+attestation auth login
+attestation machine list --status pending_approval
+attestation machine approve <machine-id> --reason "Production deployment"
+attestation audit verify
+```
+
+### 3. **Attestation Service** (`src/attestation/`)
+
+FastAPI service implementing the attestation REST API. Uses SDK for data access. Deployed as Docker container.
+
 ```
 src/attestation/
   core/
-    config.py           — Settings (Pydantic BaseSettings) + settings singleton; includes OIDC + dual-control vars
-    deps.py             — FastAPI dependency injectors: get_db(), get_engine(), resolve_operator() (OIDC → mTLS → break-glass)
+    deps.py             — FastAPI dependency injectors: get_db(), get_engine(), resolve_operator()
     app.py              — create_app() factory + lifespan (DB init, CA init)
-  models/
-    machine.py          — MachineRow SQLModel table + NodeRole / MachineStatus enums
-    operator.py         — AuditLogRow (append-only audit log) + ApprovalRequestRow (dual-control pending votes)
   schemas/
     requests.py         — Pydantic request schemas (RegisterRequest, AttestRequest, etc.)
-    responses.py        — Pydantic response schemas (AttestResponse, MachineDetail, CertResponse, PendingApprovalResponse, AuditLogEntry, etc.)
+    responses.py        — Pydantic response schemas (AttestResponse, MachineDetail, etc.)
   pki/
-    enrollment_ca.py    — Enrollment CA: init, cert issuance, chain verification, nonce signature, RSA-OAEP wrapping
-    tpm_verifier.py     — EK material structural verification and SHA-256/SHA-384 fingerprint computation
-    quote_verifier.py   — TPM2_Quote signature + TPMS_ATTEST parsing + PCR digest verification (issue #6)
-    nonce_store.py      — In-memory server-side nonce store with 60-second TTL (issue #7)
-    oidc.py             — Keycloak OIDC JWT validation: JWKS fetch + cache, signature verify, role check, operator CN extraction
-  repositories/
-    machine_repo.py     — SqlMachineRepository: CRUD operations over MachineRow
-    operator_repo.py    — AuditRepository (INSERT-only) + ApprovalRepository (dual-control vote store)
-  talos/
-    config_generator.py — Merge role base configs with machine-specific overrides → Talos MachineConfig YAML
-    iso_factory.py      — Build Talos Image Factory schematic URLs; ITL_ISO_URL fallback
+    enrollment_ca.py    — Enrollment CA: cert issuance, chain verification, RSA-OAEP wrapping
+    tpm_verifier.py     — EK material verification + SHA-256/SHA-384 fingerprint computation
+    quote_verifier.py   — TPM2_Quote signature + TPMS_ATTEST parsing + PCR digest verification
+    nonce_store.py      — In-memory nonce store with 60-second TTL
+    oidc.py             — Keycloak OIDC JWT validation: JWKS fetch, signature verify, role check
   handlers/
     registration.py     — Business logic for /register and /self-register
     attestation.py      — Business logic for /attest
     config_delivery.py  — Business logic for /config/{token} and /config?mac=
-    machines.py         — Business logic for machine CRUD, approve (incl. dual-control), revoke, lock, unlock, offline-bundle; all actions write AuditLogRow
+    machines.py         — Business logic for machine CRUD, approve, revoke, lock, unlock
     enrollment.py       — Business logic for /machines/enroll and /machines/{id}/request-cert
   routes/
     registration.py     — FastAPI router: POST /api/v1/register, /self-register
-    attestation.py      — FastAPI router: GET /healthz, GET /api/v1/attest/challenge, POST /api/v1/attest
+    attestation.py      — FastAPI router: GET /healthz, /api/v1/attest/challenge, POST /api/v1/attest
     config.py           — FastAPI router: GET /api/v1/config, /api/v1/config/{token}
-    machines.py         — FastAPI router: GET/POST /api/v1/machines/**, GET /api/v1/machines/{id}/approvals
-    audit.py            — FastAPI router: GET /api/v1/audit (paginated append-only audit log), GET /api/v1/audit/verify (chain integrity check)
+    machines.py         — FastAPI router: GET/POST /api/v1/machines/**
+    audit.py            — FastAPI router: GET /api/v1/audit, /api/v1/audit/verify
+  talos/
+    config_generator.py — Merge role base configs with machine-specific overrides
+    iso_factory.py      — Build Talos Image Factory schematic URLs
   main.py               — Entry point: app = create_app()
 ```
 
-Backward-compatible re-export shims at the package root (`config.py`, `deps.py`, `models.py`, `app.py`, `enrollment_ca.py`, `tpm_verifier.py`, `config_generator.py`, `iso_factory.py`) allow existing import paths to continue working without changes.
+### 4. **Web Dashboard** (`src/web/`)
+
+Flask-based web interface. Uses SDK for data access. Provides:
+- Dashboard with machine overview and compliance metrics
+- Machine list/detail views with filtering
+- Audit log with cryptographic verification
+- Pending approval management
+- KQL query engine for advanced filtering
+
+```
+src/web/
+  api/
+    dashboard.py        — Dashboard route handler
+    machines.py         — Machine routes
+    audit.py            — Audit log routes
+  core/
+    deps.py             — Flask request-scoped DB session management
+    adapters.py         — SQLModel → dict conversion for Jinja2 templates
+  services/
+    kql_engine.py       — Kusto Query Language parser for machine queries
+  templates/            — Jinja2 templates with Azure Portal dark theme
+  static/               — CSS, JavaScript, assets
+  app.py                — Flask application factory
+```
+
+### Package Relationships
+
+```
+┌─────────────────────────────────────────────────────┐
+│  itl-attestation-sdk (PyPI package)                 │
+│  • Models (MachineRow, AuditLogRow)                 │
+│  • Repositories (SqlMachineRepository)              │
+│  • Database infrastructure (SQLModel, SQLAlchemy)   │
+└──────────────┬──────────────────────────────────────┘
+               │ imported by
+       ┌───────┴───────┬────────────────┬───────────────┐
+       │               │                │               │
+       ▼               ▼                ▼               ▼
+┌─────────────┐ ┌────────────┐ ┌──────────────┐ ┌──────────────┐
+│ CLI         │ │ Attestation│ │ Web          │ │ Future       │
+│ (itl-attest │ │ Service    │ │ Dashboard    │ │ Services     │
+│ ation-cli)  │ │ (FastAPI)  │ │ (Flask)      │ │              │
+│             │ │            │ │              │ │              │
+│ REST client │ │ REST API   │ │ UI           │ │ ...          │
+│ OIDC auth   │ │ TPM verify │ │ KQL engine   │ │              │
+└─────────────┘ └────────────┘ └──────────────┘ └──────────────┘
+```
+
+All services share the same data models and repositories via the SDK, ensuring consistency across the platform.
 
 ---
 

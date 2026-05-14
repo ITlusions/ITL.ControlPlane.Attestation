@@ -11,4 +11,5 @@ bp = Blueprint("configuration", __name__)
 @bp.route("/configuration")
 def configuration():
     settings: Settings = current_app.extensions["settings"]
-    return render_template("configuration.html", page="configuration", settings=settings.display_settings())
+    breadcrumb = [{"label": "Configuration", "url": None}]
+    return render_template("configuration.html", page="configuration", settings=settings.display_settings(), breadcrumb=breadcrumb)

@@ -16,6 +16,11 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://localhost:5432/attestation",
         alias="DATABASE_URL",
     )
+    # SQLite database URL for shared attestation service database
+    db_url: str = Field(
+        default="sqlite:///d:/repos/ITL.ControlPlane.Attestation/data/machines.db",
+        alias="ITL_DB_URL",
+    )
     keycloak_url: str = Field(default="https://sts.itlusions.com", alias="KEYCLOAK_URL")
     keycloak_realm: str = Field(default="itl", alias="KEYCLOAK_REALM")
     keycloak_client: str = Field(default="itl-braincell", alias="KEYCLOAK_CLIENT")

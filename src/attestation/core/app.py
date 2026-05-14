@@ -4,19 +4,15 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from sqlmodel import SQLModel
 
 from .config import settings
 from .deps import get_engine
 from ..pki.enrollment_ca import init_enrollment_ca
 from ..routes import attestation_router, audit_router, config_router, machines_router, registration_router
-
-_STATIC_DIR = Path(__file__).parent.parent / "static"
 
 logger = logging.getLogger(__name__)
 
@@ -118,16 +114,5 @@ def create_app() -> FastAPI:
     @app.get("/healthz", include_in_schema=False)
     def healthz():
         return {"status": "ok"}
-
-    @app.get("/dashboard", include_in_schema=False)
-    def dashboard():
-        return FileResponse(_STATIC_DIR / "dashboard.html")
-
-    @app.get("/demo", include_in_schema=False)
-    def demo():
-        return FileResponse(_STATIC_DIR / "demo.html")
-
-    if _STATIC_DIR.is_dir():
-        app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
     return app

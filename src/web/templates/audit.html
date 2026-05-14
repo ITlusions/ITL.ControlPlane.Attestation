@@ -11,55 +11,84 @@
   </div>
   <div>
     <h1 class="f-page-title">Audit Log</h1>
-    <div class="f-page-sub">{{ events | length }} events — all machine lifecycle actions</div>
+    <div class="f-page-sub">All attestation events — immutable audit trail</div>
   </div>
-</div>
-
-<!-- Command bar -->
-<div class="f-command-bar">
-  <span class="f-result-count">{{ events | length }} events</span>
 </div>
 
 <!-- Filter bar -->
-<div class="f-pivot-bar">
-  <div class="f-pivot-search">
-    <svg class="f-search-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.099zm-5.242 1.156a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11"/></svg>
-    <input type="text" id="f-audit-search" placeholder="Search events…" autocomplete="off">
+<div class="f-filter-bar">
+  <span class="f-filter-label">From</span>
+  <input type="date" id="filter-from" class="f-filter-input" value="2026-04-01" style="width:130px;">
+  <span class="f-filter-label">To</span>
+  <input type="date" id="filter-to" class="f-filter-input" value="2026-05-31" style="width:130px;">
+  <span class="f-filter-label" style="margin-left:8px;">Machine</span>
+  <input type="search" id="filter-machine" class="f-filter-input" placeholder="ID / hostname / serial…" style="width:200px;">
+  <span class="f-filter-label" style="margin-left:8px;">Action</span>
+  <select id="filter-action" class="f-filter-select" style="width:140px;">
+    <option value="">All actions</option>
+    <option>REGISTER</option>
+    <option>APPROVE</option>
+    <option>REJECT</option>
+    <option>ATTEST</option>
+    <option>TOKEN_ISSUE</option>
+    <option>LOCK</option>
+    <option>UNLOCK</option>
+    <option>REVOKE</option>
+  </select>
+  <span class="f-filter-label" style="margin-left:8px;">Result</span>
+  <select id="filter-result" class="f-filter-select" style="width:120px;">
+    <option value="">All results</option>
+    <option>success</option>
+    <option>failure</option>
+    <option>warning</option>
+  </select>
+  <button class="f-cmd-btn" onclick="applyFilter()">
+    <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" style="vertical-align:-1px;"><path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg> Apply
+  </button>
+  <button class="f-cmd-btn" onclick="clearFilter()">
+    <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" style="vertical-align:-1px;"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/></svg> Clear
+  </button>
+  <div style="margin-left:auto;display:flex;gap:6px;">
+    <button class="f-cmd-btn" onclick="exportCSV()">
+      <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" style="vertical-align:-1px;"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg> Export CSV
+    </button>
   </div>
 </div>
 
-<!-- Data grid -->
-<div class="f-grid-wrap">
-  <table class="f-grid" id="f-audit-table">
+<!-- Data table -->
+<div class="f-data-table-wrap">
+  <table class="f-data-table" id="f-audit-table">
     <thead>
       <tr>
         <th>Timestamp</th>
-        <th>Actor</th>
+        <th>Event ID</th>
+        <th>Machine</th>
+        <th>User / Agent</th>
         <th>Action</th>
-        <th>Machine ID</th>
         <th>Result</th>
-        <th>Detail</th>
+        <th>Source IP</th>
       </tr>
     </thead>
     <tbody>
       {% for ev in events %}
       <tr class="audit-row">
         <td><span class="f-ts">{{ ev.ts | datefmt }}</span></td>
-        <td style="font-size:13px;color:rgba(255,255,255,.8);">{{ ev.actor | default('system') }}</td>
-        <td>
-          <span class="f-audit-action f-audit-{{ ev.action | lower }}">{{ ev.action | upper }}</span>
-        </td>
+        <td style="font-family:monospace;font-size:.72rem;color:rgba(255,255,255,.5);">{{ ev.id if ev.id else '—' }}</td>
         <td>
           {% if ev.machine_id %}
-          <a href="{{ url_for('machine_detail', machine_id=ev.machine_id) }}" class="f-machine-id">{{ ev.machine_id | trunc(14) }}</a>
+          <a href="{{ url_for('machines.machine_detail', machine_id=ev.machine_id) }}" class="f-resource-link">{{ ev.machine_id | trunc(14) }}</a>
           {% else %}
           <span style="color:rgba(255,255,255,.3);">—</span>
           {% endif %}
         </td>
+        <td style="font-size:.78rem;color:rgba(255,255,255,.8);">{{ ev.actor | default('system') }}</td>
+        <td>
+          <span class="f-audit-action f-audit-{{ ev.action | lower }}">{{ ev.action | upper }}</span>
+        </td>
         <td>
           {% if ev.result in ('ok', 'success') %}
           <span class="f-audit-result-ok">
-            <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" style="vertical-align:-1px;margin-right:3px;"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0"/></svg>ok
+            <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" style="vertical-align:-1px;margin-right:3px;"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0"/></svg>success
           </span>
           {% else %}
           <span class="f-audit-result-fail">
@@ -67,10 +96,10 @@
           </span>
           {% endif %}
         </td>
-        <td style="font-size:12px;color:rgba(255,255,255,.5);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ ev.detail | default('') }}">{{ ev.detail | default('—') }}</td>
+        <td style="font-family:monospace;font-size:.75rem;color:rgba(255,255,255,.6);">{{ ev.source_ip if ev.source_ip else '—' }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="6" style="padding:32px;text-align:center;color:rgba(255,255,255,.3);">No audit events recorded yet.</td></tr>
+      <tr><td colspan="7" style="padding:32px;text-align:center;color:rgba(255,255,255,.3);">No audit events recorded yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -84,11 +113,72 @@
 
 {% block scripts %}
 <script>
-document.getElementById("f-audit-search").addEventListener("input", function() {
-  const q = this.value.toLowerCase();
-  document.querySelectorAll(".audit-row").forEach(row => {
-    row.style.display = !q || row.textContent.toLowerCase().includes(q) ? "" : "none";
+// Filter functionality
+function applyFilter() {
+  const from = document.getElementById('filter-from').value;
+  const to = document.getElementById('filter-to').value;
+  const machine = document.getElementById('filter-machine').value.toLowerCase();
+  const action = document.getElementById('filter-action').value.toLowerCase();
+  const result = document.getElementById('filter-result').value.toLowerCase();
+  
+  document.querySelectorAll('.audit-row').forEach(row => {
+    const rowDate = row.querySelector('.f-ts').textContent;
+    const rowMachine = row.cells[2].textContent.toLowerCase();
+    const rowAction = row.cells[4].querySelector('.f-audit-action').textContent.trim().toLowerCase();
+    const rowResult = row.cells[5].textContent.trim().toLowerCase();
+    
+    let show = true;
+    
+    // Date filter (simple text comparison, good enough for demo)
+    if (from && rowDate < from) show = false;
+    if (to && rowDate > to) show = false;
+    
+    // Machine filter
+    if (machine && !rowMachine.includes(machine)) show = false;
+    
+    // Action filter
+    if (action && !rowAction.includes(action)) show = false;
+    
+    // Result filter
+    if (result && !rowResult.includes(result)) show = false;
+    
+    row.style.display = show ? '' : 'none';
   });
-});
+}
+
+function clearFilter() {
+  document.getElementById('filter-from').value = '2026-04-01';
+  document.getElementById('filter-to').value = '2026-05-31';
+  document.getElementById('filter-machine').value = '';
+  document.getElementById('filter-action').value = '';
+  document.getElementById('filter-result').value = '';
+  document.querySelectorAll('.audit-row').forEach(row => {
+    row.style.display = '';
+  });
+}
+
+function exportCSV() {
+  const table = document.getElementById('f-audit-table');
+  const rows = Array.from(table.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+  
+  let csv = [];
+  rows.forEach(row => {
+    const cells = Array.from(row.querySelectorAll('td, th'));
+    const rowData = cells.map(cell => {
+      let text = cell.textContent.trim();
+      text = text.replace(/"/g, '""'); // Escape quotes
+      return `"${text}"`;
+    });
+    csv.push(rowData.join(','));
+  });
+  
+  const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'audit-log-' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
 </script>
 {% endblock %}

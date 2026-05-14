@@ -5,9 +5,28 @@ title: Operations
 
 # Operations — ITL.ControlPlane.Attestation
 
-## Obtaining an Operator Token
+## Operator Authentication
 
-Admin operations require a Keycloak JWT. Obtain one with:
+### Option 1: CLI (Recommended)
+
+The ITL Attestation CLI handles OIDC authentication automatically:
+
+```sh
+# Interactive browser login (PKCE)
+attestation auth login
+
+# View current user
+attestation auth whoami
+
+# Logout
+attestation auth logout
+```
+
+All subsequent CLI commands automatically use the cached token.
+
+### Option 2: Manual Token Fetch (for curl/scripting)
+
+Obtain a Keycloak JWT manually:
 
 ```sh
 TOKEN=$(curl -s -X POST \
@@ -19,7 +38,7 @@ TOKEN=$(curl -s -X POST \
   | jq -r .access_token)
 ```
 
-All subsequent examples use `$TOKEN`. For emergency break-glass access use `$ITL_ADMIN_TOKEN` instead — all such actions are logged as `operator_cn = SYSTEM`.
+All subsequent curl examples use `$TOKEN`. For emergency break-glass access use `$ITL_ADMIN_TOKEN` instead — all such actions are logged as `operator_cn = SYSTEM`.
 
 ---
 
@@ -62,6 +81,20 @@ This is the fully automated path when machines boot a generic Talos ISO that has
 
 **Operator action required:**
 
+**CLI (recommended):**
+```sh
+# 1. See pending machines
+attestation machine list --status pending_approval
+
+# 2. Approve (extension picks this up within 60 s)
+attestation machine approve <machine-id> \
+  --role worker-app \
+  --hostname k8s-worker-03 \
+  --assigned-ip 10.0.1.13/24 \
+  --reason "Production deployment"
+```
+
+**curl (alternative):**
 ```sh
 # 1. See pending machines
 curl -s -H "Authorization: Bearer $TOKEN" \
@@ -84,6 +117,29 @@ No reboot required from the operator — the extension handles it automatically 
 
 When `ITL_DUAL_CONTROL_ROLES=controlplane`, a single approval is not sufficient. Two distinct operators must approve independently within `ITL_DUAL_CONTROL_WINDOW_SECONDS` (default 10 min).
 
+**CLI (recommended):**
+```sh
+# Operator 1 (alice) — first vote → pending second approval
+attestation auth login  # Alice logs in
+attestation machine approve <machine-id> \
+  --role controlplane \
+  --hostname cp-01 \
+  --assigned-ip 10.0.0.1/24 \
+  --reason "First approval - Alice"
+# → Status: pending_second_approval (1/2 approvals)
+
+# Operator 2 (bob) — second vote → machine registered
+attestation auth logout
+attestation auth login  # Bob logs in
+attestation machine approve <machine-id> \
+  --role controlplane \
+  --hostname cp-01 \
+  --assigned-ip 10.0.0.1/24 \
+  --reason "Second approval - Bob"
+# → Status: registered (2/2 approvals)
+```
+
+**curl (alternative):**
 ```sh
 # Operator 1 (alice) — first vote → HTTP 202
 curl -s -X POST \
@@ -102,8 +158,12 @@ curl -s -X POST \
 # → MachineDetail (machine is now registered)
 ```
 
-Check the pending votes for a machine:
+**CLI:**
+```sh
+attestation machine get <machine-id> --output json | jq .approvals
+```
 
+**curl:**
 ```sh
 curl -s -H "Authorization: Bearer $TOKEN" \
   https://attest.itlusions.com/api/v1/machines/<machine_id>/approvals | jq .
@@ -113,6 +173,13 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 **Step 2** — List pending machines:
 
+**CLI:**
+```sh
+attestation machine list --status pending_approval
+attestation machine list --status registered
+```
+
+**curl:**
 ```sh
 curl -s -H "Authorization: Bearer $TOKEN" \
   https://attest.itlusions.com/api/v1/machines \
@@ -121,6 +188,15 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 **Step 3** — Approve and assign role:
 
+**CLI:**
+```sh
+attestation machine approve <machine-id> \
+  --role worker-app \
+  --hostname k8s-worker-03 \
+  --assigned-ip 10.0.1.13/24
+```
+
+**curl:**
 ```sh
 curl -s -X POST \
   -H "Authorization: Bearer $TOKEN" \
@@ -145,6 +221,12 @@ The operator then reviews and approves as in Step 2–3 above. The machine must 
 
 Useful when a machine needs to be pulled for maintenance but you want to prevent it from re-joining the cluster:
 
+**CLI:**
+```sh
+attestation machine lock <machine-id> --reason "Scheduled maintenance — disk replacement"
+```
+
+**curl:**
 ```sh
 curl -s -X POST \
   -H "Authorization: Bearer $TOKEN" \
@@ -155,6 +237,12 @@ curl -s -X POST \
 
 The machine's next attestation attempt returns `action=lock`. No data is destroyed. Unlock when ready:
 
+**CLI:**
+```sh
+attestation machine unlock <machine-id>
+```
+
+**curl:**
 ```sh
 curl -s -X POST \
   -H "Authorization: Bearer $TOKEN" \
@@ -167,6 +255,12 @@ curl -s -X POST \
 
 Blocks the machine from re-attesting without destroying any data. Use when decommissioning a node gracefully or when suspending access pending investigation:
 
+**CLI:**
+```sh
+attestation machine revoke <machine-id> --reason "Decommissioned — replaced by k8s-worker-07"
+```
+
+**curl:**
 ```sh
 curl -s -X POST \
   -H "Authorization: Bearer $TOKEN" \
@@ -181,6 +275,12 @@ curl -s -X POST \
 
 Triggers a `talosctl reset --graceful=false` on the node the next time it contacts the attestation service. This wipes STATE and EPHEMERAL partitions, destroying cluster join credentials and returning the node to maintenance mode.
 
+**CLI:**
+```sh
+attestation machine revoke <machine-id> --reason "Security incident — node suspected compromised"
+```
+
+**curl:**
 ```sh
 curl -s -X POST \
   -H "Authorization: Bearer $TOKEN" \
@@ -197,6 +297,12 @@ The wipe is triggered the next time the `itl-tpm-register` extension calls `POST
 
 For air-gapped deployments where the machine cannot reach the service during initial setup:
 
+**CLI:**
+```sh
+attestation machine get <machine-id> --output json | jq .offline_bundle
+```
+
+**curl:**
 ```sh
 curl -s -H "Authorization: Bearer $TOKEN" \
   https://attest.itlusions.com/api/v1/machines/<machine_id>/offline-bundle \
@@ -242,6 +348,12 @@ curl -sf https://attest.itlusions.com/healthz
 
 ### Machine status counts
 
+**CLI:**
+```sh
+attestation machine list --output json | jq 'group_by(.status) | map({status: .[0].status, count: length})'
+```
+
+**curl:**
 ```sh
 curl -s -H "Authorization: Bearer $TOKEN" \
   https://attest.itlusions.com/api/v1/machines \
@@ -250,6 +362,12 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ### Machines requiring approval
 
+**CLI:**
+```sh
+attestation machine list --status pending_approval
+```
+
+**curl:**
 ```sh
 curl -s -H "Authorization: Bearer $TOKEN" \
   https://attest.itlusions.com/api/v1/machines \
@@ -258,6 +376,19 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ### Audit log
 
+**CLI:**
+```sh
+# Most recent 50 admin actions
+attestation audit list --page 1 --per-page 50
+
+# Verify cryptographic chain integrity
+attestation audit verify
+
+# Filter to a specific machine
+attestation audit list --machine-id <machine-id>
+```
+
+**curl:**
 ```sh
 # Most recent 50 admin actions
 curl -s -H "Authorization: Bearer $TOKEN" \
@@ -273,6 +404,12 @@ The log is append-only — entries are never modified or deleted. `operator_cn` 
 
 ### Pending dual-control approvals
 
+**CLI:**
+```sh
+attestation machine get <machine-id> --output json | jq .approvals
+```
+
+**curl:**
 ```sh
 curl -s -H "Authorization: Bearer $TOKEN" \
   https://attest.itlusions.com/api/v1/machines/<machine_id>/approvals | jq .

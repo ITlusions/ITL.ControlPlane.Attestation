@@ -1,24 +1,33 @@
 """Audit log business logic."""
 from __future__ import annotations
 
-from typing import Any
+from sqlmodel import Session
 
-from repositories.audit_repo import InMemoryAuditRepository
+from sdk.models import AuditLogRow
+from sdk.repositories import AuditRepository
 
 
 class AuditService:
-    def __init__(self, audit_repo: InMemoryAuditRepository) -> None:
-        self._repo = audit_repo
+    def __init__(self, db_session: Session) -> None:
+        self._repo = AuditRepository(db_session)
 
-    def all(self) -> list[dict[str, Any]]:
-        return self._repo.all()
+    def all(self) -> list[AuditLogRow]:
+        return self._repo.list_all()
 
     def log(
         self,
         action: str,
         machine_id: str,
         detail: str = "",
-        actor: str = "dashboard",
-        result: str = "success",
+        operator: str = "dashboard",
+        prev_state: str = "",
+        new_state: str = "",
     ) -> None:
-        self._repo.log(action=action, machine_id=machine_id, detail=detail, actor=actor, result=result)
+        self._repo.append(
+            operator_cn=operator,
+            action=action.upper(),
+            machine_id=machine_id,
+            prev_state=prev_state,
+            new_state=new_state,
+            detail=detail,
+        )

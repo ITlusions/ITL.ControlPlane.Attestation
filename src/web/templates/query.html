@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Query — ITL Control Plane{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="f-page-header">
+  <svg class="f-page-icon" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+  </svg>
+  <div class="f-page-title-group">
+    <h1 class="f-page-title">Query Interface</h1>
+    <p class="f-page-subtitle">KQL query explorer — AuditLog, Machines</p>
+  </div>
+</div>
+
+<!-- Query editor -->
+<div class="f-query-container">
+  <div class="f-query-editor-panel">
+    <div class="f-query-toolbar">
+      <button id="runBtn" class="f-btn f-btn-primary" title="Run query (Shift+Enter)">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+          <path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393"/>
+        </svg>
+        Run
+      </button>
+      <div class="f-query-samples">
+        <label for="sampleSelect">Sample queries:</label>
+        <select id="sampleSelect" class="f-query-select">
+          <option value="">— Select a sample —</option>
+          {% for sample in samples %}
+          <option value="{{ loop.index0 }}">{{ sample.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button id="clearBtn" class="f-btn f-btn-subtle" title="Clear editor">Clear</button>
+      <div style="flex:1"></div>
+      <span class="f-query-hint">Shift+Enter to run</span>
+    </div>
+    
+    <textarea id="queryEditor" class="f-query-editor" placeholder="Enter your KQL query...
+
+Example:
+AuditLog
+| where ts > ago(24h)
+| where action == &quot;attest&quot;
+| sort by ts desc
+| take 10
+">AuditLog
+| take 10</textarea>
+  </div>
+
+  <!-- Results panel -->
+  <div class="f-query-results-panel">
+    <div class="f-query-results-header">
+      <span id="resultStatus" class="f-query-status">Ready</span>
+      <button id="exportBtn" class="f-btn f-btn-subtle" style="display:none">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+          <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/>
+        </svg>
+        Export CSV
+      </button>
+    </div>
+    
+    <div id="resultsContainer" class="f-query-results">
+      <div class="f-query-empty">
+        <svg viewBox="0 0 16 16" width="48" height="48" fill="currentColor" opacity="0.3">
+          <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+        </svg>
+        <p>Run a query to see results</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Sample queries data
+const samples = {{ samples | tojson }};
+let lastResults = null;
+
+// Sample selector
+document.getElementById('sampleSelect').addEventListener('change', (e) => {
+  const idx = parseInt(e.target.value);
+  if (!isNaN(idx) && samples[idx]) {
+    document.getElementById('queryEditor').value = samples[idx].query;
+    e.target.value = '';
+  }
+});
+
+// Clear button
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('queryEditor').value = '';
+  document.getElementById('queryEditor').focus();
+});
+
+// Shift+Enter to run
+document.getElementById('queryEditor').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.shiftKey) {
+    e.preventDefault();
+    runQuery();
+  }
+});
+
+// Run button
+document.getElementById('runBtn').addEventListener('click', runQuery);
+
+// Export button
+document.getElementById('exportBtn').addEventListener('click', exportCSV);
+
+async function runQuery() {
+  const query = document.getElementById('queryEditor').value.trim();
+  if (!query) {
+    showStatus('Enter a query first', 'error');
+    return;
+  }
+
+  showStatus('Executing query...', 'loading');
+  document.getElementById('resultsContainer').innerHTML = '<div class="f-query-loading">Running query...</div>';
+  document.getElementById('exportBtn').style.display = 'none';
+
+  try {
+    const response = await fetch('/api/query/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query })
+    });
+
+    const result = await response.json();
+
+    if (result.error) {
+      showStatus(`Error: ${result.error}`, 'error');
+      document.getElementById('resultsContainer').innerHTML = `
+        <div class="f-query-error">
+          <svg viewBox="0 0 16 16" width="24" height="24" fill="currentColor">
+            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4m.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2"/>
+          </svg>
+          <p><strong>Query Error</strong></p>
+          <p>${result.error}</p>
+        </div>
+      `;
+      return;
+    }
+
+    lastResults = result;
+    showStatus(`${result.count} rows returned`, 'success');
+    renderResults(result);
+    document.getElementById('exportBtn').style.display = result.rows.length > 0 ? 'inline-flex' : 'none';
+
+  } catch (err) {
+    showStatus(`Network error: ${err.message}`, 'error');
+    document.getElementById('resultsContainer').innerHTML = `
+      <div class="f-query-error">
+        <p><strong>Network Error</strong></p>
+        <p>${err.message}</p>
+      </div>
+    `;
+  }
+}
+
+function showStatus(text, type) {
+  const statusEl = document.getElementById('resultStatus');
+  statusEl.textContent = text;
+  statusEl.className = 'f-query-status f-query-status-' + type;
+}
+
+function renderResults(result) {
+  if (!result.rows || result.rows.length === 0) {
+    document.getElementById('resultsContainer').innerHTML = `
+      <div class="f-query-empty">
+        <p>Query returned 0 rows</p>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '<table class="f-data-table"><thead><tr>';
+  result.columns.forEach(col => {
+    html += `<th>${col}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  result.rows.forEach(row => {
+    html += '<tr>';
+    result.columns.forEach(col => {
+      const val = row[col];
+      html += `<td>${val !== null && val !== undefined ? val : '<span style="opacity:0.4">null</span>'}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('resultsContainer').innerHTML = html;
+}
+
+function exportCSV() {
+  if (!lastResults || !lastResults.rows.length) return;
+
+  let csv = lastResults.columns.join(',') + '\n';
+  lastResults.rows.forEach(row => {
+    const values = lastResults.columns.map(col => {
+      const val = row[col];
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      return str.includes(',') ? `"${str}"` : str;
+    });
+    csv += values.join(',') + '\n';
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'query-results.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}
