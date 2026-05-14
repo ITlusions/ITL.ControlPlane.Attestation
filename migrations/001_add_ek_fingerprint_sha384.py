@@ -39,7 +39,13 @@ from pathlib import Path
 
 def _sha384_from_b64_pem(b64_pem: str) -> str:
     """Return the SHA-384 hex digest of the raw (base64-decoded) EK bytes."""
-    raw = base64.b64decode(b64_pem)
+    try:
+        raw = base64.b64decode(b64_pem)
+    except Exception as exc:
+        raise ValueError(
+            f"Invalid base64-encoded PEM data: {exc}. "
+            "Ensure ek_cert_pem is a base64-encoded DER/PEM certificate."
+        ) from exc
     return hashlib.sha384(raw).hexdigest()
 
 
@@ -127,11 +133,17 @@ def _resolve_db_path() -> str:
     if len(sys.argv) > 1:
         return sys.argv[1]
     db_url = os.environ.get("ITL_DB_URL", "sqlite:////var/lib/itl-reg/db/machines.db")
-    # Strip SQLAlchemy URL prefix
+    # Only SQLite is supported by this migration script.
     for prefix in ("sqlite:////", "sqlite:///"):
         if db_url.startswith(prefix):
             return db_url[len(prefix):]
-    return db_url
+    print(
+        f"ERROR: ITL_DB_URL='{db_url}' does not look like a SQLite URL. "
+        "This migration script only supports SQLite databases. "
+        "Pass the path to the SQLite file as the first argument.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 if __name__ == "__main__":

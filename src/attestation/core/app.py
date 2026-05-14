@@ -72,13 +72,16 @@ def _add_high_assurance_middleware(app: FastAPI) -> None:
             return response
 
         forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
-        if forwarded_proto and forwarded_proto != "https":
+        # In high-assurance mode the upstream proxy MUST always set X-Forwarded-Proto.
+        # Reject any request where the header is absent or not 'https'.
+        if forwarded_proto != "https":
             return JSONResponse(
                 status_code=403,
                 content={
                     "detail": (
                         "High-assurance mode is enabled. "
-                        "This service must be accessed over HTTPS (TLS 1.3)."
+                        "This service must be accessed over HTTPS (TLS 1.3) via a properly "
+                        "configured proxy that sets X-Forwarded-Proto: https."
                     )
                 },
             )
