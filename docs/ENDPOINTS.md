@@ -125,14 +125,27 @@ Extension-initiated registration. Called by the `itl-tpm-register` Talos extensi
 
 **Extension flow after calling this endpoint:**
 
-```
-1. Call POST /api/v1/self-register   → status: pending_approval
-2. Poll POST /api/v1/attest (every 60 s)
-   → action: "none"  while operator has not yet approved
-   → action: "apply-config" + config_url  once operator has approved and machine is attested
-3. Fetch config_url and apply:
-     talosctl apply-config --insecure --file <(curl -sf <config_url>)
-4. Talos reboots with its full cluster MachineConfig.
+```mermaid
+sequenceDiagram
+    participant Ext as Extension
+    participant API as Attestation API
+    participant Op as Operator
+    
+    Ext->>API: POST /api/v1/self-register
+    API-->>Ext: status: pending_approval
+    
+    loop Every 60s while pending
+        Ext->>API: POST /api/v1/attest
+        API-->>Ext: action: "none"
+    end
+    
+    Op->>API: Approve machine
+    
+    Ext->>API: POST /api/v1/attest
+    API-->>Ext: action: "apply-config" + config_url
+    
+    Ext->>Ext: curl config_url \| talosctl apply-config --insecure
+    Ext->>Ext: Reboot with full MachineConfig
 ```
 
 **Request body** — same fields as `RegisterRequest` except `desired_role` is optional and no `iso_url` is returned.

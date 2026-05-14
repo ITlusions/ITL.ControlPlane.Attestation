@@ -105,24 +105,25 @@ Flask-based web interface for operators. Uses SDK for data access.
 
 ## Package Relationships
 
-```
-┌─────────────────────────────────────────────────────┐
-│  itl-attestation-sdk (PyPI)                         │
-│  • Models (MachineRow, AuditLogRow)                 │
-│  • Repositories (SqlMachineRepository)              │
-│  • Database infrastructure (SQLModel, SQLAlchemy)   │
-└──────────────┬──────────────────────────────────────┘
-               │ imported by
-       ┌───────┴───────┬────────────────┬───────────────┐
-       │               │                │               │
-       ▼               ▼                ▼               ▼
-┌─────────────┐ ┌────────────┐ ┌──────────────┐ ┌──────────────┐
-│ CLI         │ │ Attestation│ │ Web          │ │ Future       │
-│ (PyPI)      │ │ Service    │ │ Dashboard    │ │ Services     │
-│             │ │ (FastAPI)  │ │ (Flask)      │ │              │
-│ REST client │ │ REST API   │ │ UI           │ │              │
-│ OIDC auth   │ │ TPM verify │ │ KQL engine   │ │              │
-└─────────────┘ └────────────┘ └──────────────┘ └──────────────┘
+```mermaid
+graph TD
+    SDK["itl-attestation-sdk (PyPI)<br/>• Models (MachineRow, AuditLogRow)<br/>• Repositories (SqlMachineRepository)<br/>• Database infrastructure (SQLModel, SQLAlchemy)"]
+    
+    CLI["CLI<br/>(PyPI)<br/><br/>REST client<br/>OIDC auth"]
+    SVC["Attestation Service<br/>(FastAPI)<br/><br/>REST API<br/>TPM verify"]
+    WEB["Web Dashboard<br/>(Flask)<br/><br/>UI<br/>KQL engine"]
+    FUT["Future<br/>Services"]
+    
+    SDK -->|imported by| CLI
+    SDK -->|imported by| SVC
+    SDK -->|imported by| WEB
+    SDK -->|imported by| FUT
+    
+    style SDK fill:#1e3a8a,stroke:#3b82f6,color:#fff,stroke-width:3px
+    style CLI fill:#1e40af,stroke:#60a5fa,color:#fff
+    style SVC fill:#1e40af,stroke:#60a5fa,color:#fff
+    style WEB fill:#1e40af,stroke:#60a5fa,color:#fff
+    style FUT fill:#334155,stroke:#64748b,color:#94a3b8
 ```
 
 ---

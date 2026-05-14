@@ -41,10 +41,22 @@ The EK is the machine's permanent hardware identity.
 - The **EK private key** never leaves the chip
 - An **EK Certificate** (signed by the manufacturer's CA) proves the key is in a genuine TPM
 
-```
-Manufacturer CA
-    └── EK Certificate  (proves: this EK is in a real TPM of model X, serial Y)
-            └── EK Public Key  (unique per chip)
+```mermaid
+graph TD
+    A[Manufacturer CA] --> B[EK Certificate]
+    B --> C[EK Public Key]
+    
+    style A fill:#1e3a8a,stroke:#3b82f6,color:#fff
+    style B fill:#1e40af,stroke:#60a5fa,color:#fff
+    style C fill:#1e40af,stroke:#60a5fa,color:#fff
+    
+    classDef note fill:#334155,stroke:#64748b,color:#e2e8f0
+    
+    note1["Proves: this EK is in a real TPM<br/>of model X, serial Y"]:::note
+    note2["Unique per chip"]:::note
+    
+    B -.-> note1
+    C -.-> note2
 ```
 
 The EK fingerprint (SHA-256 of the raw EK cert/pub bytes, or SHA-384 for CNSA 2.0 compliance) is used as a hardware identifier.
@@ -88,14 +100,23 @@ An EK cannot be used for signing (by design — to protect privacy). Instead, an
 
 An AK is a signing key generated inside the TPM Storage Hierarchy. To prove an AK is hardware-resident in the same TPM as the EK, a **Credential Activation** ceremony is performed:
 
-```
-1. Client generates AK inside TPM, sends AK_pub + EK_pub to server
-2. Server calls TPM2_MakeCredential(EK_pub, AK_pub, secret)
-   → produces encrypted blob only decryptable inside the target TPM
-3. Client calls TPM2_ActivateCredential(blob)
-   → TPM decrypts blob using EK, returns secret
-   → This only succeeds if AK and EK are in the same physical TPM
-4. Client returns secret to server — AK is now certified as hardware-bound
+```mermaid
+sequenceDiagram
+    participant Client
+    participant TPM
+    participant Server
+    
+    Client->>TPM: Generate AK
+    TPM-->>Client: AK_pub
+    Client->>Server: Send AK_pub + EK_pub
+    Server->>Server: TPM2_MakeCredential(EK_pub, AK_pub, secret)
+    Server-->>Client: Encrypted blob
+    Note over Server,Client: Blob only decryptable inside target TPM
+    Client->>TPM: TPM2_ActivateCredential(blob)
+    TPM->>TPM: Decrypt with EK (only succeeds if AK and EK in same TPM)
+    TPM-->>Client: secret
+    Client->>Server: Return secret
+    Note over Server: AK is now certified as hardware-bound
 ```
 
 ---
@@ -104,13 +125,19 @@ An AK is a signing key generated inside the TPM Storage Hierarchy. To prove an A
 
 Once an AK is certified, the TPM can produce a **Quote**: a signed snapshot of current PCR values.
 
-```
-Server → sends nonce (fresh random value)
-Client → TPM2_Quote(AK, PCRs=[0,1,7,9,11,12,13], nonce)
-       → returns: pcr_values + quote_signature
-Server → verifies quote_signature with AK_pub
-       → checks pcr_values match known-good policy
-       → checks nonce matches (prevents replay attacks)
+```mermaid
+sequenceDiagram
+    participant Server
+    participant Client
+    participant TPM
+    
+    Server->>Client: Send nonce (fresh random value)
+    Client->>TPM: TPM2_Quote(AK, PCRs=[0,1,7,9,11,12,13], nonce)
+    TPM-->>Client: pcr_values + quote_signature
+    Client->>Server: Return quote
+    Server->>Server: Verify quote_signature with AK_pub
+    Server->>Server: Check pcr_values match known-good policy
+    Server->>Server: Check nonce matches (prevents replay attacks)
 ```
 
 A valid Quote proves:
@@ -167,23 +194,40 @@ Use case: automatic disk unlock only on known-good boot. Tampered firmware → P
 
 ## How This Service Uses the TPM
 
-```
-Machine boots
-    │
-    ├─ TPM measures each boot stage into PCRs (automatic, by firmware)
-    │
-    ├─ itl-tpm-register reads EK public key + EK certificate
-    │   └─ POST /api/v1/register  →  server records EK fingerprint
-    │
-    ├─ AK Credential Activation (one-time)
-    │   └─ Proves AK is hardware-resident in this specific TPM
-    │
-    └─ Attestation (periodic or on-demand)
-        ├─ GET /api/v1/attest/challenge  →  server issues nonce
-        ├─ tpm2_quote over PCRs with nonce
-        └─ POST /api/v1/attest           →  server verifies quote + PCR policy
-            └─ Machine state: registered → attested
-                └─ Server delivers encrypted MachineConfig (wrapped to EK)
+```mermaid
+flowchart TD
+    A[Machine boots] --> B[TPM measures each boot stage into PCRs]
+    B --> C[itl-tpm-register reads EK public key + EK certificate]
+    C --> D[POST /api/v1/register]
+    D --> E[Server records EK fingerprint]
+    
+    E --> F[AK Credential Activation<br/>one-time]
+    F --> G[Proves AK is hardware-resident<br/>in this specific TPM]
+    
+    G --> H[Attestation<br/>periodic or on-demand]
+    H --> I[GET /api/v1/attest/challenge]
+    I --> J[Server issues nonce]
+    J --> K[tpm2_quote over PCRs with nonce]
+    K --> L[POST /api/v1/attest]
+    L --> M[Server verifies quote + PCR policy]
+    M --> N[Machine state: registered → attested]
+    N --> O[Server delivers encrypted MachineConfig<br/>wrapped to EK]
+    
+    style A fill:#1e3a8a,stroke:#3b82f6,color:#fff
+    style B fill:#065f46,stroke:#10b981,color:#fff
+    style C fill:#7c2d12,stroke:#f97316,color:#fff
+    style D fill:#1e40af,stroke:#60a5fa,color:#fff
+    style E fill:#1e40af,stroke:#60a5fa,color:#fff
+    style F fill:#7c2d12,stroke:#f97316,color:#fff
+    style G fill:#065f46,stroke:#10b981,color:#fff
+    style H fill:#7c2d12,stroke:#f97316,color:#fff
+    style I fill:#1e40af,stroke:#60a5fa,color:#fff
+    style J fill:#1e40af,stroke:#60a5fa,color:#fff
+    style K fill:#7c2d12,stroke:#f97316,color:#fff
+    style L fill:#1e40af,stroke:#60a5fa,color:#fff
+    style M fill:#1e40af,stroke:#60a5fa,color:#fff
+    style N fill:#065f46,stroke:#10b981,color:#fff
+    style O fill:#065f46,stroke:#10b981,color:#fff
 ```
 
 ---
