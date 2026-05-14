@@ -61,6 +61,14 @@ Machine boots any Talos ISO with talos.config=<service-url>
 | `ITL_DB_URL` | `sqlite:////var/lib/itl-reg/db/machines.db` | SQLAlchemy database URL |
 | `ITL_ENROLLMENT_CA_DIR` | `/var/lib/itl-reg/ca` | Enrollment CA key + cert directory |
 | `ITL_CONFIG_CACHE_DIR` | `/var/lib/itl-reg/configs` | Role base config YAML directory |
+| `ITL_ENROLLMENT_CERT_DAYS` | `30` | Validity period for issued enrollment certificates |
+| `ITL_ENROLLMENT_CA_ALGORITHM` | `ecdsa-p384` | CA key algorithm: `ecdsa-p384` (default) or `rsa-4096` |
+| `ITL_TPM_VERIFY_CA` | `false` | Enable EK cert chain verification against manufacturer CA bundles |
+| `ITL_TPM_VERIFY_CA_STRICT` | `false` | Reject registration when manufacturer CA verification fails |
+| `ITL_TPM_CA_BUNDLE_DIR` | `/var/lib/itl-reg/ca-bundles` | Directory containing TPM manufacturer CA PEM bundles |
+| `ITL_REQUIRE_NONCE` | `false` | Require anti-replay nonce (`nonce_id`) in every `POST /attest` |
+| `ITL_REQUIRE_QUOTE` | `false` | Require a verified PCR quote in every `POST /attest` |
+| `ITL_HIGH_ASSURANCE` | `false` | Enable high-assurance mode (TLS 1.3 enforcement) |
 
 ---
 
@@ -120,6 +128,7 @@ Interactive docs: `https://attest.itlusions.com/docs`
 | `GET` | `/healthz` | — | Liveness probe |
 | `POST` | `/api/v1/register` | — | Register machine by TPM EK (USB agent) |
 | `POST` | `/api/v1/self-register` | — | Extension self-registration on first boot |
+| `GET` | `/api/v1/attest/challenge` | — | Issue anti-replay nonce for attestation |
 | `POST` | `/api/v1/attest` | — | Attest machine identity; returns action |
 | `GET` | `/api/v1/config` | — | Generic config endpoint (MAC-based lookup) |
 | `GET` | `/api/v1/config/{token}` | — | One-time config token endpoint |
@@ -127,11 +136,13 @@ Interactive docs: `https://attest.itlusions.com/docs`
 | `POST` | `/api/v1/machines/{id}/approve` | Admin | Approve pending machine |
 | `POST` | `/api/v1/machines/{id}/reject` | Admin | Reject machine |
 | `POST` | `/api/v1/machines/{id}/revoke` | Admin | Revoke registered machine |
-| `GET` | `/api/v1/machines/{id}/cert` | Admin | Get enrollment certificate |
+| `POST` | `/api/v1/machines/{id}/lock` | Admin | Temporarily lock machine |
+| `POST` | `/api/v1/machines/{id}/unlock` | Admin | Unlock locked machine |
+| `GET` | `/api/v1/machines/{id}/offline-bundle` | Admin | USB provisioning bundle |
 | `POST` | `/api/v1/machines/import` | Admin | Import machine from offline TPM receipt |
 | `POST` | `/api/v1/machines/enroll` | — | Cert-based self-enrollment |
 | `POST` | `/api/v1/machines/{id}/request-cert` | Machine cert | Issue new enrollment cert |
-| `GET` | `/api/v1/machines/{id}/bundle` | Admin | USB provisioning bundle |
+| `POST` | `/api/v1/machines/{id}/ak-activate` | Machine | Activate Attestation Key via PCR quote |
 
 Full reference: [docs/ENDPOINTS.md](docs/ENDPOINTS.md)
 
@@ -146,3 +157,4 @@ Full reference: [docs/ENDPOINTS.md](docs/ENDPOINTS.md)
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker Compose, volume layout, role configs |
 | [docs/SECURITY.md](docs/SECURITY.md) | Enrollment CA, TPM EK verification, threat model |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Day-2 operations, approval workflow, troubleshooting |
+| [docs/TPM_EXPLAINED.md](docs/TPM_EXPLAINED.md) | TPM concepts: EK, PCRs, AK activation, quotes |

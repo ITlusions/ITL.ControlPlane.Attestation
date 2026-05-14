@@ -47,13 +47,13 @@ Manufacturer CA
             └── EK Public Key  (unique per chip)
 ```
 
-The EK fingerprint (SHA-384 of the EK public key DER) is used as a hardware identifier.
+The EK fingerprint (SHA-256 of the raw EK cert/pub bytes, or SHA-384 for CNSA 2.0 compliance) is used as a hardware identifier.
 
 ---
 
 ## Platform Configuration Registers (PCRs)
 
-PCRs are 48-byte registers inside the TPM (with SHA-384) that record what software has run on a machine.
+PCRs are fixed-size registers inside the TPM that record what software has run on a machine. With SHA-256 banks they are 32 bytes; with SHA-384 banks (CNSA 2.0) they are 48 bytes.
 
 **Key property**: PCRs can only be *extended* — never directly written.
 
@@ -173,7 +173,7 @@ Machine boots
     ├─ TPM measures each boot stage into PCRs (automatic, by firmware)
     │
     ├─ itl-tpm-register reads EK public key + EK certificate
-    │   └─ POST /api/v1/machines/register  →  server records EK fingerprint
+    │   └─ POST /api/v1/register  →  server records EK fingerprint
     │
     ├─ AK Credential Activation (one-time)
     │   └─ Proves AK is hardware-resident in this specific TPM

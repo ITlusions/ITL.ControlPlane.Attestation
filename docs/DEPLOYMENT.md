@@ -26,7 +26,14 @@ title: Deployment
 | `ITL_ADMIN_TOKEN` | *(empty)* | **Yes in production** | Bearer token for all admin endpoints. Service returns 503 for admin calls when unset. |
 | `ITL_ENROLLMENT_CERT_DAYS` | `30` | No | Validity period for issued enrollment certificates |
 | `ITL_ENROLLMENT_CA_DIR` | `/var/lib/itl-reg/ca` | No | Directory for Enrollment CA key + cert PEM files |
+| `ITL_ENROLLMENT_CA_ALGORITHM` | `ecdsa-p384` | No | CA key algorithm: `ecdsa-p384` (CNSA 2.0 default) or `rsa-4096` |
 | `ITL_CONFIG_CACHE_DIR` | `/var/lib/itl-reg/configs` | No | Directory containing role base config YAML files |
+| `ITL_TPM_VERIFY_CA` | `false` | No | Enable EK cert chain verification against manufacturer CA bundles |
+| `ITL_TPM_VERIFY_CA_STRICT` | `false` | No | When `true`, reject registration if manufacturer CA verification fails |
+| `ITL_TPM_CA_BUNDLE_DIR` | `/var/lib/itl-reg/ca-bundles` | No | Directory containing TPM manufacturer CA PEM bundles (Infineon, NTC, STM, etc.) |
+| `ITL_REQUIRE_NONCE` | `false` | No | Require anti-replay nonce (`nonce_id`) in every `POST /attest` request |
+| `ITL_REQUIRE_QUOTE` | `false` | No | Require a verified PCR quote in every `POST /attest` request |
+| `ITL_HIGH_ASSURANCE` | `false` | No | Enable high-assurance mode (enforces TLS 1.3 only) |
 
 ---
 

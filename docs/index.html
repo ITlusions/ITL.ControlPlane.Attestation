@@ -616,7 +616,7 @@
         <div class="step-num">Offline</div>
         <div class="step-title">Offline Bundle</div>
         <div class="step-desc">Generate a self-contained ZIP containing a signed enrollment cert, role MachineConfig, and USB deployment script — for air-gapped environments with no network access to the service.</div>
-        <span class="step-tag">POST /machines/{id}/offline-bundle</span>
+        <span class="step-tag">GET /machines/{id}/offline-bundle</span>
       </div>
     </div>
   </div>
@@ -670,6 +670,16 @@
         <div class="feature-title">TPM Key Wrapping</div>
         <div class="feature-desc">Enrollment private keys can be RSA-OAEP-SHA256 wrapped to a TPM resident decrypt key supplied by the client — the plaintext key never leaves the TPM.</div>
       </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
+        <div class="feature-title">AK Activation &amp; PCR Quotes</div>
+        <div class="feature-desc">Nodes register a hardware-resident Attestation Key via <code>POST /machines/{id}/ak-activate</code>. The service verifies the TPM2_Quote signature and PCR digest — proving the machine booted exactly the expected firmware.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <div class="feature-title">Nonce Anti-Replay</div>
+        <div class="feature-desc">Server issues single-use 256-bit nonces (60-second TTL) via <code>GET /attest/challenge</code>. Enable enforcement with <code>ITL_REQUIRE_NONCE=true</code> to prevent recording-and-replaying attestation requests.</div>
+      </div>
     </div>
   </div>
 </section>
@@ -722,6 +732,13 @@
         <div>
           <div class="doc-title">UI Walkthrough</div>
           <div class="doc-desc">Annotated screenshots of all demo pages — dashboard, machines, audit log, machine detail</div>
+        </div>
+      </a>
+      <a href="TPM_EXPLAINED" class="doc-link">
+        <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <div>
+          <div class="doc-title">How a TPM Works</div>
+          <div class="doc-desc">EK, PCRs, AK credential activation, TPM quotes — concepts explained from first principles</div>
         </div>
       </a>
       <a href="https://github.com/ITlusions/ITL.ControlPlane.Attestation" class="doc-link" target="_blank" rel="noopener">
