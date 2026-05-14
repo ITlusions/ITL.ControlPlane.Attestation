@@ -137,11 +137,13 @@ The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is never rea
 | Admin bearer token required for lifecycle ops | Implemented |
 | Enrollment cert chain verification | Implemented |
 | Nonce challenge-response (key possession proof) | Implemented |
+| AK activation — PCR quote signature verification | Implemented (opt-in via `POST /machines/{id}/ak-activate`) |
+| Server-issued nonce for attestation replay protection | Implemented (enforcement opt-in via `ITL_REQUIRE_NONCE=true`) |
 | EK cert parsed with X.509 library + Key Usage check | **Missing — issue #1** |
 | Registration requires EK material | **Missing — issue #2** |
-| Manufacturer CA chain verification | **Missing — issue #3** |
+| Manufacturer CA chain verification | Opt-in via `ITL_TPM_VERIFY_CA` — not enforced by default (**issue #3**) |
 | Enrollment EK fingerprint cross-check | **Missing — issue #4** |
-| TPM PCR quote verification (AIK-based remote attestation) | Not implemented (future scope) |
+| PCR policy enforcement at attestation | Not yet implemented (AK activation verifies quote structure; policy table not enforced) |
 | Admin token constant-time comparison | Not implemented |
 | Certificate revocation list (CRL) | Not implemented |
 

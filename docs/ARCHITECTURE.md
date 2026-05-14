@@ -70,11 +70,19 @@ src/attestation/
   core/
     config.py           — Settings (Pydantic BaseSettings) + settings singleton
     deps.py             — FastAPI dependency injectors: get_db(), get_engine(), require_admin()
-    models.py           — SQLModel Machine ORM table + all Pydantic request/response schemas
     app.py              — create_app() factory + lifespan (DB init, CA init)
+  models/
+    machine.py          — MachineRow SQLModel table + NodeRole / MachineStatus enums
+  schemas/
+    requests.py         — Pydantic request schemas (RegisterRequest, AttestRequest, etc.)
+    responses.py        — Pydantic response schemas (AttestResponse, MachineDetail, CertResponse, etc.)
   pki/
     enrollment_ca.py    — Enrollment CA: init, cert issuance, chain verification, nonce signature, RSA-OAEP wrapping
-    tpm_verifier.py     — EK material structural verification and SHA-256 fingerprint computation
+    tpm_verifier.py     — EK material structural verification and SHA-256/SHA-384 fingerprint computation
+    quote_verifier.py   — TPM2_Quote signature + TPMS_ATTEST parsing + PCR digest verification (issue #6)
+    nonce_store.py      — In-memory server-side nonce store with 60-second TTL (issue #7)
+  repositories/
+    machine_repo.py     — SqlMachineRepository: CRUD operations over MachineRow
   talos/
     config_generator.py — Merge role base configs with machine-specific overrides → Talos MachineConfig YAML
     iso_factory.py      — Build Talos Image Factory schematic URLs; ITL_ISO_URL fallback
@@ -86,7 +94,7 @@ src/attestation/
     enrollment.py       — Business logic for /machines/enroll and /machines/{id}/request-cert
   routes/
     registration.py     — FastAPI router: POST /api/v1/register, /self-register
-    attestation.py      — FastAPI router: GET /healthz, POST /api/v1/attest
+    attestation.py      — FastAPI router: GET /healthz, GET /api/v1/attest/challenge, POST /api/v1/attest
     config.py           — FastAPI router: GET /api/v1/config, /api/v1/config/{token}
     machines.py         — FastAPI router: GET/POST /api/v1/machines/**
   main.py               — Entry point: app = create_app()
@@ -112,6 +120,7 @@ Backward-compatible re-export shims at the package root (`config.py`, `deps.py`,
 | `config_token` | random URL-safe token | One-time token for Talos config fetch |
 | `token_consumed` | bool | True after first successful config fetch |
 | `wipe_pending` | bool | When True + status=revoked, next attest triggers talosctl reset |
+| `ak_pub` | SubjectPublicKeyInfo PEM | AK public key registered via `POST /machines/{id}/ak-activate`; null until AK is activated |
 
 ### Machine status state machine
 
@@ -335,11 +344,13 @@ tpm2_rsadecrypt --key-context wrapping.ctx --input enrollment.key.enc --output e
 
 The following security gaps are tracked as GitHub issues:
 
-| Issue | Gap |
-|---|---|
-| [#1](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/1) | EK PEM verified by header-sniff only — needs real X.509 parse |
-| [#2](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/2) | Registration accepted without EK material (self-reported fingerprint) |
-| [#3](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/3) | Manufacturer CA chain verification is stubbed — not implemented |
-| [#4](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/4) | Enrollment does not cross-check EK fingerprint from cert URI SAN |
+| Issue | Gap | Status |
+|---|---|---|
+| [#1](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/1) | EK PEM verified by header-sniff only — needs real X.509 parse | Open |
+| [#2](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/2) | Registration accepted without EK material (self-reported fingerprint) | Open |
+| [#3](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/3) | Manufacturer CA chain verification is stubbed — not implemented | Open (opt-in via `ITL_TPM_VERIFY_CA`) |
+| [#4](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/4) | Enrollment does not cross-check EK fingerprint from cert URI SAN | Open |
+| [#6](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/6) | PCR quote verification — AK activation and quote verification implemented; PCR policy enforcement optional | Partially implemented |
+| [#7](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/7) | Nonce-based anti-replay for attestation — server-side nonce store implemented; enforcement opt-in via `ITL_REQUIRE_NONCE` | Partially implemented |
 
 See [SECURITY.md](SECURITY.md) for full threat model and mitigations.
