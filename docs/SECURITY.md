@@ -15,7 +15,8 @@ The Attestation Service sits at the trust boundary between physical hardware and
 |---|---|
 | Cluster join credentials (embedded in MachineConfig) | Critical — compromise grants full cluster access |
 | Enrollment CA private key | Critical — compromise allows forging enrollment certs for any machine |
-| Admin token | High — grants full machine lifecycle control including remote wipe |
+| Keycloak operator credentials / JWT | High — compromise allows machine lifecycle control; dual-control limits blast radius for critical roles |
+| Admin break-glass token (`ITL_ADMIN_TOKEN`) | High — emergency bypass; all actions logged as SYSTEM; rotate promptly after use |
 | Machine identity (EK fingerprint) | High — spoofing allows a rogue machine to impersonate a trusted node |
 | Config tokens | Medium — one-time use; limited to the config for a single machine |
 
@@ -26,7 +27,7 @@ The Attestation Service sits at the trust boundary between physical hardware and
 | Physical attacker | Has the hardware, can read TPM EK cert from sysfs without TPM auth |
 | Network attacker (passive) | Can observe API traffic if TLS is misconfigured |
 | Network attacker (active) | Can replay captured API requests |
-| Insider / rogue operator | Has admin token; can approve/revoke/wipe machines |
+| Insider / rogue operator | Has stolen/compromised Keycloak credentials; can approve/revoke/wipe machines. Dual-control limits blast radius for critical roles. |
 | Supply chain attacker | Can modify USB agent before deployment |
 
 ---
@@ -53,7 +54,30 @@ Config tokens are cryptographically random (`secrets.token_urlsafe(32)`, 256 bit
 
 ### Admin token authentication
 
-All machine lifecycle endpoints require a Bearer token checked against `ITL_ADMIN_TOKEN`. The comparison is a direct string equality check (not constant-time — see open issues). If `ITL_ADMIN_TOKEN` is not set, the service refuses to process admin requests (503) rather than silently accepting them.
+All machine lifecycle endpoints require operator authentication. The service resolves the calling operator in the following order:
+
+1. **Keycloak OIDC JWT** — Bearer token validated against the JWKS published by `ITL_OIDC_ISSUER`. The JWT must carry the `ITL_OIDC_OPERATOR_ROLE` claim. The operator's `preferred_username` (or `sub`) is recorded in every audit log entry.
+
+2. **mTLS client certificate** (`X-Client-Cert` header, URL-encoded PEM forwarded by nginx) — verified against the Enrollment CA; requires `OU=operator`.
+
+3. **Break-glass shared token** (`ITL_ADMIN_TOKEN` Bearer) — emergency path. Actions are logged as `operator_cn = SYSTEM`. If `ITL_ADMIN_TOKEN` is not set the service returns 503 rather than silently accepting requests.
+
+Comparison against `ITL_ADMIN_TOKEN` uses `hmac.compare_digest` (constant-time) to prevent timing side-channel attacks.
+
+### Per-operator identity and audit trail
+
+Every admin action writes an `AuditLogRow` to the `audit_log` table with `operator_cn`, `action`, `machine_id`, `prev_state`, `new_state`, and an optional `detail` string. The repository layer exposes only an `append()` method — there is no update or delete path, making the log append-only by construction.
+
+The audit log is queryable via `GET /api/v1/audit`.
+
+### Dual-control for critical machine roles
+
+When `ITL_DUAL_CONTROL_ROLES` includes a machine's role, a single operator approval is **not** sufficient to register the machine. The flow requires two distinct operators:
+
+1. Operator A calls `POST /machines/{id}/approve` → `202 pending_second_approval`. A vote row is stored with a configurable expiry window (`ITL_DUAL_CONTROL_WINDOW_SECONDS`, default 10 min).
+2. Operator B (different identity) calls the same endpoint → `200 registered`. The vote is consumed.
+
+The same operator cannot be their own quorum partner. This eliminates unilateral approval of high-value nodes by a single compromised operator credential.
 
 ### Enrollment PKI — chain verification
 
@@ -132,7 +156,12 @@ The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is now extra
 | Constant-time fingerprint comparison | Implemented |
 | Config gated on attestation status | Implemented |
 | One-time config tokens (256-bit entropy) | Implemented |
-| Admin bearer token required for lifecycle ops | Implemented |
+| Per-operator OIDC authentication via Keycloak | Implemented (`ITL_OIDC_ISSUER`) |
+| Keycloak role enforcement (`ITL_OIDC_OPERATOR_ROLE`) | Implemented |
+| mTLS client cert authentication (nginx `X-Client-Cert`) | Implemented |
+| Break-glass shared token (`ITL_ADMIN_TOKEN`) | Implemented (constant-time comparison) |
+| Append-only audit log with operator identity | Implemented (`GET /api/v1/audit`) |
+| Dual-control approval for critical roles | Implemented (`ITL_DUAL_CONTROL_ROLES`) |
 | Enrollment cert chain verification | Implemented |
 | Nonce challenge-response (key possession proof) | Implemented |
 | AK activation — PCR quote signature verification | Implemented (opt-in via `POST /machines/{id}/ak-activate`) |
@@ -142,21 +171,24 @@ The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is now extra
 | Manufacturer CA chain verification | Opt-in via `ITL_TPM_VERIFY_CA` — not enforced by default (**issue #3**) |
 | Enrollment EK fingerprint cross-check | **Missing — issue #4** |
 | PCR policy enforcement at attestation | Not yet implemented (AK activation verifies quote structure; policy table not enforced) |
-| Admin token constant-time comparison | Not implemented |
 | Certificate revocation list (CRL) | Not implemented |
 
 ---
 
 ## Recommendations for Production
 
-1. **Set `ITL_ADMIN_TOKEN`** to a minimum 32-byte hex random value. Store it in a secrets manager (HashiCorp Vault, Azure Key Vault, Kubernetes Secret with encryption at rest). Do not commit it to version control.
+1. **Configure Keycloak OIDC** (`ITL_OIDC_ISSUER=https://sts.itlusions.com/realms/itl`). Create a realm-level role `attestation-operator` and assign it to operator accounts. Never share a single operator account — each human operator should have a personal Keycloak account so the audit log has meaningful `operator_cn` values.
 
-2. **Back up the Enrollment CA key** at `/var/lib/itl-reg/ca/enrollment-ca.key` (mode 0600). Losing it invalidates all outstanding enrollment certs. Consider rotating the CA periodically (new CA, re-issue all certs).
+2. **Enable dual-control** for controlplane nodes (`ITL_DUAL_CONTROL_ROLES=controlplane`). This prevents a single compromised operator credential from unilaterally registering a rogue controlplane node.
 
-3. **Apply fixes for issues #1 and #2 before exposing the registration endpoint to untrusted networks.** Those two gaps together allow completely unauthenticated machine identity injection.
+3. **Forward the audit log to a SIEM.** The `GET /api/v1/audit` endpoint is paginated and append-only. Periodically export it or configure log shipping from the container's structured log output.
 
-4. **Place TLS termination upstream** (nginx, Caddy, or Kubernetes Ingress with cert-manager). The service speaks plain HTTP on port 8080.
+4. **Treat `ITL_ADMIN_TOKEN` as a break-glass credential.** Store it in a secrets manager (HashiCorp Vault, Azure Key Vault, Kubernetes Secret with encryption at rest). Do not commit it to version control. Rotate it after any suspected exposure. All break-glass actions are logged as `operator_cn = SYSTEM`.
 
-5. **Restrict network access** to `POST /api/v1/register` to your deployment VLAN. Attestation (`POST /api/v1/attest`) and config delivery (`GET /api/v1/config`) must be reachable from nodes on first boot.
+5. **Back up the Enrollment CA key** at `/var/lib/itl-reg/ca/enrollment-ca.key` (mode 0600). Losing it invalidates all outstanding enrollment certs. Consider rotating the CA periodically (new CA, re-issue all certs).
 
-6. **Audit the admin token usage** — every admin operation is logged with machine ID, role, and status transition. Forward logs to a SIEM.
+6. **Apply fixes for issues #1 and #2 before exposing the registration endpoint to untrusted networks.** Those two gaps together allow completely unauthenticated machine identity injection.
+
+7. **Place TLS termination upstream** (nginx, Caddy, or Kubernetes Ingress with cert-manager). The service speaks plain HTTP on port 8080.
+
+8. **Restrict network access** to `POST /api/v1/register` to your deployment VLAN. Attestation (`POST /api/v1/attest`) and config delivery (`GET /api/v1/config`) must be reachable from nodes on first boot.

@@ -12,13 +12,47 @@ Interactive docs: `https://attest.itlusions.com/docs`
 
 ## Authentication
 
-Admin endpoints require a Bearer token:
+Admin endpoints authenticate operators in the following order of precedence:
+
+### 1. Keycloak OIDC JWT (recommended)
+
+```
+Authorization: Bearer <keycloak-access-token>
+```
+
+The service validates the JWT against the Keycloak JWKS endpoint configured by `ITL_OIDC_ISSUER`. The token must carry the `ITL_OIDC_OPERATOR_ROLE` claim (default: `attestation-operator`) in either `realm_access.roles` or `resource_access.<client>.roles`. The operator identity recorded in audit log entries is the token's `preferred_username` (fallback: `sub`).
+
+**Obtaining a token from Keycloak (`sts.itlusions.com`):**
+
+```sh
+TOKEN=$(curl -s -X POST \
+  "https://sts.itlusions.com/realms/itl/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=attestation-service" \
+  -d "username=$OPERATOR_USER" \
+  -d "password=$OPERATOR_PASS" \
+  | jq -r .access_token)
+```
+
+### 2. mTLS client certificate (non-OIDC environments)
+
+Nginx (or another TLS-terminating proxy) can forward the verified client cert PEM as a URL-encoded `X-Client-Cert` header. The cert must have been issued by the Enrollment CA with `OU=operator`. The cert `CN` is used as the operator identity.
+
+```
+X-Client-Cert: <url-encoded-PEM>
+```
+
+### 3. Break-glass shared token (emergency only)
 
 ```
 Authorization: Bearer <ITL_ADMIN_TOKEN>
 ```
 
-Public endpoints (`/register`, `/attest`, `/config`, `/enroll`, `/request-cert`, `/healthz`) do not require this header.
+Falls back to the shared `ITL_ADMIN_TOKEN` when neither OIDC nor mTLS succeeds. All actions performed this way are logged with `operator_cn = SYSTEM`. **This path exists for emergencies — prefer OIDC for normal operations.**
+
+---
+
+Public endpoints (`/register`, `/attest`, `/config`, `/enroll`, `/request-cert`, `/healthz`) do not require authentication.
 
 ---
 
@@ -240,7 +274,7 @@ The token is consumed after the first successful fetch but remains re-fetchable 
 
 ## Machine Lifecycle (Admin)
 
-All endpoints in this section require `Authorization: Bearer <ITL_ADMIN_TOKEN>`.
+All endpoints in this section require operator authentication (see [Authentication](#authentication) above).
 
 ---
 
@@ -286,7 +320,22 @@ Approve a `pending_approval` or `registered` machine. Assigns role, hostname, an
 | `hostname` | string | No | Kubernetes node hostname |
 | `assigned_ip` | string (CIDR) | No | Static IP for `machine.network.interfaces[0]` |
 
-**Response 200** — full `MachineDetail` object
+**Response 200** — full `MachineDetail` object (immediate approval — role not in `ITL_DUAL_CONTROL_ROLES`)
+
+**Response 202** — `PendingApprovalResponse` (first vote for a dual-control role; a second operator must also approve)
+
+```json
+{
+  "machine_id":         "550e8400-...",
+  "status":             "pending_second_approval",
+  "message":            "Approval vote recorded for operator 'alice'. A second operator must also approve before the machine is registered.",
+  "approvals_received": 1,
+  "approvals_required": 2,
+  "expires_at":         "2026-05-14T17:20:00+00:00"
+}
+```
+
+When a second, **different** operator calls this endpoint within the window (`ITL_DUAL_CONTROL_WINDOW_SECONDS`), the machine moves to `registered` and a `200 MachineDetail` is returned. If the window expires before the second approval, the first vote is discarded and a new window starts on the next call.
 
 ---
 
@@ -356,6 +405,76 @@ Returns a JSON payload containing:
 Import a machine from a TPM receipt written by the offline USB agent. Registers without booting an ISO.
 
 **Request body** — TPM receipt fields (same as `RegisterRequest` minus the factory ISO call)
+
+---
+
+### `GET /api/v1/machines/{machine_id}/approvals`
+
+List all dual-control approval requests for a machine (including expired and consumed votes). Useful for auditing who voted and when.
+
+**Response 200**
+
+```json
+[
+  {
+    "id":          1,
+    "machine_id":  "550e8400-...",
+    "operator_cn": "alice",
+    "role":        "controlplane",
+    "hostname":    "cp-01",
+    "assigned_ip": "10.0.0.1/24",
+    "created_at":  "2026-05-14T17:00:00+00:00",
+    "expires_at":  "2026-05-14T17:10:00+00:00",
+    "consumed":    true
+  }
+]
+```
+
+---
+
+## Audit Log (Admin)
+
+### `GET /api/v1/audit`
+
+Paginated, newest-first view of the append-only audit log. Every admin action (approve, revoke, lock, unlock, offline-bundle, import) is recorded here with the operator identity, machine state transition, and optional detail note.
+
+The log is **append-only** — no entry is ever updated or deleted.
+
+**Query parameters**
+
+| Parameter | Default | Description |
+|---|---|---|
+| `page` | `1` | Page number (1-based) |
+| `per_page` | `50` | Entries per page (max 200) |
+
+**Response 200**
+
+```json
+[
+  {
+    "id":          42,
+    "timestamp":   "2026-05-14T17:05:00+00:00",
+    "operator_cn": "niels.weistra",
+    "action":      "approve",
+    "machine_id":  "550e8400-...",
+    "prev_state":  "pending_approval",
+    "new_state":   "registered",
+    "detail":      "role=controlplane hostname=cp-01"
+  },
+  {
+    "id":          41,
+    "timestamp":   "2026-05-14T17:04:30+00:00",
+    "operator_cn": "alice",
+    "action":      "approve_vote",
+    "machine_id":  "550e8400-...",
+    "prev_state":  "pending_approval",
+    "new_state":   null,
+    "detail":      "first approval vote — awaiting second operator (quorum=2)"
+  }
+]
+```
+
+`operator_cn` is `"SYSTEM"` for any action performed with the break-glass `ITL_ADMIN_TOKEN`.
 
 ---
 

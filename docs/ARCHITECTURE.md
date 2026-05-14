@@ -34,7 +34,7 @@ flowchart TB
     subgraph Service["ITL.ControlPlane.Attestation\nhttps://attest.itlusions.com"]
         direction LR
         API["FastAPI\nHTTP endpoints"]
-        DB["SQLite\nmachines.db"]
+        DB["SQLite\nmachines.db\naudit_log\napproval_request"]
         CA["Enrollment CA\nRSA-4096"]
         API --- DB
         API --- CA
@@ -44,7 +44,11 @@ flowchart TB
         Factory["Talos Image Factory\nfactory.talos.dev\nor self-hosted"]
     end
 
-    Operator(["Operator\n(admin token)"])
+    subgraph Identity["Operator Identity"]
+        Keycloak["Keycloak\nsts.itlusions.com\n/realms/itl"]
+    end
+
+    Operator(["Operator\n(Keycloak JWT)"])
 
     TPM -->|"EK cert read\nfrom /sys"| USB
     TPM -->|"EK cert read\nfrom /sys"| Ext
@@ -52,7 +56,10 @@ flowchart TB
     USB -->|"POST /api/v1/register\n(HTTPS)"| API
     Ext -->|"POST /api/v1/self-register\nPOST /api/v1/attest\nGET /api/v1/config/{token}\n(HTTPS)"| API
 
-    Operator -->|"GET/POST /api/v1/machines/*\n(HTTPS + Bearer token)"| API
+    Operator -->|"login"| Keycloak
+    Keycloak -->|"JWT (role: attestation-operator)"| Operator
+    Operator -->|"GET/POST /api/v1/machines/*\n(HTTPS + Bearer JWT)"| API
+    API -.->|"JWKS validation"| Keycloak
 
     API -->|"POST /schematics\n(when ITL_ISO_URL not set)"| Factory
     Factory -->|"iso_url"| API
@@ -68,21 +75,24 @@ flowchart TB
 ```
 src/attestation/
   core/
-    config.py           — Settings (Pydantic BaseSettings) + settings singleton
-    deps.py             — FastAPI dependency injectors: get_db(), get_engine(), require_admin()
+    config.py           — Settings (Pydantic BaseSettings) + settings singleton; includes OIDC + dual-control vars
+    deps.py             — FastAPI dependency injectors: get_db(), get_engine(), resolve_operator() (OIDC → mTLS → break-glass)
     app.py              — create_app() factory + lifespan (DB init, CA init)
   models/
     machine.py          — MachineRow SQLModel table + NodeRole / MachineStatus enums
+    operator.py         — AuditLogRow (append-only audit log) + ApprovalRequestRow (dual-control pending votes)
   schemas/
     requests.py         — Pydantic request schemas (RegisterRequest, AttestRequest, etc.)
-    responses.py        — Pydantic response schemas (AttestResponse, MachineDetail, CertResponse, etc.)
+    responses.py        — Pydantic response schemas (AttestResponse, MachineDetail, CertResponse, PendingApprovalResponse, AuditLogEntry, etc.)
   pki/
     enrollment_ca.py    — Enrollment CA: init, cert issuance, chain verification, nonce signature, RSA-OAEP wrapping
     tpm_verifier.py     — EK material structural verification and SHA-256/SHA-384 fingerprint computation
     quote_verifier.py   — TPM2_Quote signature + TPMS_ATTEST parsing + PCR digest verification (issue #6)
     nonce_store.py      — In-memory server-side nonce store with 60-second TTL (issue #7)
+    oidc.py             — Keycloak OIDC JWT validation: JWKS fetch + cache, signature verify, role check, operator CN extraction
   repositories/
     machine_repo.py     — SqlMachineRepository: CRUD operations over MachineRow
+    operator_repo.py    — AuditRepository (INSERT-only) + ApprovalRepository (dual-control vote store)
   talos/
     config_generator.py — Merge role base configs with machine-specific overrides → Talos MachineConfig YAML
     iso_factory.py      — Build Talos Image Factory schematic URLs; ITL_ISO_URL fallback
@@ -90,13 +100,14 @@ src/attestation/
     registration.py     — Business logic for /register and /self-register
     attestation.py      — Business logic for /attest
     config_delivery.py  — Business logic for /config/{token} and /config?mac=
-    machines.py         — Business logic for machine CRUD, approve, revoke, lock, unlock, offline-bundle
+    machines.py         — Business logic for machine CRUD, approve (incl. dual-control), revoke, lock, unlock, offline-bundle; all actions write AuditLogRow
     enrollment.py       — Business logic for /machines/enroll and /machines/{id}/request-cert
   routes/
     registration.py     — FastAPI router: POST /api/v1/register, /self-register
     attestation.py      — FastAPI router: GET /healthz, GET /api/v1/attest/challenge, POST /api/v1/attest
     config.py           — FastAPI router: GET /api/v1/config, /api/v1/config/{token}
-    machines.py         — FastAPI router: GET/POST /api/v1/machines/**
+    machines.py         — FastAPI router: GET/POST /api/v1/machines/**, GET /api/v1/machines/{id}/approvals
+    audit.py            — FastAPI router: GET /api/v1/audit (paginated append-only audit log)
   main.py               — Entry point: app = create_app()
 ```
 
@@ -121,6 +132,36 @@ Backward-compatible re-export shims at the package root (`config.py`, `deps.py`,
 | `token_consumed` | bool | True after first successful config fetch |
 | `wipe_pending` | bool | When True + status=revoked, next attest triggers talosctl reset |
 | `ak_pub` | SubjectPublicKeyInfo PEM | AK public key registered via `POST /machines/{id}/ak-activate`; null until AK is activated |
+
+### Audit log (`audit_log` table)
+
+Append-only — no UPDATE or DELETE is ever issued against this table. Every admin action writes one row.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | integer PK | Auto-increment |
+| `timestamp` | datetime (UTC) | When the action occurred |
+| `operator_cn` | string | Keycloak `preferred_username`, mTLS cert `CN`, or `"SYSTEM"` (break-glass) |
+| `action` | string | `approve`, `approve_vote`, `revoke`, `lock`, `unlock`, `offline_bundle`, `import` |
+| `machine_id` | optional string | Machine affected (null for service-level events) |
+| `prev_state` | optional string | Machine status before the action |
+| `new_state` | optional string | Machine status after the action (null for vote-only events) |
+| `detail` | optional string | Free-text note / reason supplied by operator |
+
+### Approval requests (`approval_request` table)
+
+Stores pending dual-control approval votes. The second operator's `approve` call checks for an active (non-expired, non-consumed) row from a **different** operator.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | integer PK | Auto-increment |
+| `machine_id` | string (indexed) | Machine being approved |
+| `operator_cn` | string | First operator's identity |
+| `role` | string | Role requested in the first vote |
+| `hostname`, `assigned_ip` | optional string | Approval parameters from the first vote |
+| `created_at` | datetime (UTC) | When the vote was cast |
+| `expires_at` | datetime (UTC) | After this time the vote is ignored |
+| `consumed` | bool | Set to `true` once the second approval completes |
 
 ### Machine status state machine
 
@@ -163,7 +204,7 @@ sequenceDiagram
 
   Op->>Svc: GET /api/v1/machines
   Svc-->>Op: [list of pending machines]
-  Op->>Svc: POST /machines/{id}/approve<br/>role, hostname, assigned_ip
+  Op->>Svc: POST /machines/{id}/approve<br/>role, hostname, assigned_ip<br/>(Keycloak JWT)
 
   loop Poll every 60 s
     Node->>Svc: POST /api/v1/attest
@@ -352,5 +393,7 @@ The following security gaps are tracked as GitHub issues:
 | [#4](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/4) | Enrollment does not cross-check EK fingerprint from cert URI SAN | Open |
 | [#6](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/6) | PCR quote verification — AK activation and quote verification implemented; PCR policy enforcement optional | Partially implemented |
 | [#7](https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/7) | Nonce-based anti-replay for attestation — server-side nonce store implemented; enforcement opt-in via `ITL_REQUIRE_NONCE` | Partially implemented |
+| Per-operator identity + audit trail | Single shared admin token provided no accountability | **Fixed** — Keycloak OIDC per-operator auth + append-only audit log |
+| Dual-control for critical roles | Single operator could unilaterally approve controlplane nodes | **Fixed** — `ITL_DUAL_CONTROL_ROLES` enforces 2-of-N quorum |
 
 See [SECURITY.md](SECURITY.md) for full threat model and mitigations.
