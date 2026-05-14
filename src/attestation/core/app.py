@@ -6,8 +6,8 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel
 
@@ -35,8 +35,63 @@ async def lifespan(app: FastAPI):
     )
     logger.info("Installer image: %s", settings.installer_image)
     logger.info("Service base URL: %s", settings.service_base_url)
+    if settings.high_assurance:
+        logger.info(
+            "High-assurance mode ENABLED — TLS min=%s ciphers=%s; "
+            "non-HTTPS requests will be rejected (X-Forwarded-Proto enforcement).",
+            settings.tls_min_version,
+            settings.tls_ciphers,
+        )
     init_enrollment_ca()
     yield
+
+
+def _add_high_assurance_middleware(app: FastAPI) -> None:
+    """Attach HTTPS-enforcement and HSTS middleware for high-assurance mode.
+
+    When ``ITL_HIGH_ASSURANCE=true`` the service expects to sit behind a TLS
+    terminator (nginx, Caddy, AWS ALB …) that forwards the original protocol
+    via the ``X-Forwarded-Proto`` header.  Any request that arrives without
+    ``X-Forwarded-Proto: https`` is rejected with HTTP 403.
+
+    All responses also carry ``Strict-Transport-Security`` to instruct clients
+    to use HTTPS for future connections (HSTS max-age = 1 year, includeSubDomains).
+
+    Per RFC 9151 (CNSA Suite Profile for TLS 1.3), the upstream proxy must be
+    configured with:
+        ssl_protocols       TLSv1.3;
+        ssl_ciphers         TLS_AES_256_GCM_SHA384;
+    Refer to docs/OPERATIONS.md for a complete nginx snippet.
+    """
+
+    @app.middleware("http")
+    async def enforce_https(request: Request, call_next) -> Response:
+        # Skip enforcement for the health endpoint so load balancers keep working
+        if request.url.path == "/healthz":
+            response = await call_next(request)
+            return response
+
+        forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
+        # In high-assurance mode the upstream proxy MUST always set X-Forwarded-Proto.
+        # Reject any request where the header is absent or not 'https'.
+        if forwarded_proto != "https":
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "detail": (
+                        "High-assurance mode is enabled. "
+                        "This service must be accessed over HTTPS (TLS 1.3) via a properly "
+                        "configured proxy that sets X-Forwarded-Proto: https."
+                    )
+                },
+            )
+
+        response = await call_next(request)
+        # HSTS — 1 year, includeSubDomains (RFC 6797)
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+        return response
 
 
 def create_app() -> FastAPI:
@@ -49,6 +104,9 @@ def create_app() -> FastAPI:
         ),
         lifespan=lifespan,
     )
+
+    if settings.high_assurance:
+        _add_high_assurance_middleware(app)
 
     prefix = "/api/v1"
     app.include_router(registration_router, prefix=prefix)

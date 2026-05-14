@@ -30,7 +30,7 @@ class MachineRow(SQLModel, table=True):
 
     id:             Optional[int] = Field(default=None, primary_key=True)
     machine_id:     str           = Field(index=True, unique=True)   # UUID v4
-    ek_fingerprint: str           = Field(index=True, unique=True)   # SHA-256 hex
+    ek_fingerprint: str           = Field(index=True, unique=True)   # SHA-384 hex (CNSA 1.0)
     ek_source:      str           = Field(default="cert")            # "cert" | "pub"
 
     hw_uuid:        str           = Field(default="unknown")
@@ -65,3 +65,9 @@ class MachineRow(SQLModel, table=True):
     # EK certificate PEM (base64-encoded) — stored for EK-bound config encryption (issue #9).
     # NOTE: add Alembic migration when adding this column to an existing DB.
     ek_cert_pem:    Optional[str] = Field(default=None)
+
+    # SHA-384 EK fingerprint (CNSA 1.0, issue #8) — canonical identity for new registrations.
+    # Populated by the migration script (migrations/001_add_ek_fingerprint_sha384.py) for
+    # existing rows.  New rows have this set equal to ek_fingerprint (both are SHA-384).
+    # NOTE: add Alembic migration when adding this column to an existing DB.
+    ek_fingerprint_sha384: Optional[str] = Field(default=None, index=True)

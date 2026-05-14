@@ -329,6 +329,108 @@ Store the CA key in an encrypted vault. Anyone who obtains it can forge enrollme
 
 ---
 
+## CNSA 1.0 Cryptographic Migration Guide (issue #8)
+
+This section describes the one-time steps required when upgrading to a release that implements **CNSA 1.0 cryptographic hardening**.
+
+### What changed
+
+| Component | Before | After |
+|---|---|---|
+| Enrollment CA key | RSA-4096 (default) | ECDSA P-384 (new default) |
+| Enrollment cert key | RSA-2048 | ECDSA P-384 |
+| EK fingerprint hash | SHA-256 (64 hex chars) | SHA-384 (96 hex chars) |
+| Nonce signing hash | SHA-256 | SHA-384 (ECDSA certs) |
+
+### Step 1 — Back up current state
+
+```sh
+sqlite3 /var/lib/itl-reg/db/machines.db ".backup '/backup/machines-pre-cnsa.db'"
+cp /var/lib/itl-reg/ca/enrollment-ca.key /secure-backup/enrollment-ca-rsa.key
+cp /var/lib/itl-reg/ca/enrollment-ca.crt /secure-backup/enrollment-ca-rsa.crt
+```
+
+### Step 2 — Run the SHA-384 fingerprint migration
+
+The migration script adds the `ek_fingerprint_sha384` column to the `machine` table and populates it for all rows that have a stored EK certificate.
+
+```sh
+# If running in Docker
+docker exec <container> python migrations/001_add_ek_fingerprint_sha384.py
+
+# If running directly
+python migrations/001_add_ek_fingerprint_sha384.py /var/lib/itl-reg/db/machines.db
+```
+
+The script is **idempotent** — safe to re-run.  Machines without a stored EK cert (`ek_cert_pem IS NULL`) will be skipped and must re-attest to populate the column.
+
+### Step 3 — Rotate the Enrollment CA to ECDSA P-384
+
+The existing RSA CA continues to be loaded from disk until you delete it.  To rotate to a new ECDSA P-384 CA:
+
+```sh
+# Remove the old CA key + cert (service auto-generates a new one on restart)
+rm /var/lib/itl-reg/ca/enrollment-ca.key
+rm /var/lib/itl-reg/ca/enrollment-ca.crt
+
+# Restart the service (new ECDSA P-384 CA is generated)
+docker compose restart attestation
+# or: systemctl restart itl-attestation
+```
+
+> **Warning**: All outstanding enrollment certs signed by the old RSA CA become invalid after rotation.  Re-generate offline bundles for any machine that has not yet enrolled.
+
+### Step 4 — Enable high-assurance TLS (optional but recommended)
+
+Set `ITL_HIGH_ASSURANCE=true` to enable:
+
+- Rejection of non-HTTPS requests (`X-Forwarded-Proto` enforcement)
+- `Strict-Transport-Security` (HSTS) response headers
+
+The service does not terminate TLS itself — configure your upstream proxy with:
+
+```nginx
+server {
+    listen 443 ssl;
+
+    # CNSA 1.0 / RFC 9151 — TLS 1.3 only with CNSA cipher suite
+    ssl_protocols       TLSv1.3;
+    ssl_ciphers         TLS_AES_256_GCM_SHA384;
+
+    ssl_certificate     /etc/ssl/certs/attest.itlusions.com.crt;
+    ssl_certificate_key /etc/ssl/private/attest.itlusions.com.key;
+
+    location / {
+        proxy_pass              http://localhost:8080;
+        proxy_set_header        X-Forwarded-Proto https;
+        proxy_set_header        Host $host;
+    }
+}
+```
+
+Then add to the service environment:
+
+```yaml
+environment:
+  ITL_HIGH_ASSURANCE: "true"
+  ITL_TLS_MIN_VERSION: "TLSv1.3"
+  ITL_TLS_CIPHERS: "TLS_AES_256_GCM_SHA384"
+```
+
+### Step 5 — Verify
+
+```sh
+# Confirm EK fingerprints are 96 hex chars (SHA-384)
+sqlite3 /var/lib/itl-reg/db/machines.db \
+  "SELECT machine_id, length(ek_fingerprint), length(ek_fingerprint_sha384) FROM machine LIMIT 10;"
+
+# Confirm new enrollment certs use ECDSA P-384
+openssl x509 -in /var/lib/itl-reg/ca/enrollment-ca.crt -text -noout | grep 'Public Key Algorithm'
+# Expected: Public Key Algorithm: id-ecPublicKey  (curve: P-384)
+```
+
+---
+
 ## Troubleshooting
 
 ### Service returns 503 for admin endpoints

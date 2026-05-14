@@ -36,10 +36,10 @@ The Attestation Service sits at the trust boundary between physical hardware and
 
 ### EK fingerprint verification
 
-The server always recomputes the SHA-256 fingerprint of the raw EK bytes sent by the client. It never trusts the client-supplied `ek_fingerprint` value without re-deriving it from the actual material. Comparison uses `hmac.compare_digest` (constant-time) to prevent timing-based fingerprint enumeration.
+The server always recomputes the SHA-384 fingerprint (CNSA 1.0, FIPS 180-4) of the raw EK bytes sent by the client. It never trusts the client-supplied `ek_fingerprint` value without re-deriving it from the actual material. Comparison uses `hmac.compare_digest` (constant-time) to prevent timing-based fingerprint enumeration.
 
 ```python
-computed_fp = compute_ek_fingerprint(req.ek_cert_pem)
+computed_fp = compute_ek_fingerprint(req.ek_cert_pem)  # SHA-384 hex, 96 chars
 if not fingerprints_match(computed_fp, req.ek_fingerprint):
     raise HTTPException(422, "EK fingerprint mismatch")
 ```
@@ -101,7 +101,7 @@ The same operator cannot be their own quorum partner. This eliminates unilateral
 The `POST /api/v1/machines/enroll` endpoint verifies:
 1. The cert was issued by this service's Enrollment CA (issuer DN + signature)
 2. The cert is within its validity period
-3. The caller possesses the cert's private key (nonce challenge-response with RSA-PKCS1v15-SHA256)
+3. The caller possesses the cert's private key (nonce challenge-response — ECDSA P-384 + SHA-384 for new certs; RSA-PKCS1v15-SHA256 for legacy RSA enrollment certs)
 
 This means a stolen cert PEM alone is not sufficient — the caller must also have the private key.
 
@@ -133,6 +133,50 @@ Set `ITL_REQUIRE_ENCRYPTED_DELIVERY=true` to reject all plaintext delivery reque
 ### Remote wipe
 
 When a machine is revoked with `wipe=true`, the next attestation response instructs the Talos extension to call `talosctl reset --graceful=false`, wiping STATE and EPHEMERAL partitions. This destroys cluster join credentials on the physical node.
+
+---
+
+## Cryptographic Algorithm Baseline — CNSA 1.0 Alignment (issue #8)
+
+The service implements **Phase 1** of the CNSA cryptographic hardening roadmap. All new cryptographic operations use CNSA 1.0 (NSA Suite B, 2015) algorithms as a minimum. Phase 2 (CNSA 2.0 post-quantum migration) is tracked separately.
+
+### Current algorithm inventory
+
+| Purpose | Algorithm | Standard | Notes |
+|---|---|---|---|
+| Enrollment CA key | ECDSA P-384 (default) or RSA-4096 | FIPS 186-4 | Controlled by `ITL_ENROLLMENT_CA_ALGORITHM` |
+| Enrollment cert key | ECDSA P-384 | FIPS 186-4 | Always P-384; not configurable |
+| CA / cert signing hash | SHA-384 (ECDSA path), SHA-256 (RSA-4096 path) | FIPS 180-4 | SHA-384 is default |
+| EK fingerprint | SHA-384, 96-char hex | FIPS 180-4 | `compute_ek_fingerprint()` |
+| Nonce signature (ECDSA certs) | ECDSA P-384 + SHA-384 | FIPS 186-4 | New enrollment certs |
+| Nonce signature (legacy RSA certs) | RSA-PKCS1v15 + SHA-256 | — | Backward compat only |
+| Config encryption key wrapping | RSA-OAEP-SHA-256 | FIPS 186-5 | EK-bound delivery |
+| Config encryption payload | AES-256-GCM | FIPS 197 | EK-bound delivery |
+| Audit chain hash | SHA-256 | FIPS 180-4 | Audit integrity chain |
+| TLS (high-assurance) | TLS 1.3 / AES-256-GCM-SHA384 | RFC 9151 | `ITL_HIGH_ASSURANCE=true` |
+
+### Phase 2 — CNSA 2.0 roadmap (post-quantum)
+
+| Purpose | Target algorithm | Standard | Status |
+|---|---|---|---|
+| Digital signature | ML-DSA-87 (CRYSTALS-Dilithium) | FIPS 204 | Tracked separately |
+| Key agreement | ML-KEM-1024 (CRYSTALS-Kyber) | FIPS 203 | Tracked separately |
+| Firmware / software signing | LMS or XMSS | NIST SP 800-208 | Tracked separately |
+| Symmetric | AES-256 | FIPS 197 | Already implemented |
+| Digest | SHA-384 / SHA-512 | FIPS 180-4 | SHA-384 implemented |
+
+RSA, ECDH, and ECDSA are being **deprecated** under CNSA 2.0 and will be
+replaced once FIPS-validated PQC implementations are available in Python
+(`pqca` / `liboqs`). The CNSA 2.0 transition deadline for NSS systems is
+2030–2033 depending on system type.
+
+**References:**
+- NSA CNSA 1.0 — https://apps.nsa.gov/iaarchive/programs/iad-initiatives/cnsa-suite.cfm
+- NSA CNSA 2.0 — https://media.defense.gov/2022/Sep/07/2003071834/-1/-1/0/CSA_CNSA_2.0_ALGORITHMS_.PDF
+- RFC 9151 — CNSA Suite Profile for TLS 1.3
+- FIPS 186-5 — Digital Signature Standard
+- NIST SP 800-131A Rev 2 — Transitioning Cryptographic Algorithms
+- FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), NIST SP 800-208 (LMS/XMSS)
 
 ---
 
@@ -191,6 +235,7 @@ The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is now extra
 | Control | Status |
 |---|---|
 | Server-recomputes EK fingerprint (no client trust) | Implemented |
+| EK fingerprint uses SHA-384 (CNSA 1.0) | Implemented |
 | Constant-time fingerprint comparison | Implemented |
 | Config gated on attestation status | Implemented |
 | One-time config tokens (256-bit entropy) | Implemented |
@@ -204,9 +249,12 @@ The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is now extra
 | Cryptographic hash chain on audit log | Implemented (`GET /api/v1/audit/verify`) |
 | Dual-control approval for critical roles | Implemented (`ITL_DUAL_CONTROL_ROLES`) |
 | Enrollment cert chain verification | Implemented |
+| Enrollment CA: ECDSA P-384 by default (CNSA 1.0) | Implemented (`ITL_ENROLLMENT_CA_ALGORITHM`) |
+| Enrollment certs: ECDSA P-384 + SHA-384 | Implemented |
 | Nonce challenge-response (key possession proof) | Implemented |
 | AK activation — PCR quote signature verification | Implemented (opt-in via `POST /machines/{id}/ak-activate`) |
 | Server-issued nonce for attestation replay protection | Implemented (enforcement opt-in via `ITL_REQUIRE_NONCE=true`) |
+| TLS 1.3 + HSTS enforcement | Opt-in via `ITL_HIGH_ASSURANCE=true` |
 | EK cert parsed with X.509 library + Key Usage check | **Missing — issue #1** |
 | Registration requires EK material | **Missing — issue #2** |
 | Manufacturer CA chain verification | Opt-in via `ITL_TPM_VERIFY_CA` — not enforced by default (**issue #3**) |
