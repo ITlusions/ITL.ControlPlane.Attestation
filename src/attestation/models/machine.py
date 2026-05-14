@@ -61,3 +61,7 @@ class MachineRow(SQLModel, table=True):
     # POST /api/v1/machines/{id}/ak-activate (issue #6).
     # NOTE: add Alembic migration when adding this column to an existing DB.
     ak_pub:         Optional[str] = Field(default=None)
+
+    # EK certificate PEM (base64-encoded) — stored for EK-bound config encryption (issue #9).
+    # NOTE: add Alembic migration when adding this column to an existing DB.
+    ek_cert_pem:    Optional[str] = Field(default=None)

@@ -109,6 +109,27 @@ This means a stolen cert PEM alone is not sufficient — the caller must also ha
 
 When a machine requests a cert with a TPM-resident wrapping key, the enrollment private key is encrypted with RSA-OAEP-SHA256 before transit. The cleartext private key never leaves the service's memory unencrypted and is not logged.
 
+### EK-bound MachineConfig encryption
+
+MachineConfig payloads can be delivered as an EK-bound AES-256-GCM encrypted envelope.  When the Talos extension (or any client) sends `Accept: application/vnd.itl.config.encrypted+json`, the service:
+
+1. Generates a fresh 32-byte AES-256 key and 96-bit GCM nonce per delivery.
+2. Encrypts the MachineConfig YAML with AES-256-GCM (output includes a 128-bit auth tag).
+3. Wraps the AES key with the machine's registered EK public key using RSA-OAEP-SHA256.
+4. Returns a JSON envelope: `{ "format": "ek-aes256gcm-v1", "machine_id", "wrapped_key", "iv", "ciphertext" }`.
+
+Only the TPM that holds the EK private key can unwrap the AES key (via `TPM2_RSA_Decrypt` / OAEP).  A stolen config token alone is no longer sufficient to read the cluster join credentials; the attacker also needs the private half of the registered EK.
+
+```python
+# Server-side (simplified)
+aes_key    = os.urandom(32)
+iv         = os.urandom(12)
+ciphertext = AESGCM(aes_key).encrypt(iv, config_yaml.encode(), None)
+wrapped    = ek_pub.encrypt(aes_key, OAEP(mgf=MGF1(SHA256()), algorithm=SHA256(), label=None))
+```
+
+Set `ITL_REQUIRE_ENCRYPTED_DELIVERY=true` to reject all plaintext delivery requests with HTTP 406 — enforces end-to-end hardware binding.
+
 ### Remote wipe
 
 When a machine is revoked with `wipe=true`, the next attestation response instructs the Talos extension to call `talosctl reset --graceful=false`, wiping STATE and EPHEMERAL partitions. This destroys cluster join credentials on the physical node.
@@ -173,6 +194,8 @@ The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is now extra
 | Constant-time fingerprint comparison | Implemented |
 | Config gated on attestation status | Implemented |
 | One-time config tokens (256-bit entropy) | Implemented |
+| EK-bound AES-256-GCM MachineConfig encryption | Implemented (`Accept: application/vnd.itl.config.encrypted+json`) |
+| Enforce EK-bound delivery only | Opt-in via `ITL_REQUIRE_ENCRYPTED_DELIVERY=true` |
 | Per-operator OIDC authentication via Keycloak | Implemented (`ITL_OIDC_ISSUER`) |
 | Keycloak role enforcement (`ITL_OIDC_OPERATOR_ROLE`) | Implemented |
 | mTLS client cert authentication (nginx `X-Client-Cert`) | Implemented |
@@ -199,14 +222,16 @@ The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is now extra
 
 2. **Enable dual-control** for controlplane nodes (`ITL_DUAL_CONTROL_ROLES=controlplane`). This prevents a single compromised operator credential from unilaterally registering a rogue controlplane node.
 
-3. **Periodically verify and publish the audit chain root hash.** Call `GET /api/v1/audit/verify` on a schedule (e.g., hourly via cron) and publish the `root_hash` to an external, append-only store (Git commit, Rekor / Sigstore transparency log, or a signed webhook to a secondary operator). This provides out-of-band evidence that the log has not been silently truncated or modified.
+3. **Enable EK-bound config encryption** (`ITL_REQUIRE_ENCRYPTED_DELIVERY=true`) after all machines have been re-registered or re-attested (so the service has their EK certs stored). This ensures cluster join credentials are never readable by a TLS terminator or anyone who only holds the config token.
 
-4. **Treat `ITL_ADMIN_TOKEN` as a break-glass credential.** Store it in a secrets manager (HashiCorp Vault, Azure Key Vault, Kubernetes Secret with encryption at rest). Do not commit it to version control. Rotate it after any suspected exposure. All break-glass actions are logged as `operator_cn = SYSTEM`.
+4. **Periodically verify and publish the audit chain root hash.** Call `GET /api/v1/audit/verify` on a schedule (e.g., hourly via cron) and publish the `root_hash` to an external, append-only store (Git commit, Rekor / Sigstore transparency log, or a signed webhook to a secondary operator). This provides out-of-band evidence that the log has not been silently truncated or modified.
 
-5. **Back up the Enrollment CA key** at `/var/lib/itl-reg/ca/enrollment-ca.key` (mode 0600). Losing it invalidates all outstanding enrollment certs. Consider rotating the CA periodically (new CA, re-issue all certs).
+5. **Treat `ITL_ADMIN_TOKEN` as a break-glass credential.** Store it in a secrets manager (HashiCorp Vault, Azure Key Vault, Kubernetes Secret with encryption at rest). Do not commit it to version control. Rotate it after any suspected exposure. All break-glass actions are logged as `operator_cn = SYSTEM`.
 
-6. **Apply fixes for issues #1 and #2 before exposing the registration endpoint to untrusted networks.** Those two gaps together allow completely unauthenticated machine identity injection.
+6. **Back up the Enrollment CA key** at `/var/lib/itl-reg/ca/enrollment-ca.key` (mode 0600). Losing it invalidates all outstanding enrollment certs. Consider rotating the CA periodically (new CA, re-issue all certs).
 
-7. **Place TLS termination upstream** (nginx, Caddy, or Kubernetes Ingress with cert-manager). The service speaks plain HTTP on port 8080.
+7. **Apply fixes for issues #1 and #2 before exposing the registration endpoint to untrusted networks.** Those two gaps together allow completely unauthenticated machine identity injection.
 
-8. **Restrict network access** to `POST /api/v1/register` to your deployment VLAN. Attestation (`POST /api/v1/attest`) and config delivery (`GET /api/v1/config`) must be reachable from nodes on first boot.
+8. **Place TLS termination upstream** (nginx, Caddy, or Kubernetes Ingress with cert-manager). The service speaks plain HTTP on port 8080.
+
+9. **Restrict network access** to `POST /api/v1/register` to your deployment VLAN. Attestation (`POST /api/v1/attest`) and config delivery (`GET /api/v1/config`) must be reachable from nodes on first boot.
