@@ -1,52 +1,16 @@
-"""Repositories for operator, audit-log, and approval-request tables."""
+"""Repositories for audit-log and approval-request tables.
+
+Operator identity is managed entirely in Keycloak — there is no local operator
+repository.  These repositories only handle the state that *must* be persisted
+on the service side: the append-only audit log and pending dual-control votes.
+"""
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
-from ..models.operator import ApprovalRequestRow, AuditLogRow, OperatorRow
-
-
-# ---------------------------------------------------------------------------
-# Operator repository
-# ---------------------------------------------------------------------------
-
-class OperatorRepository:
-    """Data access layer for OperatorRow."""
-
-    def __init__(self, db: Session) -> None:
-        self.db = db
-
-    def get_by_id(self, operator_id: str) -> Optional[OperatorRow]:
-        return self.db.exec(
-            select(OperatorRow).where(OperatorRow.operator_id == operator_id)
-        ).first()
-
-    def get_by_name(self, name: str) -> Optional[OperatorRow]:
-        return self.db.exec(
-            select(OperatorRow).where(OperatorRow.name == name)
-        ).first()
-
-    def get_by_oidc_sub(self, oidc_sub: str) -> Optional[OperatorRow]:
-        return self.db.exec(
-            select(OperatorRow).where(OperatorRow.oidc_sub == oidc_sub)
-        ).first()
-
-    def list_all(self) -> list[OperatorRow]:
-        return list(self.db.exec(select(OperatorRow)).all())
-
-    def save(self, operator: OperatorRow) -> OperatorRow:
-        self.db.add(operator)
-        self.db.commit()
-        self.db.refresh(operator)
-        return operator
-
-
-# ---------------------------------------------------------------------------
-# Audit log repository  (INSERT-only — no update/delete)
-# ---------------------------------------------------------------------------
+from ..models.operator import ApprovalRequestRow, AuditLogRow
 
 class AuditRepository:
     """Append-only data access for AuditLogRow."""
@@ -96,7 +60,7 @@ class ApprovalRepository:
 
     def get_pending_for_machine(self, machine_id: str) -> list[ApprovalRequestRow]:
         """Return all non-consumed, non-expired pending approvals for a machine."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return list(
             self.db.exec(
                 select(ApprovalRequestRow).where(

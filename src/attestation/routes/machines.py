@@ -2,16 +2,29 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
-from ..core.deps import get_machine_repo, require_admin
+from ..core.deps import (
+    get_approval_repo,
+    get_audit_repo,
+    get_machine_repo,
+    resolve_operator,
+)
 from ..handlers.enrollment import EnrollmentHandler
 from ..handlers.machines import MachineAdminHandler
 from ..pki.quote_verifier import QuoteVerifier, QuoteVerificationError
 from ..repositories.machine_repo import SqlMachineRepository
+from ..repositories.operator_repo import AuditRepository, ApprovalRepository
 from ..schemas.requests import ApproveRequest, CertRequest, LockRequest, RevokeRequest
-from ..schemas.responses import AttestResponse, CertResponse, MachineDetail
+from ..schemas.responses import (
+    ApprovalDetail,
+    AuditLogEntry,
+    AttestResponse,
+    CertResponse,
+    MachineDetail,
+    PendingApprovalResponse,
+)
 
 router = APIRouter(tags=["machines"])
 
@@ -24,73 +37,146 @@ class EnrollRequest(BaseModel):
     nonce_signature:  str
 
 
+def _make_handler(
+    machine_repo: SqlMachineRepository,
+    audit_repo: AuditRepository,
+    approval_repo: ApprovalRepository,
+) -> MachineAdminHandler:
+    return MachineAdminHandler(
+        machine_repo  = machine_repo,
+        audit_repo    = audit_repo,
+        approval_repo = approval_repo,
+    )
+
+
 @router.get("", response_model=list[MachineDetail])
-def list_machines(_: None = Depends(require_admin), machine_repo: SqlMachineRepository = Depends(get_machine_repo)):
+def list_machines(
+    operator_cn: str = Depends(resolve_operator),
+    machine_repo: SqlMachineRepository = Depends(get_machine_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+    approval_repo: ApprovalRepository = Depends(get_approval_repo),
+):
     """List all registered machines (admin)."""
-    return MachineAdminHandler(machine_repo).list_machines()
+    return _make_handler(machine_repo, audit_repo, approval_repo).list_machines()
 
 
-@router.post("/{machine_id}/approve", response_model=MachineDetail)
+@router.post("/{machine_id}/approve")
 def approve_machine(
     machine_id: str,
     req: ApproveRequest,
-    _: None = Depends(require_admin),
+    response: Response,
+    operator_cn: str = Depends(resolve_operator),
     machine_repo: SqlMachineRepository = Depends(get_machine_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+    approval_repo: ApprovalRepository = Depends(get_approval_repo),
 ):
-    """Approve a pending machine and assign its role (admin)."""
-    return MachineAdminHandler(machine_repo).approve(machine_id, req)
+    """Approve a pending machine and assign its role (admin).
+
+    Returns 200 with MachineDetail when the approval is immediate, or 202
+    with PendingApprovalResponse when dual-control is required and only one
+    operator has approved so far.
+    """
+    body, status_code = _make_handler(machine_repo, audit_repo, approval_repo).approve(
+        machine_id, req, operator_cn
+    )
+    response.status_code = status_code
+    return body
 
 
 @router.post("/{machine_id}/revoke", response_model=MachineDetail)
 def revoke_machine(
     machine_id: str,
     req: RevokeRequest,
-    _: None = Depends(require_admin),
+    operator_cn: str = Depends(resolve_operator),
     machine_repo: SqlMachineRepository = Depends(get_machine_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+    approval_repo: ApprovalRepository = Depends(get_approval_repo),
 ):
     """Revoke a machine (admin)."""
-    return MachineAdminHandler(machine_repo).revoke(machine_id, req)
+    return _make_handler(machine_repo, audit_repo, approval_repo).revoke(
+        machine_id, req, operator_cn
+    )
 
 
 @router.post("/{machine_id}/lock", response_model=MachineDetail)
 def lock_machine(
     machine_id: str,
     req: LockRequest,
-    _: None = Depends(require_admin),
+    operator_cn: str = Depends(resolve_operator),
     machine_repo: SqlMachineRepository = Depends(get_machine_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+    approval_repo: ApprovalRepository = Depends(get_approval_repo),
 ):
     """Temporarily lock a machine (admin)."""
-    return MachineAdminHandler(machine_repo).lock(machine_id, req)
+    return _make_handler(machine_repo, audit_repo, approval_repo).lock(
+        machine_id, req, operator_cn
+    )
 
 
 @router.post("/{machine_id}/unlock", response_model=MachineDetail)
 def unlock_machine(
     machine_id: str,
-    _: None = Depends(require_admin),
+    operator_cn: str = Depends(resolve_operator),
     machine_repo: SqlMachineRepository = Depends(get_machine_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+    approval_repo: ApprovalRepository = Depends(get_approval_repo),
 ):
     """Unlock a previously locked machine (admin)."""
-    return MachineAdminHandler(machine_repo).unlock(machine_id)
+    return _make_handler(machine_repo, audit_repo, approval_repo).unlock(
+        machine_id, operator_cn
+    )
 
 
 @router.get("/{machine_id}/offline-bundle")
 def get_offline_bundle(
     machine_id: str,
-    _: None = Depends(require_admin),
+    operator_cn: str = Depends(resolve_operator),
     machine_repo: SqlMachineRepository = Depends(get_machine_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+    approval_repo: ApprovalRepository = Depends(get_approval_repo),
 ):
     """Return a bundle payload for building an offline provisioning USB (admin)."""
-    return MachineAdminHandler(machine_repo).offline_bundle(machine_id)
+    return _make_handler(machine_repo, audit_repo, approval_repo).offline_bundle(
+        machine_id, operator_cn
+    )
 
 
 @router.post("/import")
 def import_machine(
     receipt: dict,
-    _: None = Depends(require_admin),
+    operator_cn: str = Depends(resolve_operator),
     machine_repo: SqlMachineRepository = Depends(get_machine_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+    approval_repo: ApprovalRepository = Depends(get_approval_repo),
 ):
     """Import a machine from an offline TPM receipt (admin). Idempotent."""
-    return MachineAdminHandler(machine_repo).import_machine(receipt)
+    return _make_handler(machine_repo, audit_repo, approval_repo).import_machine(
+        receipt, operator_cn
+    )
+
+
+@router.get("/{machine_id}/approvals", response_model=list[ApprovalDetail])
+def list_machine_approvals(
+    machine_id: str,
+    operator_cn: str = Depends(resolve_operator),
+    approval_repo: ApprovalRepository = Depends(get_approval_repo),
+):
+    """List all dual-control approval requests for a machine (including expired/consumed)."""
+    rows = approval_repo.list_for_machine(machine_id)
+    return [
+        ApprovalDetail(
+            id          = r.id,
+            machine_id  = r.machine_id,
+            operator_cn = r.operator_cn,
+            role        = r.role,
+            hostname    = r.hostname,
+            assigned_ip = r.assigned_ip,
+            created_at  = r.created_at,
+            expires_at  = r.expires_at,
+            consumed    = r.consumed,
+        )
+        for r in rows
+    ]
 
 
 @router.post("/enroll", response_model=AttestResponse)
@@ -197,3 +283,4 @@ def ak_activate(
         ak_accepted=True,
         message="AK registered and PCR quote verified",
     )
+

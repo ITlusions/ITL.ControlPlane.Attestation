@@ -1,37 +1,19 @@
-"""Operator, audit-log, and dual-control approval models.
+"""Audit-log and dual-control approval models.
+
+Operator identity is managed entirely in Keycloak — there is no local operator
+table.  The JWT ``preferred_username`` (or ``sub``) claim is used as the
+canonical operator identity string throughout.
 
 These tables support:
-  - per-operator identity (OperatorRow)
   - append-only audit log  (AuditLogRow)
   - dual-control approvals (ApprovalRequestRow)
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlmodel import Field, SQLModel
-
-
-class OperatorRow(SQLModel, table=True):
-    """Persisted operator record.
-
-    operator_id is a UUID assigned at creation.
-    name        is the human-readable display name / login (used as CN in issued certs).
-    cert_pem    stores the most-recently issued mTLS client cert PEM (nullable).
-    cert_serial stores the serial number of that cert as a decimal string.
-    oidc_sub    stores the Keycloak subject claim so OIDC tokens can be mapped here.
-    """
-
-    __tablename__ = "operator"
-
-    id:          Optional[int] = Field(default=None, primary_key=True)
-    operator_id: str           = Field(index=True, unique=True)
-    name:        str           = Field(index=True, unique=True)
-    cert_pem:    Optional[str] = Field(default=None)
-    cert_serial: Optional[str] = Field(default=None)
-    oidc_sub:    Optional[str] = Field(default=None, index=True)
-    created_at:  datetime      = Field(default_factory=datetime.utcnow)
 
 
 class AuditLogRow(SQLModel, table=True):
@@ -44,7 +26,7 @@ class AuditLogRow(SQLModel, table=True):
     __tablename__ = "audit_log"
 
     id:          Optional[int] = Field(default=None, primary_key=True)
-    timestamp:   datetime      = Field(default_factory=datetime.utcnow)
+    timestamp:   datetime      = Field(default_factory=lambda: datetime.now(timezone.utc))
     operator_cn: str           # "SYSTEM" | operator name/CN | Keycloak preferred_username
     action:      str           # "approve", "revoke", "lock", "unlock", "wipe", "import"
     machine_id:  Optional[str] = Field(default=None)
@@ -69,6 +51,6 @@ class ApprovalRequestRow(SQLModel, table=True):
     role:        str
     hostname:    Optional[str] = Field(default=None)
     assigned_ip: Optional[str] = Field(default=None)
-    created_at:  datetime      = Field(default_factory=datetime.utcnow)
+    created_at:  datetime      = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at:  datetime
     consumed:    bool          = Field(default=False)

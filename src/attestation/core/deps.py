@@ -12,7 +12,7 @@ from sqlmodel import Session, create_engine
 
 from .config import get_settings
 from ..repositories.machine_repo import SqlMachineRepository
-from ..repositories.operator_repo import AuditRepository, ApprovalRepository, OperatorRepository
+from ..repositories.operator_repo import AuditRepository, ApprovalRepository
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +36,6 @@ def get_db():
 
 def get_machine_repo(db: Session = Depends(get_db)) -> SqlMachineRepository:
     return SqlMachineRepository(db)
-
-
-def get_operator_repo(db: Session = Depends(get_db)) -> OperatorRepository:
-    return OperatorRepository(db)
 
 
 def get_audit_repo(db: Session = Depends(get_db)) -> AuditRepository:

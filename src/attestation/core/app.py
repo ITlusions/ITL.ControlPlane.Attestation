@@ -14,7 +14,7 @@ from sqlmodel import SQLModel
 from .config import settings
 from .deps import get_engine
 from ..pki.enrollment_ca import init_enrollment_ca
-from ..routes import attestation_router, config_router, machines_router, registration_router
+from ..routes import attestation_router, audit_router, config_router, machines_router, registration_router
 
 _STATIC_DIR = Path(__file__).parent.parent / "static"
 
@@ -55,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(attestation_router, prefix=prefix)
     app.include_router(config_router, prefix=prefix)
     app.include_router(machines_router, prefix=f"{prefix}/machines")
+    app.include_router(audit_router, prefix=f"{prefix}/audit")
 
     @app.get("/healthz", include_in_schema=False)
     def healthz():

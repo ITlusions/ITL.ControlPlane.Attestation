@@ -7,15 +7,25 @@ The module exposes a single function ``validate_operator_token(token)`` that:
 1. Fetches (and caches) the OIDC discovery document from
    ``{ITL_OIDC_ISSUER}/.well-known/openid-configuration``.
 2. Fetches (and caches) the JWKS from the ``jwks_uri`` found in that document.
-3. Verifies the JWT signature, issuer, audience and expiry using PyJWT.
-4. Returns the ``preferred_username`` claim (falling back to ``sub``) as the
+3. Verifies the JWT signature, issuer, audience, and expiry using PyJWT.
+4. Checks that the token carries the required operator role (see below).
+5. Returns the ``preferred_username`` claim (falling back to ``sub``) as the
    canonical operator identity string.
 
 Configuration
 -------------
-ITL_OIDC_ISSUER   — full issuer URL, e.g. https://sts.itlusions.com/realms/itl
-ITL_OIDC_AUDIENCE — expected ``aud`` claim (default: "attestation-service")
-ITL_OIDC_ENABLED  — set to "false" to disable OIDC (default: true when issuer is set)
+ITL_OIDC_ISSUER        — full issuer URL, e.g. https://sts.itlusions.com/realms/itl
+ITL_OIDC_AUDIENCE      — expected ``aud`` claim (default: "attestation-service")
+ITL_OIDC_OPERATOR_ROLE — Keycloak realm-role that grants operator access
+                          (default: "attestation-operator").  Set to "" to skip
+                          role enforcement (not recommended for production).
+ITL_OIDC_ENABLED       — set to "false" to disable OIDC (default: true when issuer is set)
+
+Role check
+----------
+Keycloak embeds realm roles in the ``realm_access.roles`` claim and client roles
+in ``resource_access.<client_id>.roles``.  We check both locations.  Any token
+that does *not* carry ``ITL_OIDC_OPERATOR_ROLE`` is rejected with a 403.
 
 Caching
 -------
@@ -44,15 +54,11 @@ _lock = threading.Lock()
 _last_init: float = 0.0
 
 
-def _get_oidc_settings() -> tuple[str, str, bool]:
-    """Return (issuer, audience, enabled) from the application config.
-
-    Imported here (not at module level) to allow the settings cache to be
-    overridden in tests.
-    """
+def _get_oidc_settings() -> tuple[str, str, str, bool]:
+    """Return (issuer, audience, operator_role, enabled) from the application config."""
     from ..core.config import get_settings
     s = get_settings()
-    return s.oidc_issuer, s.oidc_audience, s.oidc_enabled
+    return s.oidc_issuer, s.oidc_audience, s.oidc_operator_role, s.oidc_enabled
 
 
 def _discover(issuer: str) -> dict[str, Any]:
@@ -90,6 +96,29 @@ def _ensure_jwks_client(issuer: str) -> PyJWKClient:
         return _jwks_client
 
 
+def _extract_roles(payload: dict[str, Any]) -> set[str]:
+    """Extract the union of realm-level and resource-level roles from a Keycloak JWT.
+
+    Keycloak includes roles in two places:
+      ``realm_access.roles``                    — realm-wide roles
+      ``resource_access.<client_id>.roles``     — per-client roles
+    We collect all of them so role checks work regardless of how the Keycloak
+    client is configured.
+    """
+    roles: set[str] = set()
+
+    # Realm roles
+    realm_access = payload.get("realm_access", {})
+    roles.update(realm_access.get("roles", []))
+
+    # Per-client roles
+    resource_access = payload.get("resource_access", {})
+    for client_data in resource_access.values():
+        roles.update(client_data.get("roles", []))
+
+    return roles
+
+
 def validate_operator_token(token: str) -> str:
     """Validate a Keycloak JWT Bearer token and return the operator identity.
 
@@ -101,10 +130,11 @@ def validate_operator_token(token: str) -> str:
     Raises
     ------
     ValueError
-        If OIDC is not configured, the token is invalid, expired, or the
-        issuer / audience do not match.
+        If OIDC is not configured, the token is invalid/expired, the
+        issuer/audience does not match, or the token lacks the required
+        operator role (``ITL_OIDC_OPERATOR_ROLE``).
     """
-    issuer, audience, enabled = _get_oidc_settings()
+    issuer, audience, operator_role, enabled = _get_oidc_settings()
 
     if not enabled or not issuer:
         raise ValueError("OIDC is not configured (set ITL_OIDC_ISSUER)")
@@ -115,18 +145,22 @@ def validate_operator_token(token: str) -> str:
     except (PyJWKClientError, RuntimeError) as exc:
         raise ValueError(f"Cannot resolve OIDC signing key: {exc}") from exc
 
-    options: dict[str, Any] = {"verify_exp": True, "verify_iss": True}
+    decode_options: dict[str, Any] = {"verify_exp": True, "verify_iss": True}
+    decode_kwargs: dict[str, Any] = {
+        "algorithms": ["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"],
+        "issuer": issuer,
+        "options": decode_options,
+    }
     if audience:
-        options["verify_aud"] = True
+        decode_kwargs["audience"] = audience
+    else:
+        decode_options["verify_aud"] = False
 
     try:
-        payload = jwt.decode(
+        payload: dict[str, Any] = jwt.decode(
             token,
             signing_key.key,
-            algorithms=["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"],
-            issuer=issuer,
-            audience=audience or jwt.api_jwt.decode.__code__.co_consts,  # skip aud check
-            options=options,
+            **decode_kwargs,
         )
     except jwt.ExpiredSignatureError as exc:
         raise ValueError("OIDC token has expired") from exc
@@ -137,11 +171,20 @@ def validate_operator_token(token: str) -> str:
     except jwt.PyJWTError as exc:
         raise ValueError(f"OIDC token validation failed: {exc}") from exc
 
+    # Role enforcement — reject tokens without the required operator role
+    if operator_role:
+        token_roles = _extract_roles(payload)
+        if operator_role not in token_roles:
+            raise ValueError(
+                f"OIDC token does not carry the required role '{operator_role}'. "
+                f"Assign this role to the operator in Keycloak."
+            )
+
     identity: str = payload.get("preferred_username") or payload.get("sub") or ""
     if not identity:
         raise ValueError("OIDC token contains neither preferred_username nor sub")
 
-    logger.debug("OIDC token validated — operator=%s", identity)
+    logger.debug("OIDC token validated — operator=%s roles=%s", identity, _extract_roles(payload))
     return identity
 
 
@@ -152,3 +195,4 @@ def reset_jwks_cache() -> None:
         _jwks_client = None
         _discovery   = {}
         _last_init   = 0.0
+

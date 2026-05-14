@@ -77,3 +77,41 @@ class CertResponse(BaseModel):
     enrollment_ca_pem:            str
     valid_days:                   int
     message:                      str
+
+
+class PendingApprovalResponse(BaseModel):
+    """Returned (HTTP 202) when the first operator approves a dual-control machine."""
+
+    machine_id:         str
+    status:             str       # always "pending_second_approval"
+    message:            str
+    approvals_received: int
+    approvals_required: int
+    expires_at:         datetime
+
+
+class AuditLogEntry(BaseModel):
+    """A single entry from the append-only audit log."""
+
+    id:          int
+    timestamp:   datetime
+    operator_cn: str
+    action:      str
+    machine_id:  Optional[str]
+    prev_state:  Optional[str]
+    new_state:   Optional[str]
+    detail:      Optional[str]
+
+
+class ApprovalDetail(BaseModel):
+    """A pending or historical dual-control approval request."""
+
+    id:          int
+    machine_id:  str
+    operator_cn: str
+    role:        str
+    hostname:    Optional[str]
+    assigned_ip: Optional[str]
+    created_at:  datetime
+    expires_at:  datetime
+    consumed:    bool

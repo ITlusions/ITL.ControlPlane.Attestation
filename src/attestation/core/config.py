@@ -87,6 +87,10 @@ class Settings(BaseSettings):
         default="attestation-service",
         validation_alias="ITL_OIDC_AUDIENCE",
     )
+    oidc_operator_role: str = Field(
+        default="attestation-operator",
+        validation_alias="ITL_OIDC_OPERATOR_ROLE",
+    )
     oidc_enabled: bool = Field(default=True, validation_alias="ITL_OIDC_ENABLED")
 
     # -----------------------------------------------------------------------
