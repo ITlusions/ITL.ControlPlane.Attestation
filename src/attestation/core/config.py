@@ -76,6 +76,38 @@ class Settings(BaseSettings):
         validation_alias="ITL_ENROLLMENT_CERT_DAYS",
     )
 
+    # -----------------------------------------------------------------------
+    # OIDC / Keycloak operator authentication (new requirement)
+    # -----------------------------------------------------------------------
+    # ITL_OIDC_ISSUER   — Keycloak realm URL, e.g. https://sts.itlusions.com/realms/itl
+    # ITL_OIDC_AUDIENCE — expected 'aud' claim in the JWT (default: attestation-service)
+    # ITL_OIDC_ENABLED  — set "false" to disable even when issuer is provided
+    oidc_issuer: str = Field(default="", validation_alias="ITL_OIDC_ISSUER")
+    oidc_audience: str = Field(
+        default="attestation-service",
+        validation_alias="ITL_OIDC_AUDIENCE",
+    )
+    oidc_enabled: bool = Field(default=True, validation_alias="ITL_OIDC_ENABLED")
+
+    # -----------------------------------------------------------------------
+    # Dual-control approval for critical machine roles
+    # -----------------------------------------------------------------------
+    # ITL_DUAL_CONTROL_ROLES          — comma-separated roles requiring 2-of-N approval
+    # ITL_DUAL_CONTROL_QUORUM         — number of distinct operator approvals required
+    # ITL_DUAL_CONTROL_WINDOW_SECONDS — approval window before the first vote expires
+    dual_control_roles: list[str] = Field(
+        default_factory=list,
+        validation_alias="ITL_DUAL_CONTROL_ROLES",
+    )
+    dual_control_quorum: int = Field(
+        default=2,
+        validation_alias="ITL_DUAL_CONTROL_QUORUM",
+    )
+    dual_control_window_seconds: int = Field(
+        default=600,
+        validation_alias="ITL_DUAL_CONTROL_WINDOW_SECONDS",
+    )
+
     @field_validator("service_base_url", "factory_url", mode="after")
     @classmethod
     def strip_trailing_slash(cls, v: str) -> str:
@@ -84,6 +116,15 @@ class Settings(BaseSettings):
     @field_validator("factory_extensions", mode="before")
     @classmethod
     def parse_extensions(cls, v: Any) -> list[str]:
+        if isinstance(v, list):
+            return v
+        if not v or not str(v).strip():
+            return []
+        return [e.strip() for e in str(v).split(",") if e.strip()]
+
+    @field_validator("dual_control_roles", mode="before")
+    @classmethod
+    def parse_dual_control_roles(cls, v: Any) -> list[str]:
         if isinstance(v, list):
             return v
         if not v or not str(v).strip():
