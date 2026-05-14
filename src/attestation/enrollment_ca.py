@@ -7,6 +7,7 @@ from .pki.enrollment_ca import (  # noqa: F401
     init_enrollment_ca,
     get_ca_cert_pem,
     issue_enrollment_cert,
+    extract_ek_fingerprint_from_cert,
     verify_enrollment_cert,
     verify_nonce_signature,
     encrypt_with_rsa_pubkey,

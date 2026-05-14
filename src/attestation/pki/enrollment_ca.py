@@ -224,6 +224,27 @@ def issue_enrollment_cert(
     return cert_pem, key_pem
 
 
+def extract_ek_fingerprint_from_cert(cert_pem: str) -> str | None:
+    """Extract the ``urn:itl:ek:<fingerprint>`` URI SAN from an enrollment cert.
+
+    Returns the fingerprint string if the URI SAN is present, or ``None`` if
+    the SAN is absent, the cert has no URI SANs with the ``urn:itl:ek:`` prefix,
+    the input is an invalid or malformed certificate, or the input is empty.
+    """
+    try:
+        cert = x509.load_pem_x509_certificate(cert_pem.encode())
+    except Exception:
+        return None
+    try:
+        san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+        for uri in san.value.get_values_for_type(x509.UniformResourceIdentifier):
+            if uri.startswith("urn:itl:ek:"):
+                return uri[len("urn:itl:ek:"):]
+    except x509.ExtensionNotFound:
+        pass
+    return None
+
+
 def verify_enrollment_cert(cert_pem: str) -> dict:
     """Verify an enrollment certificate and extract its claims.
 

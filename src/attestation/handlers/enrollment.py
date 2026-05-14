@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from ..pki.enrollment_ca import (
     CERT_VALID_DAYS,
     encrypt_with_rsa_pubkey,
+    extract_ek_fingerprint_from_cert,
     get_ca_cert_pem,
     issue_enrollment_cert,
     verify_enrollment_cert,
@@ -59,6 +60,27 @@ class EnrollmentHandler:
         role_str   = claims["role"]
 
         existing = self.machine_repo.get_by_id(machine_id)
+
+        # Cross-check the EK fingerprint embedded in the cert's URI SAN against
+        # the fingerprint stored for the machine (if any).  This prevents a
+        # stolen enrollment cert from being used to enroll a different physical
+        # machine under the victim's identity.
+        cert_ek_fp = extract_ek_fingerprint_from_cert(cert_pem)
+        if cert_ek_fp:
+            if (
+                existing
+                and existing.ek_fingerprint
+                and not fingerprints_match(cert_ek_fp, existing.ek_fingerprint)
+            ):
+                raise HTTPException(
+                    403,
+                    "Enrollment cert EK fingerprint does not match registered machine hardware identity",
+                )
+        else:
+            logger.warning(
+                "Enrollment cert for machine %s has no EK SAN — skipping EK fingerprint check (legacy cert)",
+                machine_id,
+            )
 
         config_token = secrets.token_urlsafe(32)
 

@@ -116,13 +116,11 @@ EK certs are not verified against Infineon, NTC, STM or other TPM manufacturer C
 
 ### Issue #4 — Enrollment EK fingerprint not cross-checked
 
-**Status**: Open  
+**Status**: Fixed  
 **Risk**: High  
 **Link**: https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues/4
 
-The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is never read during enrollment. A valid enrollment cert issued to machine A could be used by machine B to self-enroll as machine A's identity.
-
-**Mitigation until fixed**: Enrollment certs are embedded in machineconfigs delivered over TLS and stored at a restricted path (`/var/lib/itl-tpm/`) on the Talos node. Physical access to a node or a compromised machineconfig delivery is required to steal the cert.
+The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is now extracted and compared against the registered `ek_fingerprint` during `/enroll`. A valid enrollment cert issued to machine A can no longer be used by machine B to self-enroll as machine A's identity. Certs issued before this fix (no EK SAN) are still accepted with a warning for backwards compatibility.
 
 ---
 
