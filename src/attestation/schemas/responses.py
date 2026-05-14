@@ -101,6 +101,18 @@ class AuditLogEntry(BaseModel):
     prev_state:  Optional[str]
     new_state:   Optional[str]
     detail:      Optional[str]
+    prev_hash:   str
+    entry_hash:  str
+
+
+class AuditVerifyResult(BaseModel):
+    """Result of walking the full audit log hash chain."""
+
+    valid:            bool
+    entries:          int
+    root_hash:        Optional[str]
+    first_invalid_id: Optional[int] = None
+    error:            Optional[str] = None
 
 
 class ApprovalDetail(BaseModel):

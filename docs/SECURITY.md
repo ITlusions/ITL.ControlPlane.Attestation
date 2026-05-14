@@ -64,9 +64,26 @@ All machine lifecycle endpoints require operator authentication. The service res
 
 Comparison against `ITL_ADMIN_TOKEN` uses `hmac.compare_digest` (constant-time) to prevent timing side-channel attacks.
 
-### Per-operator identity and audit trail
+### Per-operator identity and cryptographically chained audit trail
 
 Every admin action writes an `AuditLogRow` to the `audit_log` table with `operator_cn`, `action`, `machine_id`, `prev_state`, `new_state`, and an optional `detail` string. The repository layer exposes only an `append()` method — there is no update or delete path, making the log append-only by construction.
+
+Each entry also carries two cryptographic chain fields:
+
+- **`prev_hash`** — SHA-256 of the previous entry's canonical form. The genesis entry uses `"0"×64`.
+- **`entry_hash`** — SHA-256 of this entry's canonical form (all content fields including `prev_hash`, but excluding the auto-increment `id` and `entry_hash` itself).
+
+The canonical form is a compact, deterministically sorted JSON object. Any modification to a historical entry invalidates its `entry_hash`, and because every subsequent entry's `prev_hash` refers to the entry before it, tampering with entry *N* cascades and breaks the entire chain from *N* onwards.
+
+The chain can be verified at any time via `GET /api/v1/audit/verify`, which re-walks every row, recomputes all hashes, and reports the first broken link.
+
+```python
+# Chain construction (pseudocode)
+def compute_entry_hash(entry):
+    data = {k: v for k, v in entry.items() if k not in {"id", "entry_hash"}}
+    canonical = json.dumps(data, separators=(",", ":"), sort_keys=True)
+    return hashlib.sha256(canonical.encode()).hexdigest()
+```
 
 The audit log is queryable via `GET /api/v1/audit`.
 
@@ -161,6 +178,7 @@ The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is now extra
 | mTLS client cert authentication (nginx `X-Client-Cert`) | Implemented |
 | Break-glass shared token (`ITL_ADMIN_TOKEN`) | Implemented (constant-time comparison) |
 | Append-only audit log with operator identity | Implemented (`GET /api/v1/audit`) |
+| Cryptographic hash chain on audit log | Implemented (`GET /api/v1/audit/verify`) |
 | Dual-control approval for critical roles | Implemented (`ITL_DUAL_CONTROL_ROLES`) |
 | Enrollment cert chain verification | Implemented |
 | Nonce challenge-response (key possession proof) | Implemented |
@@ -181,7 +199,7 @@ The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is now extra
 
 2. **Enable dual-control** for controlplane nodes (`ITL_DUAL_CONTROL_ROLES=controlplane`). This prevents a single compromised operator credential from unilaterally registering a rogue controlplane node.
 
-3. **Forward the audit log to a SIEM.** The `GET /api/v1/audit` endpoint is paginated and append-only. Periodically export it or configure log shipping from the container's structured log output.
+3. **Periodically verify and publish the audit chain root hash.** Call `GET /api/v1/audit/verify` on a schedule (e.g., hourly via cron) and publish the `root_hash` to an external, append-only store (Git commit, Rekor / Sigstore transparency log, or a signed webhook to a secondary operator). This provides out-of-band evidence that the log has not been silently truncated or modified.
 
 4. **Treat `ITL_ADMIN_TOKEN` as a break-glass credential.** Store it in a secrets manager (HashiCorp Vault, Azure Key Vault, Kubernetes Secret with encryption at rest). Do not commit it to version control. Rotate it after any suspected exposure. All break-glass actions are logged as `operator_cn = SYSTEM`.
 

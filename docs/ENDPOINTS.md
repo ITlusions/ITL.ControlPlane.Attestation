@@ -438,7 +438,7 @@ List all dual-control approval requests for a machine (including expired and con
 
 Paginated, newest-first view of the append-only audit log. Every admin action (approve, revoke, lock, unlock, offline-bundle, import) is recorded here with the operator identity, machine state transition, and optional detail note.
 
-The log is **append-only** — no entry is ever updated or deleted.
+The log is **append-only** — no entry is ever updated or deleted. Every entry includes `prev_hash` and `entry_hash` fields that form a cryptographically chained sequence. Use `GET /api/v1/audit/verify` to validate the full chain.
 
 **Query parameters**
 
@@ -459,7 +459,9 @@ The log is **append-only** — no entry is ever updated or deleted.
     "machine_id":  "550e8400-...",
     "prev_state":  "pending_approval",
     "new_state":   "registered",
-    "detail":      "role=controlplane hostname=cp-01"
+    "detail":      "role=controlplane hostname=cp-01",
+    "prev_hash":   "a3f1b8c2d...",
+    "entry_hash":  "e7d4c9f1a..."
   },
   {
     "id":          41,
@@ -469,7 +471,9 @@ The log is **append-only** — no entry is ever updated or deleted.
     "machine_id":  "550e8400-...",
     "prev_state":  "pending_approval",
     "new_state":   null,
-    "detail":      "first approval vote — awaiting second operator (quorum=2)"
+    "detail":      "first approval vote — awaiting second operator (quorum=2)",
+    "prev_hash":   "0000000000000000000000000000000000000000000000000000000000000000",
+    "entry_hash":  "a3f1b8c2d..."
   }
 ]
 ```
@@ -477,6 +481,44 @@ The log is **append-only** — no entry is ever updated or deleted.
 `operator_cn` is `"SYSTEM"` for any action performed with the break-glass `ITL_ADMIN_TOKEN`.
 
 ---
+
+### `GET /api/v1/audit/verify`
+
+Walk the full audit log hash chain and report its integrity. Re-computes every entry's SHA-256 hash and verifies that each `prev_hash` matches the previous entry's `entry_hash`.
+
+The chain root hash (last entry's `entry_hash`) can be published externally (Git commit, transparency log, webhook) to provide out-of-band tamper evidence.
+
+**Response 200 — valid chain**
+
+```json
+{
+  "valid":            true,
+  "entries":          1842,
+  "root_hash":        "abc123...",
+  "first_invalid_id": null,
+  "error":            null
+}
+```
+
+**Response 200 — broken chain**
+
+```json
+{
+  "valid":            false,
+  "entries":          1842,
+  "root_hash":        null,
+  "first_invalid_id": 37,
+  "error":            "entry_hash mismatch at entry id=37"
+}
+```
+
+| Field | Description |
+|---|---|
+| `valid` | `true` iff every entry hash is correct and the chain is unbroken |
+| `entries` | Total number of entries inspected |
+| `root_hash` | `entry_hash` of the last entry (current chain tip); `null` when `valid=false` or the table is empty |
+| `first_invalid_id` | `id` of the first entry with a bad hash; `null` when `valid=true` |
+| `error` | Human-readable failure description; `null` when `valid=true` |
 
 ## Certificate Enrollment (Public)
 

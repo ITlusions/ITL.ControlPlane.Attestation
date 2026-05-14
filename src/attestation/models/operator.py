@@ -21,6 +21,13 @@ class AuditLogRow(SQLModel, table=True):
 
     This table must never be updated or deleted from — only INSERTs are allowed.
     operator_cn is "SYSTEM" for break-glass (ITL_ADMIN_TOKEN) actions.
+
+    The log forms a cryptographically chained sequence:
+      prev_hash   — SHA-256 of the previous row's canonical form; "0"*64 for the genesis entry.
+      entry_hash  — SHA-256 of this row's canonical form (all fields except id and entry_hash).
+
+    Any modification to a historical entry invalidates all subsequent hashes, making tampering
+    detectable by re-walking the chain via GET /api/v1/audit/verify.
     """
 
     __tablename__ = "audit_log"
@@ -33,6 +40,8 @@ class AuditLogRow(SQLModel, table=True):
     prev_state:  Optional[str] = Field(default=None)
     new_state:   Optional[str] = Field(default=None)
     detail:      Optional[str] = Field(default=None)  # free-text note / reason
+    prev_hash:   str           = Field(default="")    # SHA-256 of previous entry; "0"*64 for genesis
+    entry_hash:  str           = Field(default="")    # SHA-256 of this entry (excl. id + entry_hash)
 
 
 class ApprovalRequestRow(SQLModel, table=True):
