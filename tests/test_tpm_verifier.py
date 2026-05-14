@@ -92,10 +92,11 @@ class TestComputeEkFingerprint:
         assert compute_ek_fingerprint(valid_ek_cert_pem) == compute_ek_fingerprint(valid_ek_cert_pem)
 
     def test_different_certs_differ(self, rsa_key):
+        import base64
         from attestation.pki.tpm_verifier import compute_ek_fingerprint
         key2   = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        cert1  = _make_self_signed_cert(rsa_key).public_bytes(serialization.Encoding.PEM).decode()
-        cert2  = _make_self_signed_cert(key2).public_bytes(serialization.Encoding.PEM).decode()
+        cert1  = base64.b64encode(_make_self_signed_cert(rsa_key).public_bytes(serialization.Encoding.PEM)).decode()
+        cert2  = base64.b64encode(_make_self_signed_cert(key2).public_bytes(serialization.Encoding.PEM)).decode()
         assert compute_ek_fingerprint(cert1) != compute_ek_fingerprint(cert2)
 
 

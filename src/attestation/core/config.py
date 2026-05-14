@@ -67,6 +67,16 @@ class Settings(BaseSettings):
     )
     # High-assurance mode — TLS 1.3 enforcement (issue #8)
     high_assurance: bool = Field(default=False, validation_alias="ITL_HIGH_ASSURANCE")
+    # TLS settings — applied by the upstream proxy (nginx/Caddy) or uvicorn in high-assurance mode.
+    # These values are advertised via startup logs and the /healthz extended response.
+    tls_min_version: str = Field(
+        default="TLSv1.3",
+        validation_alias="ITL_TLS_MIN_VERSION",
+    )
+    tls_ciphers: str = Field(
+        default="TLS_AES_256_GCM_SHA384",
+        validation_alias="ITL_TLS_CIPHERS",
+    )
     config_cache_dir: str = Field(
         default="/var/lib/itl-reg/configs",
         validation_alias="ITL_CONFIG_CACHE_DIR",
