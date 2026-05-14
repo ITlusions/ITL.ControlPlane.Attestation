@@ -23,7 +23,7 @@ title: Deployment
 | `ITL_FACTORY_URL` | `https://factory.talos.dev` | No | Talos Image Factory base URL |
 | `ITL_TALOS_VERSION` | `v1.9.5` | No | Talos version used when building ISO URLs |
 | `ITL_INSTALLER_IMAGE` | `ghcr.io/itlusions/itl-talos-installer:latest` | No | Custom Talos installer image embedded in generated MachineConfigs |
-| `ITL_ADMIN_TOKEN` | *(empty)* | **Yes in production** | Bearer token for all admin endpoints. Service returns 503 for admin calls when unset. |
+| `ITL_ADMIN_TOKEN` | *(empty)* | No (break-glass only) | Shared Bearer token — emergency break-glass path. Prefer Keycloak OIDC for normal operator access. Service returns 503 for admin calls when neither OIDC nor this token is configured. |
 | `ITL_ENROLLMENT_CERT_DAYS` | `30` | No | Validity period for issued enrollment certificates |
 | `ITL_ENROLLMENT_CA_DIR` | `/var/lib/itl-reg/ca` | No | Directory for Enrollment CA key + cert PEM files |
 | `ITL_ENROLLMENT_CA_ALGORITHM` | `ecdsa-p384` | No | CA key algorithm: `ecdsa-p384` (CNSA 2.0 default) or `rsa-4096` |
@@ -34,6 +34,13 @@ title: Deployment
 | `ITL_REQUIRE_NONCE` | `false` | No | Require anti-replay nonce (`nonce_id`) in every `POST /attest` request |
 | `ITL_REQUIRE_QUOTE` | `false` | No | Require a verified PCR quote in every `POST /attest` request |
 | `ITL_HIGH_ASSURANCE` | `false` | No | Enable high-assurance mode (enforces TLS 1.3 only) |
+| **`ITL_OIDC_ISSUER`** | *(empty)* | **Yes in production** | Keycloak realm URL — e.g. `https://sts.itlusions.com/realms/itl`. Enables OIDC operator authentication when set. |
+| **`ITL_OIDC_AUDIENCE`** | `attestation-service` | No | Expected `aud` claim in Keycloak JWTs. Must match the Keycloak client configured for this service. |
+| **`ITL_OIDC_OPERATOR_ROLE`** | `attestation-operator` | No | Keycloak realm-role (or client-role) required to access admin endpoints. Tokens without this role are rejected with 403. Set to `""` to skip role enforcement (not recommended). |
+| **`ITL_OIDC_ENABLED`** | `true` | No | Set `false` to disable OIDC validation even when `ITL_OIDC_ISSUER` is set. Useful for local dev. |
+| **`ITL_DUAL_CONTROL_ROLES`** | *(empty)* | No | Comma-separated list of machine roles requiring 2-of-N operator approval before a machine is registered. E.g. `controlplane` or `controlplane,worker-infra`. |
+| **`ITL_DUAL_CONTROL_QUORUM`** | `2` | No | Number of distinct operator approvals required for dual-control roles. |
+| **`ITL_DUAL_CONTROL_WINDOW_SECONDS`** | `600` | No | How long (seconds) the first approval vote remains valid. If the second vote does not arrive within this window, the first vote expires and a new window starts. |
 
 ---
 
@@ -47,6 +54,15 @@ services:
       - "8080:8080"
     environment:
       ITL_SERVICE_URL: https://attest.itlusions.com
+      # Keycloak OIDC — operators authenticate via Keycloak at sts.itlusions.com
+      ITL_OIDC_ISSUER: https://sts.itlusions.com/realms/itl
+      ITL_OIDC_AUDIENCE: attestation-service
+      ITL_OIDC_OPERATOR_ROLE: attestation-operator
+      # Dual-control: require 2-of-N approval for controlplane nodes
+      ITL_DUAL_CONTROL_ROLES: controlplane
+      ITL_DUAL_CONTROL_QUORUM: "2"
+      ITL_DUAL_CONTROL_WINDOW_SECONDS: "600"
+      # Break-glass token (emergency only — prefer OIDC for normal operator access)
       ITL_ADMIN_TOKEN: ${ITL_ADMIN_TOKEN}
       ITL_TALOS_VERSION: v1.9.5
       ITL_INSTALLER_IMAGE: ghcr.io/itlusions/itl-talos-installer:latest
@@ -113,7 +129,8 @@ pip install -e ".[dev]"
 # Minimal env for local dev
 export ITL_DB_URL="sqlite:///./dev.db"
 export ITL_SERVICE_URL="http://localhost:8080"
-export ITL_ADMIN_TOKEN="dev-token"
+export ITL_ADMIN_TOKEN="dev-token"       # break-glass; OIDC not required locally
+export ITL_OIDC_ENABLED="false"          # disable OIDC for local dev
 export ITL_CONFIG_CACHE_DIR="./configs"
 export ITL_ENROLLMENT_CA_DIR="./ca"
 
@@ -134,14 +151,17 @@ The image is based on `python:3.12-slim` and installs system packages `gcc libss
 
 ## Production Checklist
 
-- [ ] `ITL_ADMIN_TOKEN` set to a cryptographically random value (min 32 bytes hex)
+- [ ] `ITL_OIDC_ISSUER` set to the Keycloak realm URL (`https://sts.itlusions.com/realms/itl`)
+- [ ] `ITL_OIDC_OPERATOR_ROLE` matches the Keycloak realm-role assigned to operators
+- [ ] `ITL_DUAL_CONTROL_ROLES` set to the roles requiring 2-of-N approval (e.g. `controlplane`)
+- [ ] `ITL_ADMIN_TOKEN` set to a cryptographically random value (min 32 bytes hex) — stored in a secrets manager, **not** in version control
 - [ ] Volume `/var/lib/itl-reg` mounted on persistent storage (not ephemeral)
 - [ ] CA key material backed up off-host
 - [ ] Role base configs pre-loaded into `ITL_CONFIG_CACHE_DIR`
 - [ ] `ITL_SERVICE_URL` matches the public HTTPS hostname (correct URL is baked into ISOs)
 - [ ] TLS termination in place upstream (nginx / Caddy / Kubernetes Ingress)
 - [ ] Healthcheck endpoint reachable: `GET /healthz` → `{"status": "ok"}`
-- [ ] Admin token not stored in version control or image layers
+- [ ] Audit log forwarded to SIEM (`GET /api/v1/audit` or structured log stream)
 
 ---
 
