@@ -232,6 +232,6 @@ The `urn:itl:ek:<fingerprint>` URI SAN embedded in enrollment certs is now extra
 
 7. **Apply fixes for issues #1 and #2 before exposing the registration endpoint to untrusted networks.** Those two gaps together allow completely unauthenticated machine identity injection.
 
-7. **Place TLS termination upstream** (nginx, Caddy, or Kubernetes Ingress with cert-manager). The service speaks plain HTTP on port 8080.
+8. **Place TLS termination upstream** (nginx, Caddy, or Kubernetes Ingress with cert-manager). The service speaks plain HTTP on port 8080.
 
-8. **Restrict network access** to `POST /api/v1/register` to your deployment VLAN. Attestation (`POST /api/v1/attest`) and config delivery (`GET /api/v1/config`) must be reachable from nodes on first boot.
+9. **Restrict network access** to `POST /api/v1/register` to your deployment VLAN. Attestation (`POST /api/v1/attest`) and config delivery (`GET /api/v1/config`) must be reachable from nodes on first boot.

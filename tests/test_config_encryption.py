@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import datetime
+import json
 import uuid
 from unittest.mock import MagicMock
 
@@ -229,7 +230,6 @@ class TestDeliverConfig:
             machine, "config: x", ENCRYPTED_ACCEPT, self._settings()
         )
         assert ENCRYPTED_ACCEPT in resp.media_type
-        import json
         body = json.loads(resp.body)
         assert body["format"] == "ek-aes256gcm-v1"
 

@@ -35,6 +35,7 @@ from typing import Optional
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.serialization import load_der_public_key, load_pem_public_key
 
 logger = logging.getLogger(__name__)
 
@@ -199,7 +200,6 @@ def verify_ek_pem(b64_pem: str, ek_source: str) -> bool:
         return True
 
     if ek_source == "pub":
-        from cryptography.hazmat.primitives.serialization import load_der_public_key, load_pem_public_key
         try:
             load_der_public_key(raw)
             return True
@@ -253,7 +253,6 @@ def load_ek_public_key(b64_pem: str) -> RSAPublicKey | EllipticCurvePublicKey:
         pass
 
     # Fall back to bare SubjectPublicKeyInfo (DER then PEM)
-    from cryptography.hazmat.primitives.serialization import load_der_public_key, load_pem_public_key
     try:
         return load_der_public_key(raw)  # type: ignore[return-value]
     except Exception:
