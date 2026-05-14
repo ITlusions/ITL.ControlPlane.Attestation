@@ -138,8 +138,6 @@ Interactive docs: `https://attest.itlusions.com/docs`
 | `POST` | `/api/v1/machines/{id}/revoke` | Admin | Revoke registered machine |
 | `POST` | `/api/v1/machines/{id}/lock` | Admin | Temporarily lock machine |
 | `POST` | `/api/v1/machines/{id}/unlock` | Admin | Unlock locked machine |
-| `POST` | `/api/v1/machines/{id}/ak-activate` | Machine | Activate Attestation Key via PCR quote |
-| `GET` | `/api/v1/attest/challenge` | — | Issue server-side anti-replay nonce |
 | `GET` | `/api/v1/machines/{id}/offline-bundle` | Admin | USB provisioning bundle |
 | `POST` | `/api/v1/machines/import` | Admin | Import machine from offline TPM receipt |
 | `POST` | `/api/v1/machines/enroll` | — | Cert-based self-enrollment |
