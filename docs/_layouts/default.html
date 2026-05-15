@@ -117,8 +117,25 @@
       padding: 0 12px;
     }
 
+    .sidebar-title a {
+      color: inherit;
+      transition: color 0.15s;
+    }
+
+    .sidebar-title a:hover {
+      color: var(--accent2);
+    }
+
+    .sidebar-title svg {
+      flex-shrink: 0;
+    }
+
     .sidebar-section {
       margin-bottom: 24px;
+    }
+
+    .sidebar-section:last-of-type {
+      margin-bottom: 0;
     }
 
     .sidebar-section-title {
@@ -156,6 +173,15 @@
       color: var(--accent2);
       background: var(--surface);
       font-weight: 500;
+    }
+
+    .sidebar-nav a svg {
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .sidebar-nav a:hover svg {
+      opacity: 1;
     }
 
     /* Sidebar scrollbar styling */
@@ -545,11 +571,19 @@
 
 <div class="container-with-sidebar">
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-title">Documentation</div>
+    <div class="sidebar-title">
+      <a href="{{ '/' | relative_url }}" style="color: var(--accent2); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        </svg>
+        Home
+      </a>
+    </div>
     
     <nav class="sidebar-section">
-      <div class="sidebar-section-title">Core</div>
+      <div class="sidebar-section-title">Core Documentation</div>
       <ul class="sidebar-nav">
+        <li><a href="{{ '/README' | relative_url }}"{% if page.url contains 'README' %} class="active"{% endif %}>Overview</a></li>
         <li><a href="{{ '/ARCHITECTURE' | relative_url }}"{% if page.url contains 'ARCHITECTURE' %} class="active"{% endif %}>Architecture</a></li>
         <li><a href="{{ '/ENDPOINTS' | relative_url }}"{% if page.url contains 'ENDPOINTS' %} class="active"{% endif %}>API Reference</a></li>
         <li><a href="{{ '/TPM_EXPLAINED' | relative_url }}"{% if page.url contains 'TPM_EXPLAINED' %} class="active"{% endif %}>TPM Explained</a></li>
@@ -567,12 +601,34 @@
     </nav>
 
     <nav class="sidebar-section">
-      <div class="sidebar-section-title">Advanced</div>
+      <div class="sidebar-section-title">Advanced Topics</div>
       <ul class="sidebar-nav">
         <li><a href="{{ '/EXTENSIONS' | relative_url }}"{% if page.url contains 'EXTENSIONS' %} class="active"{% endif %}>Extensions</a></li>
-        <li><a href="{{ '/MIGRATION_GUIDE' | relative_url }}"{% if page.url contains 'MIGRATION_GUIDE' %} class="active"{% endif %}>Migration Guide</a></li>
         <li><a href="{{ '/COMPONENTS_DEMO' | relative_url }}"{% if page.url contains 'COMPONENTS_DEMO' %} class="active"{% endif %}>Components Demo</a></li>
-        <li><a href="{{ '/SEO' | relative_url }}"{% if page.url contains 'SEO' %} class="active"{% endif %}>SEO Guide</a></li>
+      </ul>
+    </nav>
+
+    <div style="border-top: 1px solid var(--border); margin: 16px 0;"></div>
+
+    <nav class="sidebar-section">
+      <div class="sidebar-section-title">Resources</div>
+      <ul class="sidebar-nav">
+        <li>
+          <a href="https://github.com/ITlusions/ITL.ControlPlane.Attestation" target="_blank" rel="noopener" style="display: flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+            </svg>
+            GitHub
+          </a>
+        </li>
+        <li>
+          <a href="https://github.com/ITlusions/ITL.Github" target="_blank" rel="noopener" style="display: flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            </svg>
+            Components
+          </a>
+        </li>
       </ul>
     </nav>
   </aside>
