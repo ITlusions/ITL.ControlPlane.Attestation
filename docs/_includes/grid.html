@@ -1,0 +1,44 @@
+{%- comment -%}
+Usage:
+  {% capture grid_content %}
+    {% include card.html title="Card 1" description="..." %}
+    {% include card.html title="Card 2" description="..." %}
+    {% include card.html title="Card 3" description="..." %}
+  {% endcapture %}
+  {% include grid.html content=grid_content columns="3" gap="large" %}
+
+Parameters:
+  - content: HTML content to wrap in grid (required)
+  - columns: 1 | 2 | 3 | 4 | auto (default: 3)
+  - gap: small | medium | large (default: medium)
+{%- endcomment -%}
+
+{%- assign grid_content = include.content -%}
+{%- assign columns = include.columns | default: "3" -%}
+{%- assign gap = include.gap | default: "medium" -%}
+
+{%- case columns -%}
+  {%- when "1" -%}
+    {%- assign grid_columns = "1fr" -%}
+  {%- when "2" -%}
+    {%- assign grid_columns = "repeat(auto-fit, minmax(300px, 1fr))" -%}
+  {%- when "4" -%}
+    {%- assign grid_columns = "repeat(auto-fit, minmax(220px, 1fr))" -%}
+  {%- when "auto" -%}
+    {%- assign grid_columns = "repeat(auto-fit, minmax(280px, 1fr))" -%}
+  {%- else -%}
+    {%- assign grid_columns = "repeat(auto-fit, minmax(300px, 1fr))" -%}
+{%- endcase -%}
+
+{%- case gap -%}
+  {%- when "small" -%}
+    {%- assign grid_gap = "1rem" -%}
+  {%- when "large" -%}
+    {%- assign grid_gap = "2rem" -%}
+  {%- else -%}
+    {%- assign grid_gap = "1.5rem" -%}
+{%- endcase -%}
+
+<div class="grid" style="display: grid; grid-template-columns: {{ grid_columns }}; gap: {{ grid_gap }}; margin: 2rem 0;">
+  {{ grid_content }}
+</div>

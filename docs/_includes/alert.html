@@ -1,0 +1,59 @@
+{%- comment -%}
+Usage:
+  {% include alert.html type="info" title="Note" content="Your message here" %}
+  {% include alert.html type="warning" content="Warning message" %}
+  {% include alert.html type="success" title="Success!" content="Operation completed" %}
+  {% include alert.html type="danger" content="Critical issue" %}
+
+Parameters:
+  - type: info | warning | success | danger (default: info)
+  - title: Optional heading text
+  - content: Alert message (required)
+  - icon: Optional custom icon (default: auto based on type)
+{%- endcomment -%}
+
+{%- assign alert_type = include.type | default: "info" -%}
+{%- assign alert_title = include.title -%}
+{%- assign alert_content = include.content -%}
+
+{%- case alert_type -%}
+  {%- when "warning" -%}
+    {%- assign bg_color = "#3d2e1f" -%}
+    {%- assign border_color = "#d29922" -%}
+    {%- assign text_color = "#d29922" -%}
+    {%- assign default_icon = "⚠️" -%}
+    {%- assign default_title = "Warning" -%}
+  {%- when "danger" -%}
+    {%- assign bg_color = "#3d1f1f" -%}
+    {%- assign border_color = "#f85149" -%}
+    {%- assign text_color = "#f85149" -%}
+    {%- assign default_icon = "🚨" -%}
+    {%- assign default_title = "Danger" -%}
+  {%- when "success" -%}
+    {%- assign bg_color = "#1f3d2e" -%}
+    {%- assign border_color = "#3fb950" -%}
+    {%- assign text_color = "#3fb950" -%}
+    {%- assign default_icon = "✅" -%}
+    {%- assign default_title = "Success" -%}
+  {%- else -%}
+    {%- assign bg_color = "#1f2d3d" -%}
+    {%- assign border_color = "#58a6ff" -%}
+    {%- assign text_color = "#58a6ff" -%}
+    {%- assign default_icon = "ℹ️" -%}
+    {%- assign default_title = "Note" -%}
+{%- endcase -%}
+
+{%- assign icon = include.icon | default: default_icon -%}
+{%- assign title = alert_title | default: default_title -%}
+
+<div class="alert alert-{{ alert_type }}" style="background: {{ bg_color }}; border-left: 3px solid {{ border_color }}; padding: 1rem 1.25rem; margin: 1.5rem 0; border-radius: 6px;">
+  <div style="display: flex; gap: 12px; align-items: flex-start;">
+    <span style="font-size: 1.25rem; line-height: 1.5; flex-shrink: 0;">{{ icon }}</span>
+    <div style="flex: 1;">
+      {%- if title -%}
+        <strong style="color: {{ text_color }}; display: block; margin-bottom: 0.5rem; font-size: 0.95rem;">{{ title }}</strong>
+      {%- endif -%}
+      <div style="color: var(--text); font-size: 0.9rem; line-height: 1.6;">{{ alert_content }}</div>
+    </div>
+  </div>
+</div>

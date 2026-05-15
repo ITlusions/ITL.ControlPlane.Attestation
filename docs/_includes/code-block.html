@@ -1,0 +1,65 @@
+{%- comment -%}
+Usage:
+  {% capture code %}
+  git clone https://github.com/ITlusions/ITL.ControlPlane.Attestation.git
+  cd ITL.ControlPlane.Attestation
+  docker compose up -d
+  {% endcapture %}
+  {% include code-block.html code=code language="bash" title="Installation" %}
+
+Parameters:
+  - code: Code content (required)
+  - language: bash | python | yaml | json | powershell (default: bash)
+  - title: Optional code block title
+  - filename: Optional filename to display
+  - highlight: Line numbers to highlight (e.g., "2,5-7")
+{%- endcomment -%}
+
+{%- assign code_content = include.code | strip -%}
+{%- assign language = include.language | default: "bash" -%}
+{%- assign code_title = include.title -%}
+{%- assign filename = include.filename -%}
+
+{%- case language -%}
+  {%- when "bash" -%}
+    {%- assign lang_label = "Shell" -%}
+    {%- assign lang_color = "#3fb950" -%}
+  {%- when "python" -%}
+    {%- assign lang_label = "Python" -%}
+    {%- assign lang_color = "#58a6ff" -%}
+  {%- when "yaml" -%}
+    {%- assign lang_label = "YAML" -%}
+    {%- assign lang_color = "#d29922" -%}
+  {%- when "json" -%}
+    {%- assign lang_label = "JSON" -%}
+    {%- assign lang_color = "#d29922" -%}
+  {%- when "powershell" -%}
+    {%- assign lang_label = "PowerShell" -%}
+    {%- assign lang_color = "#58a6ff" -%}
+  {%- else -%}
+    {%- assign lang_label = language -%}
+    {%- assign lang_color = "#8b949e" -%}
+{%- endcase -%}
+
+<div class="code-block" style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; margin: 1.5rem 0;">
+  {%- if code_title or filename -%}
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid #30363d; background: #161b22;">
+    {%- if code_title -%}
+      <div style="font-weight: 600; color: #e6edf3; font-size: 0.875rem;">{{ code_title }}</div>
+    {%- elsif filename -%}
+      <div style="font-family: ui-monospace, 'Cascadia Code', monospace; color: #8b949e; font-size: 0.8rem;">{{ filename }}</div>
+    {%- endif -%}
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: {{ lang_color }}; font-size: 0.75rem; font-weight: 600;">{{ lang_label }}</span>
+    </div>
+  </div>
+  {%- endif -%}
+
+  <div style="position: relative;">
+    <pre style="margin: 0; padding: 1.25rem; overflow-x: auto; font-family: ui-monospace, 'Cascadia Code', 'SFMono-Regular', Consolas, monospace; font-size: 0.85rem; line-height: 1.6; color: #e6edf3;"><code class="language-{{ language }}">{{ code_content }}</code></pre>
+    <button onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy', 2000);"
+            style="position: absolute; top: 12px; right: 12px; background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: background 0.2s;"
+            onmouseover="this.style.background='#30363d';"
+            onmouseout="this.style.background='#21262d';">Copy</button>
+  </div>
+</div>

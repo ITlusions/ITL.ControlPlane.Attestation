@@ -1,0 +1,35 @@
+{%- comment -%}
+Usage:
+  {% include breadcrumb.html path="Home,Documentation,Architecture" %}
+  {% include breadcrumb.html items=page.breadcrumbs %}
+
+Parameters:
+  - path: Comma-separated breadcrumb items OR
+  - items: Array of breadcrumb items from front matter
+{%- endcomment -%}
+
+{%- if include.path -%}
+  {%- assign breadcrumb_items = include.path | split: "," -%}
+{%- elsif include.items -%}
+  {%- assign breadcrumb_items = include.items -%}
+{%- else -%}
+  {%- assign breadcrumb_items = page.breadcrumbs -%}
+{%- endif -%}
+
+{%- if breadcrumb_items.size > 0 -%}
+<nav aria-label="Breadcrumb" style="margin-bottom: 2rem;">
+  <ol style="display: flex; align-items: center; gap: 0.5rem; list-style: none; padding: 0; margin: 0; font-size: 0.875rem;">
+    {%- for item in breadcrumb_items -%}
+      {%- assign item_text = item | strip -%}
+      {%- if forloop.last -%}
+        <li style="color: #e6edf3; font-weight: 500;">{{ item_text }}</li>
+      {%- else -%}
+        <li style="display: flex; align-items: center; gap: 0.5rem;">
+          <a href="#" style="color: #8b949e; text-decoration: none;" onmouseover="this.style.color='#58a6ff';" onmouseout="this.style.color='#8b949e';">{{ item_text }}</a>
+          <span style="color: #30363d;">›</span>
+        </li>
+      {%- endif -%}
+    {%- endfor -%}
+  </ol>
+</nav>
+{%- endif -%}

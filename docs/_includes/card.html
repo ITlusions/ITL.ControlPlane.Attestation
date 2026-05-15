@@ -1,0 +1,74 @@
+{%- comment -%}
+Usage:
+  {% include card.html 
+     title="Secret Vault" 
+     icon="🔒"
+     description="TPM-bound encrypted secrets with AES-256-GCM"
+     link="/docs/secret-vault"
+     tags="encryption,TPM,secrets" 
+  %}
+
+Parameters:
+  - title: Card heading (required)
+  - icon: Icon/emoji (optional)
+  - description: Card description text (required)
+  - link: Optional link URL
+  - tags: Comma-separated tags (optional)
+  - badge: Optional badge text (e.g., "v2.0.0", "New", "Beta")
+  - badge_color: success | warning | info (default: info)
+{%- endcomment -%}
+
+{%- assign card_title = include.title -%}
+{%- assign card_icon = include.icon -%}
+{%- assign card_description = include.description -%}
+{%- assign card_link = include.link -%}
+{%- assign card_tags = include.tags | split: "," -%}
+{%- assign card_badge = include.badge -%}
+{%- assign badge_color = include.badge_color | default: "info" -%}
+
+{%- case badge_color -%}
+  {%- when "success" -%}
+    {%- assign badge_bg = "#1f3d2e" -%}
+    {%- assign badge_text = "#3fb950" -%}
+  {%- when "warning" -%}
+    {%- assign badge_bg = "#3d2e1f" -%}
+    {%- assign badge_text = "#d29922" -%}
+  {%- else -%}
+    {%- assign badge_bg = "#1f3347" -%}
+    {%- assign badge_text = "#58a6ff" -%}
+{%- endcase -%}
+
+<div class="card" style="background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 1.5rem; transition: transform 0.2s, box-shadow 0.2s; position: relative; height: 100%;"
+     onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(31, 111, 235, 0.12)';"
+     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+  
+  {%- if card_badge -%}
+  <div style="position: absolute; top: 12px; right: 12px;">
+    <span style="background: {{ badge_bg }}; color: {{ badge_text }}; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600;">{{ card_badge }}</span>
+  </div>
+  {%- endif -%}
+
+  {%- if card_icon -%}
+  <div style="font-size: 2.5rem; margin-bottom: 1rem; line-height: 1;">{{ card_icon }}</div>
+  {%- endif -%}
+
+  <h3 style="color: #e6edf3; font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem; {%- if card_badge %}padding-right: 3rem;{%- endif %}">{{ card_title }}</h3>
+
+  <p style="color: #8b949e; font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem;">{{ card_description }}</p>
+
+  {%- if card_tags.size > 0 -%}
+  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+    {%- for tag in card_tags -%}
+      <span style="background: #21262d; color: #8b949e; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; border: 1px solid #30363d;">{{ tag | strip }}</span>
+    {%- endfor -%}
+  </div>
+  {%- endif -%}
+
+  {%- if card_link -%}
+  <a href="{{ card_link }}" style="color: #58a6ff; font-size: 0.875rem; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;"
+     onmouseover="this.style.textDecoration='underline';"
+     onmouseout="this.style.textDecoration='none';">
+    Learn more →
+  </a>
+  {%- endif -%}
+</div>

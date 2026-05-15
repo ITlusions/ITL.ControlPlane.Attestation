@@ -1,0 +1,50 @@
+{%- comment -%}
+Usage:
+  {% include link-card.html 
+     title="Architecture Guide" 
+     description="System design and technical architecture"
+     link="/ARCHITECTURE"
+     icon="🏗️"
+  %}
+
+Parameters:
+  - title: Link title (required)
+  - description: Description text (required)
+  - link: Target URL (required)
+  - icon: Icon/emoji (optional)
+  - external: true/false - adds external link indicator (default: false)
+{%- endcomment -%}
+
+{%- assign link_title = include.title -%}
+{%- assign link_description = include.description -%}
+{%- assign link_url = include.link -%}
+{%- assign link_icon = include.icon -%}
+{%- assign is_external = include.external | default: false -%}
+
+<a href="{{ link_url }}" 
+   {%- if is_external %} target="_blank" rel="noopener noreferrer"{% endif %}
+   class="link-card" 
+   style="display: block; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.25rem; text-decoration: none; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;"
+   onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='#58a6ff'; this.style.boxShadow='0 4px 16px rgba(31, 111, 235, 0.12)';"
+   onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#30363d'; this.style.boxShadow='none';">
+  
+  <div style="display: flex; align-items: flex-start; gap: 1rem;">
+    {%- if link_icon -%}
+    <div style="font-size: 2rem; line-height: 1; flex-shrink: 0;">{{ link_icon }}</div>
+    {%- endif -%}
+    
+    <div style="flex: 1; min-width: 0;">
+      <h4 style="color: #e6edf3; font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+        {{ link_title }}
+        {%- if is_external -%}
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="opacity: 0.5; flex-shrink: 0;">
+          <path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1Z"></path>
+        </svg>
+        {%- endif -%}
+      </h4>
+      <p style="color: #8b949e; font-size: 0.875rem; margin: 0; line-height: 1.5;">{{ link_description }}</p>
+    </div>
+    
+    <div style="flex-shrink: 0; color: #58a6ff; font-size: 1.25rem; line-height: 1; margin-top: 0.25rem;">→</div>
+  </div>
+</a>

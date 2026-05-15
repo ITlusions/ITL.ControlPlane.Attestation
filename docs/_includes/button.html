@@ -1,0 +1,70 @@
+{%- comment -%}
+Usage:
+  {% include button.html text="Get Started" link="/docs" style="primary" %}
+  {% include button.html text="View on GitHub" link="https://github.com/..." style="secondary" icon="🔗" %}
+  {% include button.html text="Download" link="/releases" style="success" target="_blank" %}
+
+Parameters:
+  - text: Button label (required)
+  - link: URL (required)
+  - style: primary | secondary | success | danger | outline (default: primary)
+  - icon: Optional icon/emoji before text
+  - target: Optional link target (_blank, _self, etc.)
+  - size: small | medium | large (default: medium)
+{%- endcomment -%}
+
+{%- assign btn_text = include.text -%}
+{%- assign btn_link = include.link -%}
+{%- assign btn_style = include.style | default: "primary" -%}
+{%- assign btn_icon = include.icon -%}
+{%- assign btn_target = include.target -%}
+{%- assign btn_size = include.size | default: "medium" -%}
+
+{%- case btn_style -%}
+  {%- when "primary" -%}
+    {%- assign bg = "#1f6feb" -%}
+    {%- assign color = "#ffffff" -%}
+    {%- assign border = "none" -%}
+  {%- when "secondary" -%}
+    {%- assign bg = "#21262d" -%}
+    {%- assign color = "#e6edf3" -%}
+    {%- assign border = "1px solid #30363d" -%}
+  {%- when "success" -%}
+    {%- assign bg = "#3fb950" -%}
+    {%- assign color = "#ffffff" -%}
+    {%- assign border = "none" -%}
+  {%- when "danger" -%}
+    {%- assign bg = "#f85149" -%}
+    {%- assign color = "#ffffff" -%}
+    {%- assign border = "none" -%}
+  {%- when "outline" -%}
+    {%- assign bg = "transparent" -%}
+    {%- assign color = "#58a6ff" -%}
+    {%- assign border = "1px solid #58a6ff" -%}
+  {%- else -%}
+    {%- assign bg = "#1f6feb" -%}
+    {%- assign color = "#ffffff" -%}
+    {%- assign border = "none" -%}
+{%- endcase -%}
+
+{%- case btn_size -%}
+  {%- when "small" -%}
+    {%- assign padding = "6px 14px" -%}
+    {%- assign font_size = "0.8rem" -%}
+  {%- when "large" -%}
+    {%- assign padding = "12px 28px" -%}
+    {%- assign font_size = "1rem" -%}
+  {%- else -%}
+    {%- assign padding = "10px 22px" -%}
+    {%- assign font_size = "0.9rem" -%}
+{%- endcase -%}
+
+<a href="{{ btn_link }}" 
+   {%- if btn_target %} target="{{ btn_target }}"{% endif %}
+   class="btn btn-{{ btn_style }}"
+   style="display: inline-flex; align-items: center; gap: 8px; background: {{ bg }}; color: {{ color }}; border: {{ border }}; padding: {{ padding }}; border-radius: 8px; font-size: {{ font_size }}; font-weight: 500; text-decoration: none; transition: opacity 0.15s, transform 0.1s;"
+   onmouseover="this.style.opacity='0.85'; this.style.transform='translateY(-1px)';"
+   onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)';">
+  {%- if btn_icon -%}<span>{{ btn_icon }}</span>{%- endif -%}
+  <span>{{ btn_text }}</span>
+</a>

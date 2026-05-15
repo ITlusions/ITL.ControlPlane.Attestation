@@ -1,0 +1,59 @@
+{%- comment -%}
+Usage:
+  {% include badge.html text="v2.0.0" color="success" %}
+  {% include badge.html text="Beta" color="warning" %}
+  {% include badge.html text="Deprecated" color="danger" %}
+  {% include badge.html text="New" color="info" icon="✨" %}
+
+Parameters:
+  - text: Badge text (required)
+  - color: success | warning | danger | info | muted (default: info)
+  - icon: Optional icon/emoji before text
+  - size: small | medium | large (default: medium)
+{%- endcomment -%}
+
+{%- assign badge_text = include.text -%}
+{%- assign badge_color = include.color | default: "info" -%}
+{%- assign badge_icon = include.icon -%}
+{%- assign badge_size = include.size | default: "medium" -%}
+
+{%- case badge_color -%}
+  {%- when "success" -%}
+    {%- assign bg = "#1f3d2e" -%}
+    {%- assign color = "#3fb950" -%}
+    {%- assign border = "rgba(63, 185, 80, 0.3)" -%}
+  {%- when "warning" -%}
+    {%- assign bg = "#3d2e1f" -%}
+    {%- assign color = "#d29922" -%}
+    {%- assign border = "rgba(210, 153, 34, 0.3)" -%}
+  {%- when "danger" -%}
+    {%- assign bg = "#3d1f1f" -%}
+    {%- assign color = "#f85149" -%}
+    {%- assign border = "rgba(248, 81, 73, 0.3)" -%}
+  {%- when "muted" -%}
+    {%- assign bg = "#21262d" -%}
+    {%- assign color = "#8b949e" -%}
+    {%- assign border = "#30363d" -%}
+  {%- else -%}
+    {%- assign bg = "#1f3347" -%}
+    {%- assign color = "#58a6ff" -%}
+    {%- assign border = "rgba(88, 166, 255, 0.3)" -%}
+{%- endcase -%}
+
+{%- case badge_size -%}
+  {%- when "small" -%}
+    {%- assign padding = "2px 8px" -%}
+    {%- assign font_size = "0.7rem" -%}
+  {%- when "large" -%}
+    {%- assign padding = "5px 14px" -%}
+    {%- assign font_size = "0.875rem" -%}
+  {%- else -%}
+    {%- assign padding = "3px 10px" -%}
+    {%- assign font_size = "0.75rem" -%}
+{%- endcase -%}
+
+<span class="badge badge-{{ badge_color }}" 
+      style="display: inline-flex; align-items: center; gap: 4px; background: {{ bg }}; color: {{ color }}; border: 1px solid {{ border }}; padding: {{ padding }}; border-radius: 12px; font-size: {{ font_size }}; font-weight: 600; white-space: nowrap;">
+  {%- if badge_icon -%}<span style="font-size: 0.85em;">{{ badge_icon }}</span>{%- endif -%}
+  <span>{{ badge_text }}</span>
+</span>
