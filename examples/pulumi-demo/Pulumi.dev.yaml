@@ -1,0 +1,4 @@
+name: itl-attestation-demo.dev
+config:
+  # Override with: pulumi config set attestation:endpoint https://...
+  attestation:endpoint: http://localhost:8080

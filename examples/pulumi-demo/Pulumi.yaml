@@ -1,0 +1,5 @@
+name: itl-attestation-demo
+runtime: python
+description: |
+  Demo Pulumi program for the ITL Attestation Service.
+  Registers two machines and approves them via the Pulumi provider.

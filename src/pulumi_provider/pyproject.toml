@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pulumi-itl-attestation"
+version = "0.1.0"
+description = "Pulumi dynamic provider for the ITL Control Plane Attestation Service"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "ITLusions", email = "info@itlusions.com" }]
+keywords = ["pulumi", "attestation", "tpm", "itl", "control-plane"]
+requires-python = ">=3.10"
+
+dependencies = [
+    "pulumi>=3.0.0,<4.0.0",
+    "requests>=2.31.0",
+    # SDK: NodeRole, MachineStatus enums
+    "itl-attestation-sdk>=0.1.0",
+    # Attestation service: RegisterResponse, MachineDetail response schemas
+    "itl-controlplane-attestation>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/ITlusions/ITL.ControlPlane.Attestation"
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-mock", "responses"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pulumi_provider"]

@@ -514,6 +514,7 @@
     <li><a href="#how-it-works">How it works</a></li>
     <li><a href="#registration">Registration</a></li>
     <li><a href="#features">Features</a></li>
+    <li><a href="advanced/pulumi-provider">Pulumi</a></li>
     <li><a href="https://github.com/ITlusions/ITL.ControlPlane.Attestation" target="_blank" rel="noopener">GitHub</a></li>
   </ul>
 </nav>
@@ -757,6 +758,11 @@
         <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
         <div class="feature-title">Metrics Extension</div>
         <div class="feature-desc">Prometheus-compatible metrics at <code>/metrics</code> endpoint. Tracks machine registrations, attestations, secret operations, webhook deliveries, and audit log activity. Ready for Grafana dashboards.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+        <div class="feature-title">Pulumi Provider</div>
+        <div class="feature-desc">Manage machine registration and approval as Pulumi resources. Drift detection, one-time secret bundles, enrollment token generation — full IaC lifecycle for bare-metal cluster nodes.</div>
       </div>    </div>
   </div>
 </section>
@@ -825,6 +831,13 @@
           <div class="doc-desc">Secret Vault, Webhooks, Metrics — modular extensions with REST APIs and database models</div>
         </div>
       </a>
+      <a href="advanced/pulumi-provider" class="doc-link">
+        <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+        <div>
+          <div class="doc-title">Pulumi Provider</div>
+          <div class="doc-desc">IaC automation — RegisteredMachine, MachineApproval, secret bundles, drift detection</div>
+        </div>
+      </a>
       <a href="https://github.com/ITlusions/ITL.ControlPlane.Attestation" class="doc-link" target="_blank" rel="noopener">
         <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
         <div>
@@ -858,6 +871,8 @@
       <span class="stack-tag">OAEP-SHA256</span>
       <span class="stack-tag">Docker</span>
       <span class="stack-tag">GitHub Actions</span>
+      <span class="stack-tag">Pulumi 3.x</span>
+      <span class="stack-tag">pulumi-itl-attestation</span>
     </div>
   </div>
 </section>
