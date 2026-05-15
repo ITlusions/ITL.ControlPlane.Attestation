@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Attestation Agent (HTTP Server)",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5679
+      },
+      "preLaunchTask": "Run Attestation Agent HTTP Server",
+      "internalConsoleOptions": "neverOpen",
+      "postDebugTask": "Terminate All Tasks"
+    },
+    {
+      "name": "Debug Attestation Agent (CLI)",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5679
+      },
+      "preLaunchTask": "Run Attestation Agent CLI",
+      "internalConsoleOptions": "neverOpen",
+      "postDebugTask": "Terminate All Tasks"
+    },
+    {
+      "name": "Run Attestation Agent (Simple)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/agent/agent.py",
+      "args": ["--cli"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/agent",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/agent"
+      }
+    }
+  ]
+}

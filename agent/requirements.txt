@@ -1,0 +1,20 @@
+# ITL.ControlPlane.Attestation Support Agent
+
+# Azure AI SDK (for Foundry mode)
+azure-ai-agents>=1.0.0
+azure-identity>=1.19.0
+
+# OpenAI SDK (for Ollama local mode)
+openai>=1.0.0
+
+# HTTP server (for Agent Inspector mode)
+aiohttp>=3.9.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# Debugging (optional - for VS Code integration)
+debugpy>=1.8.0
+
+# Agent Dev CLI (optional - for Agent Inspector)
+# agent-dev-cli --pre

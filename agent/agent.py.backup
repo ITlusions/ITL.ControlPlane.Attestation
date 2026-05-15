@@ -1,0 +1,364 @@
+"""
+ITL.ControlPlane.Attestation Support Agent
+
+Local AI assistant that helps with:
+- Setup and configuration of attestation components
+- Troubleshooting TPM, registration, and attestation issues
+- Understanding flows (USB agent, self-register, ISO delivery)
+- Environment variable configuration
+- API endpoint documentation
+
+Usage:
+  python agent.py --cli           # Interactive CLI mode
+  python agent.py --server        # HTTP server mode (for Agent Inspector)
+"""
+
+import os
+import asyncio
+import argparse
+from pathlib import Path
+from typing import Optional
+from azure.ai.agents.aio import AgentsClient
+from azure.core.credentials import AzureKeyCredential
+from azure.identity.aio import DefaultAzureCredential
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+
+class AttestationAgent:
+    """Attestation support agent with CLI and HTTP server modes."""
+    
+    def __init__(self):
+        self.client: Optional[AgentsClient] = None
+        self.agent = None
+        self.model = None
+        self.use_local = os.getenv("USE_LOCAL_MODEL", "true").lower() == "true"
+    
+    async def initialize(self):
+        """Initialize the agent client and create agent."""
+        
+        if self.use_local:
+            print("🚀 Starting Attestation Support Agent (Local Mode)")
+            print("📍 Using Ollama local model")
+            
+            # Local Ollama endpoint (default: http://localhost:11434/v1)
+            endpoint = os.getenv("OLLAMA_ENDPOINT", "http://localhost:11434/v1")
+            self.model = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+            
+            # For Ollama, create client without authentication
+            from azure.ai.agents.aio import AgentsClient as BaseAgentsClient
+            from azure.core.pipeline.policies import SansIOHTTPPolicy
+            
+            class NoAuthPolicy(SansIOHTTPPolicy):
+                """No authentication for local Ollama."""
+                def on_request(self, request):
+                    pass
+            
+            self.client = BaseAgentsClient(
+                endpoint=endpoint,
+                credential=AzureKeyCredential("dummy-key"),
+                authentication_policy=NoAuthPolicy(),
+            )
+        else:
+            # Foundry/Azure AI mode
+            project_endpoint = os.getenv("AZURE_AI_PROJECT_ENDPOINT")
+            if not project_endpoint:
+                raise ValueError("AZURE_AI_PROJECT_ENDPOINT required for Foundry mode")
+            
+            print("🚀 Starting Attestation Support Agent (Foundry Mode)")
+            print(f"📍 Project: {project_endpoint}")
+            
+            credential = DefaultAzureCredential()
+            self.model = os.getenv("MODEL_DEPLOYMENT_NAME", "gpt-4o-mini")
+            
+        
+        # Load knowledge base from project docs
+        docs_path = Path(__file__).parent.parent / "docs"
+        knowledge_base = load_knowledge_base(docs_path)
+        
+        # Agent instructions with embedded documentation
+        instructions = f"""You are an expert support agent for ITL.ControlPlane.Attestation - a TPM-based hardware identity registration and attestation service for ITL Control Plane Kubernetes nodes.
+
+Your role is to help users:
+1. Set up and configure the attestation service
+2. Troubleshoot TPM, registration, and attestation issues
+3. Understand the different registration flows
+4. Configure environment variables correctly
+5. Navigate API endpoints and their usage
+
+## Key Concepts
+
+### Flows
+
+**USB Agent Flow (Physical Provisioning)**
+1. USB agent reads TPM EK
+2. POST /api/v1/register
+3. Service returns iso_url + config_url
+4. Operator burns ISO, machine boots
+5. itl-tpm-register calls POST /api/v1/attest
+6. Operator approves → action=apply-config
+7. Extension fetches config_url and applies MachineConfig
+
+**Extension Self-Register Flow (Generic ISO Boot)**
+1. Machine boots any Talos ISO with talos.config=<service-url>
+2. itl-tpm-register calls POST /api/v1/self-register
+3. Operator approves via POST /machines/{{id}}/approve
+4. Extension polls POST /api/v1/attest
+5. action=apply-config → extension fetches and applies MachineConfig
+
+### ISO Delivery
+
+- `ITL_ISO_URL` set: Returns pre-built ITL HardenedOS ISO (all extensions baked in)
+- `ITL_ISO_URL` empty: Falls back to Talos Image Factory
+- `ITL_FACTORY_URL`: Official factory (factory.talos.dev) or self-hosted (factory.itlusions.com)
+- `ITL_FACTORY_EXTENSIONS`: Comma-separated extension names for factory schematic
+
+### Key Environment Variables
+
+- `DATABASE_URL`: PostgreSQL connection (default: postgresql+asyncpg://user:pass@localhost:5432/attestation)
+- `WEAVIATE_URL`: Weaviate vector DB (default: http://localhost:8080)
+- `ITL_ISO_URL`: Pre-built ISO URL (optional)
+- `ITL_FACTORY_URL`: Talos Image Factory endpoint
+- `ITL_FACTORY_EXTENSIONS`: Extensions to include in factory ISO
+- `KEYCLOAK_URL`: Keycloak authentication URL
+- `KEYCLOAK_REALM`: Keycloak realm name
+- `KEYCLOAK_CLIENT_ID`: OAuth2 client ID
+
+## Communication Style
+
+- Be concise and direct
+- Provide code examples when helpful
+- Reference specific documentation sections when available
+- Ask clarifying questions when the user's intent is unclear
+- Always validate understanding before providing complex solutions
+
+## Available Documentation
+
+{knowledge_base}
+
+When answering questions:
+1. First understand the user's context and goal
+2. Provide direct answers with examples
+3. Reference relevant documentation or API endpoints
+4. Suggest next steps or related topics
+5. Offer to dive deeper if needed
+
+Always be helpful, accurate, and focused on solving the user's problem.
+"""
+        
+        print(f"📚 Loaded documentation from: {docs_path}")
+        print(f"🤖 Model: {self.model}")
+        print()
+        
+        # Create the agent
+        self.agent = await self.client.create_agent(
+            model=self.model,
+            name="attestation-support-agent",
+            instructions=instructions,
+        )
+        
+        print(f"✅ Agent created: {self.agent.id}")
+        print(f"💬 Agent name: {self.agent.name}")
+        print()
+        
+        # Interactive chat loop
+        print("=" * 60)
+        print("ITL.ControlPlane.Attestation Support Agent")
+        print("=" * 60)
+        print()
+        print("Ask me anything about:")
+        print("  • Setup and configuration")
+        print("  • Troubleshooting TPM/registration issues")
+        print("  • Understanding flows (USB agent, self-register)")
+        print("  • Environment variables")
+        print("  • API endpoints")
+        print()
+        print("Type 'exit' to quit")
+        print("=" * 60)
+        print()
+        
+        try:
+            while True:
+                # Get user input
+                user_input = input("You: ").strip()
+                
+                if not user_input:
+                    continue
+                
+                if user_input.lower() in ["exit", "quit", "bye"]:
+                    print("\n👋 Goodbye!")
+                    break
+                
+                # Create message
+                message = await self.client.create_message(
+                    thread_id=thread.id,
+                    role="user",
+                    content=user_input,
+                )
+                
+                # Run the agent
+                run = await self.client.create_run(
+                    thread_id=thread.id,
+                    agent_id=self.agent.id,
+                )
+                
+                # Wait for completion
+                while run.status in ["queued", "in_progress", "requires_action"]:
+                    await asyncio.sleep(0.5)
+                    run = await self.client.get_run(thread_id=thread.id, run_id=run.id)
+                
+                if run.status == "completed":
+                    # Get messages
+                    messages = await self.client.list_messages(thread_id=thread.id)
+                    
+                    # Find the last assistant message
+                    for msg in messages.data:
+                        if msg.role == "assistant" and msg.created_at > message.created_at:
+                            print(f"\nAgent: {msg.content[0].text.value}\n")
+                            break
+                else:
+                    print(f"\n❌ Run failed with status: {run.status}")
+                    if run.last_error:
+                        print(f"Error: {run.last_error.message}\n")
+        finally:
+            await self.cleanup()
+    
+    async def run_server(self, host: str = "127.0.0.1", port: int = 8088):
+        """Run HTTP server mode (for Agent Inspector)."""
+        from aiohttp import web
+        
+        print(f"🌐 Starting HTTP server on http://{host}:{port}")
+        print("🔍 Open Agent Inspector in VS Code to interact")
+        print()
+        
+        app = web.Application()
+        
+        async def handle_message(request):
+            """Handle incoming messages."""
+            data = await request.json()
+            user_message = data.get("message", "")
+            thread_id = data.get("thread_id")
+            
+            # Create or use existing thread
+            if not thread_id:
+                thread = await self.client.create_thread()
+                thread_id = thread.id
+            
+            # Create message
+            await self.client.create_message(
+                thread_id=thread_id,
+                role="user",
+                content=user_message,
+            )
+            
+            # Run agent
+            run = await self.client.create_run(
+                thread_id=thread_id,
+                agent_id=self.agent.id,
+            )
+            
+            # Wait for completion
+            while run.status in ["queued", "in_progress", "requires_action"]:
+                await asyncio.sleep(0.5)
+                run = await self.client.get_run(thread_id=thread_id, run_id=run.id)
+            
+            if run.status == "completed":
+                # Get latest message
+                messages = await self.client.list_messages(thread_id=thread_id)
+                for msg in messages.data:
+                    if msg.role == "assistant":
+                        return web.json_response({
+                            "response": msg.content[0].text.value,
+                            "thread_id": thread_id,
+                        })
+            
+            return web.json_response({
+                "error": f"Run failed with status: {run.status}",
+                "thread_id": thread_id,
+            }, status=500)
+        
+        async def health_check(request):
+            """Health check endpoint."""
+            return web.json_response({"status": "healthy", "agent": self.agent.name})
+        
+        app.router.add_post("/message", handle_message)
+        app.router.add_get("/health", health_check)
+        
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, host, port)
+        
+        try:
+            await site.start()
+            print(f"✅ Server running. Press Ctrl+C to stop.")
+            
+            # Keep server running
+            while True:
+                await asyncio.sleep(3600)
+        except KeyboardInterrupt:
+            print("\n🛑 Stopping server...")
+        finally:
+            await runner.cleanup()
+            await self.cleanup()
+
+
+async def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(description="ITL.ControlPlane.Attestation Support Agent")
+    parser.add_argument("--cli", action="store_true", help="Run in CLI mode")
+    parser.add_argument("--server", action="store_true", help="Run in HTTP server mode")
+    parser.add_argument("--host", default="127.0.0.1", help="Server host (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=8088, help="Server port (default: 8088)")
+    
+    args = parser.parse_args()
+    
+    # Default to CLI mode if neither specified
+    if not args.cli and not args.server:
+        args.cli = True
+    
+    # Create and initialize agent
+    agent = AttestationAgent()
+    await agent.initialize()
+    
+    # Run in selected mode
+    if args.server:
+        await agent.run_server(host=args.host, port=args.port)
+    else:
+        await agent.run_cli()
+
+
+
+def load_knowledge_base(docs_path: Path) -> str:
+    """Load and concatenate key documentation files."""
+    knowledge = []
+    
+    # Priority documentation files
+    doc_files = [
+        "README.md",
+        "ARCHITECTURE.md",
+        "DEPLOYMENT.md",
+        "OPERATIONS.md",
+        "TPM_EXPLAINED.md",
+        "ENDPOINTS.md",
+        "WALKTHROUGH.md",
+    ]
+    
+    for doc_file in doc_files:
+        doc_path = docs_path / doc_file
+        if doc_path.exists():
+            try:
+                content = doc_path.read_text(encoding="utf-8")
+                knowledge.append(f"# {doc_file}\n\n{content}\n")
+            except Exception as e:
+                print(f"⚠️  Warning: Could not read {doc_file}: {e}")
+    
+    if not knowledge:
+        return "Documentation not available. Please refer to the docs/ directory."
+    
+    return "\n\n---\n\n".join(knowledge)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
