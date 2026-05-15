@@ -1,32 +1,11 @@
 # Navigation structure for ITL.ControlPlane.Attestation documentation
+# category_order controls the left-to-right order of dropdown menus in the navbar.
+# Add new categories here to make them appear. Pages self-register via front matter.
 
-main:
-  - title: Overview
-    url: /README
-
-  - title: Architecture
-    url: /reference/architecture
-
-  - title: API Reference
-    url: /reference/endpoints
-
-  - title: Deployment
-    url: /guides/deployment
-
-  - title: Walkthrough
-    url: /guides/walkthrough
-
-  - title: Operations
-    url: /guides/operations
-
-  - title: TPM Explained
-    url: /advanced/tpm-explained
-
-  - title: Security
-    url: /advanced/security
-
-  - title: Extensions
-    url: /advanced/extensions
+category_order:
+  - Reference
+  - Guides
+  - Advanced
 
 external:
   - title: GitHub
