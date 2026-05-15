@@ -12,6 +12,14 @@
     <priority>1.0</priority>
   </url>
   
+  <!-- Documentation Index -->
+  <url>
+    <loc>https://itlusions.github.io/ITL.ControlPlane.Attestation/INDEX</loc>
+    <lastmod>2026-05-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  
   <!-- Documentation Pages -->
   <url>
     <loc>https://itlusions.github.io/ITL.ControlPlane.Attestation/ARCHITECTURE</loc>
@@ -74,6 +82,27 @@
     <lastmod>2026-05-15</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+  </url>
+  
+  <url>
+    <loc>https://itlusions.github.io/ITL.ControlPlane.Attestation/MIGRATION_GUIDE</loc>
+    <lastmod>2026-05-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <url>
+    <loc>https://itlusions.github.io/ITL.ControlPlane.Attestation/COMPONENTS_DEMO</loc>
+    <lastmod>2026-05-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://itlusions.github.io/ITL.ControlPlane.Attestation/SEO</loc>
+    <lastmod>2026-05-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
 
 </urlset>
