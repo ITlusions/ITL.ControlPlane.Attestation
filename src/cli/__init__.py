@@ -7,11 +7,11 @@ Communicates with the attestation API service via REST endpoints with OIDC authe
 __version__ = "0.1.0"
 
 __all__ = [
-    "__version__",
     "AttestationClient",
     "KeycloakClient",
     "OIDCToken",
     "TokenCache",
+    "__version__",
 ]
 
 from .api_client import AttestationClient

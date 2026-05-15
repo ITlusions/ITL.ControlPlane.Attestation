@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import Any
 
 import click
 
@@ -109,11 +108,11 @@ def auth_login(
 
         # Cache token
         cache.save(token, realm, client_id, username)
-        click.echo(f"✅ Login successful! Token cached.")
+        click.echo("✅ Login successful! Token cached.")
         click.echo(f"   Expires: {token.expires_at.strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
     except Exception as e:
-        raise click.ClickException(f"Login failed: {e}")
+        raise click.ClickException(f"Login failed: {e}") from e
 
 
 @auth.command("logout")
@@ -434,7 +433,7 @@ def secret_create(ctx: click.Context, machine_id: str, name: str, value: str) ->
     if output_format == "json":
         click.echo(json.dumps(result, indent=2))
     else:
-        click.echo(f"✅ Secret created:")
+        click.echo("✅ Secret created:")
         click.echo(f"   ID:      {result['secret_id']}")
         click.echo(f"   Machine: {result['machine_id']}")
         click.echo(f"   Name:    {result['name']}")
@@ -469,7 +468,7 @@ def secret_list(ctx: click.Context, machine_id: str) -> None:
             if s['last_accessed_at']:
                 click.echo(f"     Accessed: {s['last_accessed_at']} ({s['access_count']} times)")
             else:
-                click.echo(f"     Accessed: Never")
+                click.echo("     Accessed: Never")
             click.echo()
 
 
@@ -490,7 +489,7 @@ def secret_get(
 ) -> None:
     """
     Get encrypted secret value.
-    
+
     Returns the encrypted blob that can only be decrypted by the machine's TPM.
     """
     api_url = ctx.obj["api_url"]
@@ -507,10 +506,10 @@ def secret_get(
     if output_format == "json":
         click.echo(json.dumps(result, indent=2))
     else:
-        click.echo(f"✅ Secret retrieved:")
+        click.echo("✅ Secret retrieved:")
         click.echo(f"   ID:   {result['secret_id']}")
         click.echo(f"   Name: {result['name']}")
-        click.echo(f"\n   Encrypted blob (base64):")
+        click.echo("\n   Encrypted blob (base64):")
         click.echo(f"   {result['encrypted_blob'][:64]}...")
         click.echo(f"\n   Nonce: {result['nonce']}")
         click.echo(f"   Tag:   {result['tag']}")

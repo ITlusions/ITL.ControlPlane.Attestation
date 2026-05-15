@@ -13,7 +13,7 @@ import webbrowser
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urlencode
 
 import httpx
 
@@ -124,7 +124,7 @@ class KeycloakClient:
 
         # Start local server
         server = HTTPServer(("localhost", redirect_port), CallbackHandler)
-        print(f"🌐 Opening browser for authentication...")
+        print("🌐 Opening browser for authentication...")
         print(f"   If browser doesn't open, visit: {auth_url}")
         webbrowser.open(auth_url)
 
@@ -219,10 +219,10 @@ class KeycloakClient:
         expires_in = device_json["expires_in"]
         interval = device_json.get("interval", 5)
 
-        print(f"🔐 Device Code Authentication")
+        print("🔐 Device Code Authentication")
         print(f"   1. Visit: {verification_uri}")
         print(f"   2. Enter code: {user_code}")
-        print(f"   3. Waiting for approval...")
+        print("   3. Waiting for approval...")
 
         # Poll for token
         token_data = {
