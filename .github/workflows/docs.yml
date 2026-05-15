@@ -26,7 +26,3 @@ jobs:
     with:
       source: './docs'
       deploy: true
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
