@@ -1,0 +1,34 @@
+# Navigation structure for ITL.ControlPlane.Attestation documentation
+
+main:
+  - title: Overview
+    url: /README
+    
+  - title: Architecture
+    url: /ARCHITECTURE
+    
+  - title: API Reference
+    url: /ENDPOINTS
+    
+  - title: Deployment
+    url: /DEPLOYMENT
+    
+  - title: Walkthrough
+    url: /WALKTHROUGH
+    
+  - title: Operations
+    url: /OPERATIONS
+    
+  - title: TPM Explained
+    url: /TPM_EXPLAINED
+    
+  - title: Security
+    url: /SECURITY
+    
+  - title: Extensions
+    url: /EXTENSIONS
+
+external:
+  - title: GitHub
+    url: https://github.com/ITlusions/ITL.ControlPlane.Attestation
+    icon: github
