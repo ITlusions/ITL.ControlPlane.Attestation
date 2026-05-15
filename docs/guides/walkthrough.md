@@ -15,7 +15,7 @@ Visual walkthrough of the live Flask web dashboard. All screenshots use the Azur
 
 ## 1. Dashboard overview
 
-![Dashboard overview]({{ "/screenshots/walkthrough-01-dashboard.png)
+![Dashboard overview]({{ "/screenshots/walkthrough-01-dashboard.png" | relative_url }})
 
 **Route**: `/` (dashboard.dashboard)
 
@@ -48,7 +48,7 @@ Each entry shows truncated machine ID (linked), action label, timestamp, and act
 
 ## 2. Machines list
 
-![Machine list]({{ "/screenshots/walkthrough-02-machines.png)
+![Machine list]({{ "/screenshots/walkthrough-02-machines.png" | relative_url }})
 
 **Route**: `/machines` (machines.machines_list)
 
@@ -58,7 +58,7 @@ Full machine inventory with command bar (refresh, export CSV, add machine). Filt
 
 ## 3. Audit log
 
-![Audit log]({{ "/screenshots/walkthrough-03-audit.png)
+![Audit log]({{ "/screenshots/walkthrough-03-audit.png" | relative_url }})
 
 **Route**: `/audit` (audit.audit_log)
 
@@ -68,7 +68,7 @@ Comprehensive audit trail showing timestamp, machine ID (linked), action badge (
 
 ## 4. Machine detail
 
-![Machine detail — Overview]({{ "/screenshots/walkthrough-04-machine-detail-overview.png)
+![Machine detail — Overview]({{ "/screenshots/walkthrough-04-machine-detail-overview.png" | relative_url }})
 
 **Route**: `/machines/<machine_id>` (machines.machine_detail)
 
@@ -82,15 +82,15 @@ Breadcrumb navigation (Home › Machines › Machine ID). Hero header with machi
 - **Security Anchors**: EK certificate hash, AK name
 - **Timeline**: Registered, last attested, status changed, created by, notes
 
-![Machine detail — Events]({{ "/screenshots/walkthrough-04-machine-detail-events.png)
+![Machine detail — Events]({{ "/screenshots/walkthrough-04-machine-detail-events.png" | relative_url }})
 
 **Events** — Timeline feed showing machine lifecycle events (registration, attestation, approval, status changes) with timestamps, actors, and detailed event descriptions.
 
-![Machine detail — TPM Data]({{ "/screenshots/walkthrough-04-machine-detail-tpm.png)
+![Machine detail — TPM Data]({{ "/screenshots/walkthrough-04-machine-detail-tpm.png" | relative_url }})
 
 **TPM Data** — Three stat cards (TPM Version, EK Source, PCR Match status). PCR register values (PCR0, PCR1, PCR7) in monospace font. Endorsement Key certificate hash with source verification note.
 
-![Machine detail — Actions]({{ "/screenshots/walkthrough-04-machine-detail-actions.png)
+![Machine detail — Actions]({{ "/screenshots/walkthrough-04-machine-detail-actions.png" | relative_url }})
 
 **Actions** — Contextual action cards based on machine state:
 - **Unlock Machine** (only if locked) — Re-enable attestation
@@ -101,7 +101,7 @@ Breadcrumb navigation (Home › Machines › Machine ID). Hero header with machi
 
 ## 5. Configuration
 
-![Configuration]({{ "/screenshots/walkthrough-05-configuration.png)
+![Configuration]({{ "/screenshots/walkthrough-05-configuration.png" | relative_url }})
 
 **Route**: `/configuration` (configuration.configuration)
 
@@ -117,7 +117,7 @@ All settings display key, value (with masking for secrets), and description. Rea
 
 ## 6. Policies
 
-![Policies]({{ "/screenshots/walkthrough-06-policies.png)
+![Policies]({{ "/screenshots/walkthrough-06-policies.png" | relative_url }})
 
 **Route**: `/policies` (policies.policies)
 
