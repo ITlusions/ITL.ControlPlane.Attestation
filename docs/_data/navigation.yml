@@ -31,4 +31,3 @@ main:
 external:
   - title: GitHub
     url: https://github.com/ITlusions/ITL.ControlPlane.Attestation
-    icon: github
