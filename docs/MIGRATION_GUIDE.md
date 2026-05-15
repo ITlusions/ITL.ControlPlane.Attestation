@@ -283,7 +283,7 @@ curl http://localhost:9000/health
 
 ## Tips
 
-1. **Use `{% capture %}` blocks** for multi-line code content
+1. **Use `{%raw%}{% capture %}{%endraw%}` blocks** for multi-line code content
 2. **Wrap multiple cards in grids** for consistent layouts
 3. **Use alerts** instead of blockquotes for important callouts
 4. **Add icons** to make content more scannable
