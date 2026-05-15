@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Static Site
+    name: Build Jekyll Site
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,13 +30,11 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5.0.0
 
-      - name: Create .nojekyll file
-        run: touch docs/.nojekyll
-
-      - name: Copy docs to _site
-        run: |
-          mkdir -p _site
-          cp -r docs/* _site/
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1.0.13
+        with:
+          source: ./docs
+          destination: ./_site
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3.0.1
