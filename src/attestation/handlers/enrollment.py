@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import secrets
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException
@@ -23,7 +23,7 @@ from ..models.machine import MachineRow, MachineStatus, NodeRole
 from ..repositories.machine_repo import SqlMachineRepository
 from ..schemas.responses import AttestResponse, CertResponse
 from ..schemas.requests import CertRequest
-from ..tpm_verifier import compute_ek_fingerprint, fingerprints_match, verify_ek_pem
+from ..pki.tpm_verifier import compute_ek_fingerprint, fingerprints_match, verify_ek_pem
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ class EnrollmentHandler:
             if existing.status == MachineStatus.rejected:
                 raise HTTPException(403, f"Machine {machine_id} has been rejected")
             existing.status         = MachineStatus.attested
-            existing.attested_at    = datetime.utcnow()
+            existing.attested_at    = datetime.now(timezone.utc)
             existing.config_token   = config_token
             existing.token_consumed = False
             machine = self.machine_repo.save(existing)
@@ -105,7 +105,7 @@ class EnrollmentHandler:
                 role           = role,
                 status         = MachineStatus.attested,
                 config_token   = config_token,
-                attested_at    = datetime.utcnow(),
+                attested_at    = datetime.now(timezone.utc),
             ))
             logger.info(
                 "Cert enrollment: new machine %s role=%s registered+attested", machine_id, role
