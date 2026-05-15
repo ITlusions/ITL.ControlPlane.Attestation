@@ -17,6 +17,11 @@ kramdown:
 # Mermaid diagrams via jekyll-mermaid or passthrough
 plugins: []
 
+# Force include static files (robots.txt, sitemap.xml)
+include:
+  - robots.txt
+  - sitemap.xml
+
 # Apply default layout to all markdown pages that don't specify one
 defaults:
   - scope:
