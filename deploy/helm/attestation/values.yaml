@@ -1,0 +1,95 @@
+# Default values for the ITL Attestation Service Helm chart.
+# Override with: helm install attestation ./deploy/helm/attestation -f my-values.yaml
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/itlusions/itl-controlplane-attestation
+  pullPolicy: IfNotPresent
+  # Overrides .Chart.AppVersion when set
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# ── Sensitive configuration (stored in a K8s Secret) ────────────────────────
+secret:
+  # Break-glass bearer token — leave empty to disable bearer-token auth
+  adminToken: ""
+
+# ── Non-sensitive configuration ─────────────────────────────────────────────
+config:
+  # SQLite path inside the container (backed by the PVC below)
+  dbUrl: "sqlite:////var/lib/itl-reg/db/machines.db"
+  # Public URL this service is reachable at (used in issued config URLs)
+  serviceUrl: "http://attestation.local"
+  # Talos Factory upstream
+  factoryUrl: "https://factory.talos.dev"
+  talosVersion: "v1.9.5"
+  installerImage: "ghcr.io/itlusions/itl-talos-installer:latest"
+  enrollmentCertDays: "30"
+  # Set to "true" to verify EK certs against manufacturer CA bundles
+  tpmVerifyCA: "false"
+  # Set to "true" to run with in-memory demo data (no live DB writes)
+  demoMode: "false"
+
+# ── Service ──────────────────────────────────────────────────────────────────
+service:
+  # ClusterIP — accessed via ingress
+  # NodePort  — accessed directly on nodePort (useful without ingress)
+  type: ClusterIP
+  port: 80
+  # Only used when type=NodePort; maps to host port 9508 in kind-config.yaml
+  nodePort: 30808
+
+# ── Ingress ──────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+  hosts:
+    - host: attestation.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # Example TLS:
+  # tls:
+  #   - secretName: attestation-tls
+  #     hosts:
+  #       - attestation.local
+
+# ── Persistent storage ───────────────────────────────────────────────────────
+persistence:
+  enabled: true
+  # Leave empty to use the cluster default StorageClass (kind uses standard)
+  storageClass: ""
+  size: 2Gi
+
+# ── Resources ────────────────────────────────────────────────────────────────
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ── Pod security ─────────────────────────────────────────────────────────────
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false   # SQLite needs writes inside /var/lib/itl-reg
+
+podAnnotations: {}
+
+# ── Scheduling ───────────────────────────────────────────────────────────────
+nodeSelector: {}
+tolerations: []
+affinity: {}

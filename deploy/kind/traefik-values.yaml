@@ -1,0 +1,72 @@
+# Traefik Helm values — optimised for local kind clusters
+# Ports 80/443 are bound directly on the control-plane node via hostPort,
+# which maps to the host machine through the kind extraPortMappings.
+
+# Run as DaemonSet so every labelled node binds the host ports
+deployment:
+  kind: DaemonSet
+
+# Bind host ports 80/443 directly on the node
+ports:
+  web:
+    port: 80
+    hostPort: 80
+    expose:
+      default: true
+    exposedPort: 80
+    protocol: TCP
+  websecure:
+    port: 443
+    hostPort: 443
+    expose:
+      default: true
+    exposedPort: 443
+    protocol: TCP
+  traefik:
+    port: 9000
+    expose:
+      default: false   # dashboard — internal only
+
+# ClusterIP: traffic enters via hostPort, not via a LoadBalancer
+service:
+  type: ClusterIP
+
+# Pin Traefik to the control-plane node (where hostPort mappings are defined)
+nodeSelector:
+  ingress-ready: "true"
+
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+# Disable Let's Encrypt for local development
+certificatesResolvers: {}
+
+# Traefik dashboard (accessible via kubectl port-forward)
+ingressRoute:
+  dashboard:
+    enabled: false
+
+# Prometheus metrics (optional)
+metrics:
+  prometheus:
+    entryPoint: metrics
+
+providers:
+  kubernetesIngress:
+    enabled: true
+    # Watch all namespaces
+    namespaces: []
+  kubernetesCRD:
+    enabled: true
+    namespaces: []
+
+# Resource limits for local dev
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

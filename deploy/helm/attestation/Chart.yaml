@@ -1,0 +1,17 @@
+apiVersion: v2
+name: attestation
+description: ITL Control Plane — Attestation Service (TPM-based hardware identity)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - tpm
+  - attestation
+  - itl
+  - controlplane
+home: https://github.com/ITlusions/ITL.ControlPlane.Attestation
+sources:
+  - https://github.com/ITlusions/ITL.ControlPlane.Attestation
+maintainers:
+  - name: ITLusions
+    url: https://github.com/ITlusions

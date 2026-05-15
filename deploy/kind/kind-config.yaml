@@ -1,0 +1,54 @@
+# kind cluster configuration for ITL ControlPlane — Attestation Service
+# Prerequisites:
+#   kind    >= 0.23  (https://kind.sigs.k8s.io)
+#   kubectl >= 1.29
+#   helm    >= 3.14
+#
+# Create the cluster:
+#   kind create cluster --name attestation --config deploy/kind/kind-config.yaml
+#
+# Install Traefik after cluster creation:
+#   helm repo add traefik https://traefik.github.io/charts
+#   helm repo update
+#   helm upgrade --install traefik traefik/traefik \
+#     --namespace traefik --create-namespace \
+#     -f deploy/kind/traefik-values.yaml \
+#     --wait
+
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+
+name: attestation
+
+nodes:
+  # Control plane — also hosts the Traefik ingress controller (DaemonSet, hostPort)
+  - role: control-plane
+    image: kindest/node:v1.31.0
+    # Expose host ports 80 and 443 so Traefik is reachable on localhost
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+      # Direct NodePort fallback (no ingress required for quick testing)
+      - containerPort: 30808
+        hostPort: 9508
+        protocol: TCP
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+
+  # Worker node for attestation workloads
+  - role: worker
+    image: kindest/node:v1.31.0
+
+# Use local registry mirror to speed up image pulls (optional)
+# containerdConfigPatches:
+#   - |-
+#     [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
+#       endpoint = ["http://kind-registry:5001"]

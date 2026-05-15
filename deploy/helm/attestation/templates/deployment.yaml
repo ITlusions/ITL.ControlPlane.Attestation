@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "attestation.fullname" . }}
+  labels:
+    {{- include "attestation.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "attestation.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "attestation.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: attestation
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: ITL_DB_URL
+              value: {{ .Values.config.dbUrl | quote }}
+            - name: ITL_SERVICE_URL
+              value: {{ .Values.config.serviceUrl | quote }}
+            - name: ITL_FACTORY_URL
+              value: {{ .Values.config.factoryUrl | quote }}
+            - name: ITL_TALOS_VERSION
+              value: {{ .Values.config.talosVersion | quote }}
+            - name: ITL_INSTALLER_IMAGE
+              value: {{ .Values.config.installerImage | quote }}
+            - name: ITL_ENROLLMENT_CERT_DAYS
+              value: {{ .Values.config.enrollmentCertDays | quote }}
+            - name: ITL_TPM_VERIFY_CA
+              value: {{ .Values.config.tpmVerifyCA | quote }}
+            - name: DEMO_MODE
+              value: {{ .Values.config.demoMode | quote }}
+            {{- if .Values.secret.adminToken }}
+            - name: ITL_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "attestation.secretName" . }}
+                  key: admin-token
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/itl-reg
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "attestation.pvcName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

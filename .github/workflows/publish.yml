@@ -1,0 +1,149 @@
+name: Publish
+
+# ── Trigger ───────────────────────────────────────────────────────────────────
+# Fires when a draft release created by auto-tag is manually published on GitHub.
+# The tag prefix determines which package is published:
+#
+#   sdk/vX.Y.Z      → PyPI (itl-attestation-sdk)
+#   cli/vX.Y.Z      → PyPI (itl-attestation-cli)
+#   service/vX.Y.Z  → GHCR (ghcr.io/itlusions/itl-attestation)
+#
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+
+  # ── Route: determine which package this release targets ───────────────────
+  route:
+    name: Route release
+    runs-on: ubuntu-latest
+    outputs:
+      publish_sdk:     ${{ steps.route.outputs.publish_sdk }}
+      publish_cli:     ${{ steps.route.outputs.publish_cli }}
+      push_docker:     ${{ steps.route.outputs.push_docker }}
+      version:         ${{ steps.route.outputs.version }}
+    steps:
+      - name: Determine target
+        id: route
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          echo "publish_sdk=false"   >> "$GITHUB_OUTPUT"
+          echo "publish_cli=false"   >> "$GITHUB_OUTPUT"
+          echo "push_docker=false"   >> "$GITHUB_OUTPUT"
+
+          if [[ "$TAG" == sdk/* ]]; then
+            echo "publish_sdk=true"  >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#sdk/v}" >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG" == cli/* ]]; then
+            echo "publish_cli=true"  >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#cli/v}" >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG" == service/* ]]; then
+            echo "push_docker=true"  >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#service/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unrecognised tag prefix: $TAG" && exit 1
+          fi
+
+  # ── Publish SDK to PyPI ───────────────────────────────────────────────────
+  publish-sdk:
+    name: Publish SDK → PyPI
+    runs-on: ubuntu-latest
+    needs: route
+    if: needs.route.outputs.publish_sdk == 'true'
+    environment: pypi-sdk          # PyPI Trusted Publisher: workflow = publish.yml
+    permissions:
+      id-token: write              # OIDC — no API tokens
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build SDK wheel
+        run: |
+          pip install build twine
+          cd src/sdk && python -m build
+          twine check dist/*
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: src/sdk/dist/
+
+  # ── Publish CLI to PyPI ───────────────────────────────────────────────────
+  publish-cli:
+    name: Publish CLI → PyPI
+    runs-on: ubuntu-latest
+    needs: route
+    if: needs.route.outputs.publish_cli == 'true'
+    environment: pypi-cli          # PyPI Trusted Publisher: workflow = publish.yml
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build CLI wheel
+        run: |
+          pip install build twine
+          cd src/cli && python -m build
+          twine check dist/*
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: src/cli/dist/
+
+  # ── Push Docker image to GHCR ────────────────────────────────────────────
+  push-docker:
+    name: Push Docker → GHCR
+    runs-on: ubuntu-latest
+    needs: route
+    if: needs.route.outputs.push_docker == 'true'
+    permissions:
+      contents: read
+      packages: write              # push to ghcr.io
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/itlusions/itl-attestation
+          tags: |
+            type=raw,value=${{ needs.route.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
