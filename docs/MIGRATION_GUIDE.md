@@ -5,7 +5,7 @@ This guide shows how to refactor existing documentation to use the new Jekyll co
 ## Before: Plain Markdown
 
 ```markdown
-## ⚠️ Warning: TPM Required
+## Warning: TPM Required
 
 This service requires TPM 2.0 hardware. Ensure your hardware supports TPM before proceeding.
 
@@ -43,7 +43,6 @@ docker compose up -d
 {% capture features %}
 {% include card.html 
    title="Secret Vault" 
-   icon="🔒"
    description="TPM-bound encrypted secrets with AES-256-GCM encryption"
    link="/EXTENSIONS#secret-vault"
    tags="encryption,TPM"
@@ -53,7 +52,6 @@ docker compose up -d
 
 {% include card.html 
    title="Webhooks" 
-   icon="🔔"
    description="HTTP webhook delivery for attestation events with HMAC signatures"
    link="/EXTENSIONS#webhooks"
    tags="webhooks,events"
@@ -62,7 +60,6 @@ docker compose up -d
 
 {% include card.html 
    title="Metrics" 
-   icon="📊"
    description="Prometheus-compatible metrics endpoint"
    link="/EXTENSIONS#metrics"
    tags="monitoring"
@@ -127,14 +124,12 @@ def hello():
    title="Architecture Documentation" 
    description="System design and technical specifications"
    link="/ARCHITECTURE"
-   icon="🏗️"
 %}
 
 {% include link-card.html 
    title="Security Guide" 
    description="Threat model and security controls"
    link="/SECURITY"
-   icon="🛡️"
 %}
 ```
 
@@ -161,9 +156,9 @@ Prometheus monitoring.
 ## Extensions
 
 {% capture extensions %}
-{% include card.html title="Secret Vault" icon="🔒" description="TPM-bound encrypted secrets" %}
-{% include card.html title="Webhooks" icon="🔔" description="Event delivery system" %}
-{% include card.html title="Metrics" icon="📊" description="Prometheus monitoring" %}
+{% include card.html title="Secret Vault" description="TPM-bound encrypted secrets" %}
+{% include card.html title="Webhooks" description="Event delivery system" %}
+{% include card.html title="Metrics" description="Prometheus monitoring" %}
 {% endcapture %}
 {% include grid.html content=extensions columns="3" %}
 ```
@@ -179,7 +174,7 @@ Prometheus monitoring.
 
 **After:**
 ```liquid
-{% include button.html text="Get Started" link="/WALKTHROUGH" style="primary" icon="🚀" %}
+{% include button.html text="Get Started" link="/WALKTHROUGH" style="primary" %}
 ```
 
 ---
@@ -254,28 +249,25 @@ curl http://localhost:9000/health
    title="Architecture Guide" 
    description="Learn about the system design and components"
    link="/ARCHITECTURE"
-   icon="🏗️"
 %}
 
 {% include link-card.html 
    title="API Documentation" 
    description="Explore available REST endpoints"
    link="/ENDPOINTS"
-   icon="📡"
 %}
 
 {% include link-card.html 
    title="Security Guide" 
    description="Understand the security model"
    link="/SECURITY"
-   icon="🛡️"
 %}
 {% endcapture %}
 {% include grid.html content=next_steps columns="3" %}
 
 <div style="margin-top: 3rem; text-align: center;">
-{% include button.html text="View Full Documentation" link="/README" style="primary" icon="📖" %}
-{% include button.html text="Report an Issue" link="https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues" style="secondary" icon="🐛" target="_blank" %}
+{% include button.html text="View Full Documentation" link="/README" style="primary" %}
+{% include button.html text="Report an Issue" link="https://github.com/ITlusions/ITL.ControlPlane.Attestation/issues" style="secondary" target="_blank" %}
 </div>
 ```
 
