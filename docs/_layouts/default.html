@@ -210,7 +210,6 @@
     .sidebar-nav a[target="_blank"] {
       display: flex;
       align-items: center;
-      gap: 6px;
     }
 
     .sidebar-nav a[target="_blank"]::after {
@@ -218,6 +217,8 @@
       font-size: 0.75em;
       opacity: 0.6;
       transition: opacity 0.2s;
+      margin-left: auto;
+      padding-left: 8px;
     }
 
     .sidebar-nav a[target="_blank"]:hover::after {
@@ -652,7 +653,7 @@
   <ul class="nav-links" id="nav-links">
     {% for item in site.data.navigation.main %}
       <li>
-        <a href="{{ item.url | relative_url }}"{% if page.url contains item.url %} class="active"{% endif %}>
+        <a href="{{ item.url | relative_url }}"{% if page.url == item.url %} class="active"{% endif %}>
           {{ item.title }}
         </a>
       </li>
@@ -675,7 +676,7 @@
       <ul class="sidebar-nav">
         {% for item in site.data.navigation.main %}
           <li>
-            <a href="{{ item.url | relative_url }}"{% if page.url == item.url or page.url contains item.url %} class="active"{% endif %}>
+            <a href="{{ item.url | relative_url }}"{% if page.url == item.url %} class="active"{% endif %}>
               {{ item.title }}
             </a>
           </li>
