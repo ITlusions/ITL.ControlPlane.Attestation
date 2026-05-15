@@ -1,6 +1,8 @@
 ---
 layout: default
 title: Deployment
+category: Guides
+description: Deploy the attestation service from scratch
 ---
 
 # Deployment — ITL.ControlPlane.Attestation

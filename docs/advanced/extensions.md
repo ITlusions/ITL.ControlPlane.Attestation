@@ -1,6 +1,8 @@
 ---
 layout: default
-title: Extension System
+title: Extensions
+category: Advanced
+description: Custom authentication providers and integrations
 ---
 
 # Extension System

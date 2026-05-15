@@ -1,6 +1,8 @@
 ---
 layout: default
 title: Architecture
+category: Reference
+description: System architecture, data flow, and design decisions
 ---
 
 # Architecture — ITL.ControlPlane.Attestation

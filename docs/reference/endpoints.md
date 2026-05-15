@@ -1,6 +1,8 @@
 ---
 layout: default
 title: API Endpoints
+category: Reference
+description: Complete REST API endpoint documentation
 ---
 
 # API Endpoints — ITL.ControlPlane.Attestation

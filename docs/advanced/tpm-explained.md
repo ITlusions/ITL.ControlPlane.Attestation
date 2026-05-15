@@ -1,6 +1,8 @@
 ---
 layout: default
-title: How a TPM Works
+title: TPM Explained
+category: Advanced
+description: Understanding TPM 2.0, EK certificates, and hardware security
 ---
 
 # How a TPM Works

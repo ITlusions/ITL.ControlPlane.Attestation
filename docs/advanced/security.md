@@ -1,6 +1,8 @@
 ---
 layout: default
 title: Security
+category: Advanced
+description: Security model, threat analysis, and reporting vulnerabilities
 ---
 
 # Security — ITL.ControlPlane.Attestation

@@ -1,6 +1,8 @@
 ---
 layout: default
 title: Operations
+category: Guides
+description: Day-to-day operations, monitoring, and troubleshooting
 ---
 
 # Operations — ITL.ControlPlane.Attestation

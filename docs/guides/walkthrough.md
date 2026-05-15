@@ -1,6 +1,8 @@
 ---
 layout: default
-title: UI Walkthrough
+title: Walkthrough
+category: Guides
+description: Step-by-step guide to first machine registration
 ---
 
 # ITL Attestation — UI Walkthrough

@@ -5,28 +5,28 @@ main:
     url: /README
 
   - title: Architecture
-    url: /ARCHITECTURE
+    url: /reference/architecture
 
   - title: API Reference
-    url: /ENDPOINTS
+    url: /reference/endpoints
 
   - title: Deployment
-    url: /DEPLOYMENT
+    url: /guides/deployment
 
   - title: Walkthrough
-    url: /WALKTHROUGH
+    url: /guides/walkthrough
 
   - title: Operations
-    url: /OPERATIONS
+    url: /guides/operations
 
   - title: TPM Explained
-    url: /TPM_EXPLAINED
+    url: /advanced/tpm-explained
 
   - title: Security
-    url: /SECURITY
+    url: /advanced/security
 
   - title: Extensions
-    url: /EXTENSIONS
+    url: /advanced/extensions
 
 external:
   - title: GitHub
