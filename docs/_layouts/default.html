@@ -101,38 +101,47 @@
       top: 56px;
       height: calc(100vh - 56px);
       overflow-y: auto;
-      padding: 20px 12px;
-      background: var(--surface);
+      overflow-x: hidden;
+      padding: 24px 16px;
+      background: var(--bg);
       border-right: 1px solid var(--border);
     }
 
     .sidebar-title {
-      margin-bottom: 20px;
-      padding: 0 8px;
+      margin-bottom: 24px;
+      padding: 0;
     }
 
     .sidebar-title a {
       display: flex;
       align-items: center;
-      gap: 8px;
-      color: var(--accent2);
+      gap: 10px;
+      color: var(--text);
       text-decoration: none;
-      font-size: 0.75rem;
-      font-weight: 700;
+      font-size: 0.8rem;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      padding: 8px;
-      border-radius: 6px;
-      transition: all 0.15s;
+      letter-spacing: 0.08em;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .sidebar-title a:hover {
       background: var(--surface2);
+      border-color: var(--accent);
       color: var(--accent2);
+      transform: translateX(2px);
+      box-shadow: 0 4px 8px rgba(31, 111, 235, 0.15);
     }
 
     .sidebar-title svg {
       flex-shrink: 0;
+      width: 16px;
+      height: 16px;
     }
 
     .sidebar-section {
@@ -144,40 +153,46 @@
     }
 
     .sidebar-nav li {
-      margin: 1px 0;
+      margin: 3px 0;
     }
 
     .sidebar-nav a {
-      display: block;
-      padding: 8px 12px;
-      font-size: 0.875rem;
-      color: var(--muted);
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      color: var(--text);
       text-decoration: none;
       border-radius: 6px;
-      transition: all 0.15s;
-      border-left: 2px solid transparent;
+      transition: all 0.2s ease;
+      border-left: 3px solid transparent;
+      background: transparent;
+      position: relative;
     }
 
     .sidebar-nav a:hover {
       color: var(--text);
-      background: var(--surface2);
+      background: var(--surface);
       border-left-color: var(--accent);
+      padding-left: 14px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .sidebar-nav a.active {
       color: var(--accent2);
-      background: var(--surface2);
-      font-weight: 500;
+      background: var(--surface);
+      font-weight: 600;
       border-left-color: var(--accent);
+      padding-left: 14px;
+      box-shadow: 0 2px 6px rgba(31, 111, 235, 0.15);
     }
 
     .sidebar-nav a svg {
-      width: 14px;
-      height: 14px;
+      width: 16px;
+      height: 16px;
       flex-shrink: 0;
-      opacity: 0.7;
-      vertical-align: text-bottom;
-      margin-right: 6px;
+      opacity: 0.8;
+      margin-right: 8px;
     }
 
     .sidebar-nav a:hover svg,
@@ -188,20 +203,30 @@
     .sidebar-separator {
       height: 1px;
       background: var(--border);
-      margin: 16px 8px;
+      margin: 20px 0;
     }
 
     /* External link indicator */
+    .sidebar-nav a[target="_blank"] {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .sidebar-nav a[target="_blank"]::after {
       content: "↗";
-      font-size: 0.7em;
-      margin-left: 4px;
-      opacity: 0.5;
+      font-size: 0.75em;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .sidebar-nav a[target="_blank"]:hover::after {
+      opacity: 1;
     }
 
     /* Sidebar scrollbar styling */
     .sidebar::-webkit-scrollbar {
-      width: 6px;
+      width: 8px;
     }
 
     .sidebar::-webkit-scrollbar-track {
@@ -210,7 +235,7 @@
 
     .sidebar::-webkit-scrollbar-thumb {
       background: var(--border);
-      border-radius: 3px;
+      border-radius: 4px;
     }
 
     .sidebar::-webkit-scrollbar-thumb:hover {
@@ -563,13 +588,14 @@
         width: 85%;
         max-width: 320px;
         height: calc(100vh - 56px);
-        background: var(--surface);
+        background: var(--bg);
         border-right: 1px solid var(--border);
-        padding: 20px 12px;
+        padding: 24px 16px;
         transform: translateX(-100%);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         z-index: 95;
         overflow-y: auto;
+        overflow-x: hidden;
         box-shadow: 4px 0 16px rgba(0, 0, 0, 0.5);
       }
 
