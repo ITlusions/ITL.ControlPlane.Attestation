@@ -11,7 +11,7 @@ This page demonstrates all available Jekyll components.
 
 ---
 
-## 🎨 Alerts
+## Alerts
 
 {% include alert.html type="info" title="Information" content="This is an informational alert. Use it to highlight important details." %}
 
@@ -23,7 +23,7 @@ This page demonstrates all available Jekyll components.
 
 ---
 
-## 🔘 Buttons
+## Buttons
 
 <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin: 2rem 0;">
 {% include button.html text="Primary Button" link="#" style="primary" %}
@@ -40,19 +40,19 @@ This page demonstrates all available Jekyll components.
 </div>
 
 <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin: 2rem 0;">
-{% include button.html text="With Icon" link="#" style="primary" icon="🚀" %}
-{% include button.html text="GitHub" link="https://github.com" style="secondary" icon="🔗" target="_blank" %}
+{% include button.html text="With Icon" link="#" style="primary" %}
+{% include button.html text="GitHub" link="https://github.com" style="secondary" target="_blank" %}
 </div>
 
 ---
 
-## 🏷️ Badges
+## Badges
 
 <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 2rem 0;">
 {% include badge.html text="v2.0.0" color="success" %}
 {% include badge.html text="Beta" color="warning" %}
 {% include badge.html text="Deprecated" color="danger" %}
-{% include badge.html text="New Feature" color="info" icon="✨" %}
+{% include badge.html text="New Feature" color="info" %}
 {% include badge.html text="Stable" color="muted" %}
 </div>
 
@@ -64,12 +64,11 @@ This page demonstrates all available Jekyll components.
 
 ---
 
-## 📦 Cards
+## Cards
 
 {% capture cards %}
 {% include card.html 
    title="Secret Vault" 
-   icon="🔒"
    description="TPM-bound encrypted secrets with AES-256-GCM encryption. Hardware-rooted key derivation using HKDF-SHA256."
    link="/EXTENSIONS#secret-vault"
    tags="encryption,TPM,secrets"
@@ -79,7 +78,6 @@ This page demonstrates all available Jekyll components.
 
 {% include card.html 
    title="Webhooks" 
-   icon="🔔"
    description="HTTP webhook delivery for attestation events with HMAC-SHA256 signatures for secure event notifications."
    link="/EXTENSIONS#webhooks"
    tags="webhooks,events,HMAC"
@@ -89,7 +87,6 @@ This page demonstrates all available Jekyll components.
 
 {% include card.html 
    title="Metrics" 
-   icon="📊"
    description="Prometheus-compatible metrics endpoint exposing attestation statistics and operational metrics."
    link="/EXTENSIONS#metrics"
    tags="metrics,prometheus,monitoring"
@@ -101,33 +98,30 @@ This page demonstrates all available Jekyll components.
 
 ---
 
-## 🔗 Link Cards
+## Link Cards
 
 {% include link-card.html 
    title="Architecture Documentation" 
    description="Complete system design, extension architecture, and technical specifications"
    link="/ARCHITECTURE"
-   icon="🏗️"
 %}
 
 {% include link-card.html 
    title="Security Guide" 
    description="Threat model, security controls, and hardening recommendations"
    link="/SECURITY"
-   icon="🛡️"
 %}
 
 {% include link-card.html 
    title="GitHub Repository" 
    description="Source code, issues, and contributions"
    link="https://github.com/ITlusions/ITL.ControlPlane.Attestation"
-   icon="🔗"
    external="true"
 %}
 
 ---
 
-## 💻 Code Blocks
+## Code Blocks
 
 {% capture bash_code %}
 # Clone repository
@@ -169,29 +163,29 @@ services:
 
 ---
 
-## 📊 Grid Layouts
+## Grid Layouts
 
 ### 2-Column Grid
 
 {% capture two_col %}
-{% include card.html title="Column 1" icon="📄" description="First column content with equal width distribution" %}
-{% include card.html title="Column 2" icon="📄" description="Second column content with responsive layout" %}
+{% include card.html title="Column 1" description="First column content with equal width distribution" %}
+{% include card.html title="Column 2" description="Second column content with responsive layout" %}
 {% endcapture %}
 {% include grid.html content=two_col columns="2" gap="medium" %}
 
 ### 4-Column Grid
 
 {% capture four_col %}
-{% include card.html title="Col 1" icon="1️⃣" description="Small card" %}
-{% include card.html title="Col 2" icon="2️⃣" description="Small card" %}
-{% include card.html title="Col 3" icon="3️⃣" description="Small card" %}
-{% include card.html title="Col 4" icon="4️⃣" description="Small card" %}
+{% include card.html title="Col 1" description="Small card" %}
+{% include card.html title="Col 2" description="Small card" %}
+{% include card.html title="Col 3" description="Small card" %}
+{% include card.html title="Col 4" description="Small card" %}
 {% endcapture %}
 {% include grid.html content=four_col columns="4" gap="small" %}
 
 ---
 
-## 🎯 Combining Components
+## Combining Components
 
 You can nest components for rich layouts:
 
@@ -208,12 +202,12 @@ curl http://localhost:9000/health
 {% include code-block.html code=verify language="bash" title="Step 2: Verify Installation" %}
 
 <div style="margin-top: 2rem;">
-{% include button.html text="View Full Documentation" link="/README" style="primary" icon="📖" %}
-{% include button.html text="API Reference" link="/ENDPOINTS" style="secondary" icon="📡" %}
+{% include button.html text="View Full Documentation" link="/README" style="primary" %}
+{% include button.html text="API Reference" link="/ENDPOINTS" style="secondary" %}
 </div>
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 For component usage and parameters, see {% include badge.html text="COMPONENTS.md" color="info" %} in the `_includes` directory.

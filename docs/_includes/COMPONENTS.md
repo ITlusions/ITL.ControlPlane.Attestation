@@ -27,7 +27,7 @@ Styled action buttons with multiple styles.
 
 ```liquid
 {% include button.html text="Get Started" link="/docs" style="primary" %}
-{% include button.html text="View on GitHub" link="https://github.com/..." style="secondary" icon="🔗" %}
+{% include button.html text="View on GitHub" link="https://github.com/..." style="secondary" target="_blank" %}
 {% include button.html text="Download" link="/releases" style="success" target="_blank" %}
 ```
 
@@ -47,7 +47,6 @@ Feature cards with icon, title, description, and tags.
 ```liquid
 {% include card.html 
    title="Secret Vault" 
-   icon="🔒"
    description="TPM-bound encrypted secrets with AES-256-GCM"
    link="/docs/secret-vault"
    tags="encryption,TPM,secrets"
@@ -74,7 +73,7 @@ Small status/version badges.
 {% include badge.html text="v2.0.0" color="success" %}
 {% include badge.html text="Beta" color="warning" %}
 {% include badge.html text="Deprecated" color="danger" %}
-{% include badge.html text="New" color="info" icon="✨" %}
+{% include badge.html text="New" color="info" %}
 ```
 
 **Parameters:**
@@ -144,7 +143,6 @@ Clickable card for documentation links.
    title="Architecture Guide" 
    description="System design and technical architecture"
    link="/ARCHITECTURE"
-   icon="🏗️"
 %}
 ```
 
