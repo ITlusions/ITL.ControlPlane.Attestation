@@ -72,6 +72,7 @@ Flask-based web interface for operators. Uses SDK for data access.
 | [SECURITY.md](SECURITY.md) | Security architecture, CNSA 2.0 compliance, threat model |
 | [TPM_EXPLAINED.md](TPM_EXPLAINED.md) | TPM concepts, EK/AK hierarchy, attestation flows |
 | [WALKTHROUGH.md](WALKTHROUGH.md) | Step-by-step walkthrough of the full registration and attestation flow |
+| [EXTENSIONS.md](EXTENSIONS.md) | Extension system, Secret Vault, extension development guide |
 
 ---
 
@@ -85,6 +86,9 @@ Flask-based web interface for operators. Uses SDK for data access.
 - [Lock/Unlock Machines](OPERATIONS.md#3-lock-a-machine-temporarily)
 - [Revoke with Wipe](OPERATIONS.md#5-revoke-a-machine-with-remote-wipe)
 - [Audit Log](OPERATIONS.md#audit-log)
+- [Secret Vault Extension](EXTENSIONS.md#secret-vault)
+- [Webhooks Extension](EXTENSIONS.md#webhooks)
+- [Metrics Extension](EXTENSIONS.md#metrics)
 
 ### For Developers
 
@@ -92,6 +96,7 @@ Flask-based web interface for operators. Uses SDK for data access.
 - [CLI Package Structure](ARCHITECTURE.md#2-cli-package-srccli--itl-attestation-cli)
 - [API Endpoints](ENDPOINTS.md)
 - [Data Models](ARCHITECTURE.md#data-model)
+- [Extension Development](EXTENSIONS.md#developing-extensions)
 
 ### For Administrators
 

@@ -4,6 +4,62 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ITL.ControlPlane.Attestation — TPM Hardware Trust for Kubernetes Nodes</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Zero-trust TPM 2.0 attestation service for Kubernetes nodes. Hardware-rooted machine identity verification using EK fingerprints, remote attestation, encrypted secret storage, and remote wipe capabilities for Talos Linux clusters." />
+  <meta name="keywords" content="TPM, TPM 2.0, attestation, Kubernetes security, hardware security, Talos Linux, zero-trust, EK fingerprint, machine identity, remote attestation, encrypted secrets, AES-256-GCM, HKDF, TPM quotes, PCR verification, secure boot, hardware root of trust" />
+  <meta name="author" content="ITLusions" />
+  <meta name="robots" content="index, follow" />
+  <meta name="google-site-verification" content="VoM6QNyFbnjVYJ9mzYLPoWvMmauPqFntep_SQPBuoy0" />
+  <link rel="canonical" href="https://itlusions.github.io/ITL.ControlPlane.Attestation/" />
+  
+  <!-- Sitemap -->
+  <link rel="sitemap" type="application/xml" title="Sitemap" href="/ITL.ControlPlane.Attestation/sitemap.xml" />
+  
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#0d1117" />
+  <meta name="msapplication-TileColor" content="#0d1117" />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://itlusions.github.io/ITL.ControlPlane.Attestation/" />
+  <meta property="og:title" content="ITL.ControlPlane.Attestation — TPM Hardware Trust for Kubernetes" />
+  <meta property="og:description" content="Zero-trust TPM 2.0 attestation service for Kubernetes nodes. Hardware-rooted identity verification, remote attestation, encrypted secrets, and remote wipe for Talos Linux." />
+  <meta property="og:site_name" content="ITL Control Plane Attestation" />
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://itlusions.github.io/ITL.ControlPlane.Attestation/" />
+  <meta name="twitter:title" content="ITL.ControlPlane.Attestation — TPM Hardware Trust" />
+  <meta name="twitter:description" content="Zero-trust TPM 2.0 attestation service for Kubernetes nodes with hardware-rooted identity verification." />
+  
+  <!-- Structured Data (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "ITL.ControlPlane.Attestation",
+    "applicationCategory": "SecurityApplication",
+    "operatingSystem": "Linux",
+    "description": "Zero-trust TPM 2.0 attestation service for Kubernetes nodes with hardware-rooted machine identity verification",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Organization",
+      "name": "ITLusions",
+      "url": "https://github.com/ITlusions"
+    },
+    "codeRepository": "https://github.com/ITlusions/ITL.ControlPlane.Attestation",
+    "programmingLanguage": "Python",
+    "runtimePlatform": "FastAPI",
+    "softwareRequirements": "Python 3.12+, TPM 2.0, Talos Linux",
+    "applicationSubCategory": "Hardware Security, Attestation, Zero-Trust Security"
+  }
+  </script>
+  
   <style>
     :root {
       --bg: #0d1117;
@@ -679,8 +735,21 @@
         <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
         <div class="feature-title">Nonce Anti-Replay</div>
         <div class="feature-desc">Server issues single-use 256-bit nonces (60-second TTL) via <code>GET /attest/challenge</code>. Enable enforcement with <code>ITL_REQUIRE_NONCE=true</code> to prevent recording-and-replaying attestation requests.</div>
+      </div>      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="feature-title">Secret Vault Extension</div>
+        <div class="feature-desc">AES-256-GCM encrypted secret storage. Machine-specific secrets (TPM-bound via EK fingerprint) and shared secrets (multi-machine access with ACL). Ideal for disk keys, join tokens, and API keys.</div>
       </div>
-    </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></div>
+        <div class="feature-title">Webhooks Extension</div>
+        <div class="feature-desc">HTTP webhook delivery for attestation events (machine.registered, machine.approved, secret.accessed). HMAC-SHA256 signatures, delivery history, automatic retry, test endpoints.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div class="feature-title">Metrics Extension</div>
+        <div class="feature-desc">Prometheus-compatible metrics at <code>/metrics</code> endpoint. Tracks machine registrations, attestations, secret operations, webhook deliveries, and audit log activity. Ready for Grafana dashboards.</div>
+      </div>    </div>
   </div>
 </section>
 
@@ -739,6 +808,13 @@
         <div>
           <div class="doc-title">How a TPM Works</div>
           <div class="doc-desc">EK, PCRs, AK credential activation, TPM quotes — concepts explained from first principles</div>
+        </div>
+      </a>
+      <a href="EXTENSIONS" class="doc-link">
+        <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+        <div>
+          <div class="doc-title">Extension System</div>
+          <div class="doc-desc">Secret Vault, Webhooks, Metrics — modular extensions with REST APIs and database models</div>
         </div>
       </a>
       <a href="https://github.com/ITlusions/ITL.ControlPlane.Attestation" class="doc-link" target="_blank" rel="noopener">

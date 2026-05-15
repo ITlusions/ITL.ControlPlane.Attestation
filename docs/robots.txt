@@ -1,0 +1,36 @@
+# robots.txt for ITL.ControlPlane.Attestation documentation
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://itlusions.github.io/ITL.ControlPlane.Attestation/sitemap.xml
+
+# Crawl delay (polite crawling)
+Crawl-delay: 1
+
+# Allow all search engines to index all pages
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+# Disallow AI training crawlers (optional - uncomment if needed)
+# User-agent: GPTBot
+# Disallow: /
+
+# User-agent: ChatGPT-User
+# Disallow: /
+
+# User-agent: CCBot
+# Disallow: /

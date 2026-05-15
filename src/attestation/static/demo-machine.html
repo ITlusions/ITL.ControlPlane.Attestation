@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ITL Attestation — Machine Detail</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --az-header-bg:      #1c1c1c;
+      --az-nav-bg:         #1b3a57;
+      --az-body-bg:        #1a1a1a;
+      --az-surface:        #222222;
+      --az-surface-raised: #2a2a2a;
+      --az-surface-hover:  #2e3f52;
+      --az-border:         rgba(255,255,255,0.08);
+      --az-border-strong:  rgba(255,255,255,0.15);
+      --az-accent:         #0078d4;
+      --az-accent-hover:   #106ebe;
+      --az-text:           #ffffff;
+      --az-text-secondary: rgba(255,255,255,0.65);
+      --az-text-muted:     rgba(255,255,255,0.38);
+      --az-link:           #6cb0f5;
+      --az-link-hover:     #90c7ff;
+      --az-header-height:  48px;
+      --az-sidebar-width:  220px;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--az-body-bg); color: var(--az-text); margin: 0; }
+
+    /* ── Layout ── */
+    .az-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: var(--az-header-height); background: var(--az-header-bg); border-bottom: 1px solid var(--az-border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+    .az-header-left, .az-header-right { display: flex; align-items: center; gap: 8px; }
+    .az-logo { display: flex; align-items: center; gap: 8px; color: var(--az-text); font-size: .9rem; font-weight: 600; white-space: nowrap; margin-right: 12px; }
+    .az-logo-mark { width: 20px; height: 20px; background: var(--az-accent); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: .75rem; color: #fff; }
+    .az-icon-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: none; border: none; border-radius: 4px; color: var(--az-text-secondary); cursor: pointer; font-size: .9rem; text-decoration: none; transition: background .15s, color .15s; }
+    .az-icon-btn:hover { background: rgba(255,255,255,0.1); color: var(--az-text); }
+    .az-user-pill { padding: 4px 10px; border-radius: 4px; font-size: .75rem; color: var(--az-text-secondary); cursor: pointer; border: 1px solid transparent; }
+    .az-user-pill:hover { border-color: var(--az-border-strong); color: var(--az-text); }
+    .az-demo-pill { background: rgba(237,137,54,.18); border: 1px solid rgba(237,137,54,.35); color: #f6ad55; font-size: .65rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 10px; border-radius: 2px; }
+
+    .az-page-wrapper { display: flex; margin-top: var(--az-header-height); height: calc(100vh - var(--az-header-height)); }
+    .az-nav { width: var(--az-sidebar-width); min-width: var(--az-sidebar-width); background: var(--az-nav-bg); height: 100%; overflow-y: auto; border-right: 1px solid var(--az-border); padding: 8px 0; flex-shrink: 0; }
+    .az-nav-create { display: flex; align-items: center; gap: 10px; padding: 8px 16px; margin: 0 8px 4px; border-radius: 4px; color: var(--az-text); text-decoration: none; font-size: .82rem; background: rgba(0,120,212,0.15); border: 1px solid rgba(0,120,212,0.3); }
+    .az-nav-create:hover { background: rgba(0,120,212,0.25); color: var(--az-text); }
+    .az-nav-create i { color: var(--az-accent); }
+    .az-nav-item { display: flex; align-items: center; gap: 12px; padding: 8px 16px; color: var(--az-text-secondary); text-decoration: none; font-size: .82rem; transition: background .1s, color .1s; white-space: nowrap; }
+    .az-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--az-text); }
+    .az-nav-item.active { background: rgba(0,120,212,0.2); color: var(--az-text); border-left: 3px solid var(--az-accent); padding-left: 13px; }
+    .az-nav-item i { font-size: .9rem; flex-shrink: 0; }
+    .az-nav-divider { padding: 12px 16px 4px; font-size: .68rem; font-weight: 600; color: var(--az-text-muted); letter-spacing: .5px; text-transform: uppercase; }
+
+    .az-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--az-body-bg); }
+    .az-scroll { flex: 1; overflow-y: auto; }
+
+    /* ── Breadcrumb ── */
+    .az-breadcrumb { padding: 8px 24px; font-size: .75rem; color: var(--az-text-secondary); background: var(--az-surface-raised); border-bottom: 1px solid var(--az-border); }
+    .az-breadcrumb a { color: var(--az-link); text-decoration: none; }
+    .az-breadcrumb a:hover { text-decoration: underline; }
+    .az-bc-sep { margin: 0 6px; color: var(--az-text-muted); }
+
+    /* ── Hero page header (Tailwind "page heading with meta" pattern) ── */
+    .az-hero { background: var(--az-surface); border-bottom: 1px solid var(--az-border); padding: 20px 24px 0; }
+    .az-hero-top { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+    .az-hero-icon { width: 48px; height: 48px; border-radius: 8px; background: rgba(0,120,212,0.15); border: 1px solid rgba(0,120,212,0.3); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--az-accent); flex-shrink: 0; }
+    .az-hero-title { font-size: 1.3rem; font-weight: 700; color: var(--az-text); margin: 0 0 4px; }
+    .az-hero-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: .75rem; color: var(--az-text-secondary); }
+    .az-hero-meta span { display: flex; align-items: center; gap: 4px; }
+    .az-hero-actions { margin-left: auto; display: flex; gap: 8px; flex-shrink: 0; }
+
+    /* Tailwind-style stat mini-row in hero */
+    .az-hero-stats { display: flex; gap: 0; border-top: 1px solid var(--az-border); margin-top: 4px; }
+    .az-hero-stat { padding: 12px 20px; border-right: 1px solid var(--az-border); }
+    .az-hero-stat:last-child { border-right: none; }
+    .az-hero-stat-label { font-size: .68rem; color: var(--az-text-muted); text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
+    .az-hero-stat-value { font-size: 1.05rem; font-weight: 700; color: var(--az-text); margin-top: 2px; }
+
+    /* ── Tabs (Tailwind "tabs with underline" pattern) ── */
+    .az-tabs { display: flex; gap: 0; padding: 0 24px; background: var(--az-surface); border-bottom: 1px solid var(--az-border); }
+    .az-tab { padding: 12px 16px; font-size: .82rem; color: var(--az-text-secondary); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; display: flex; align-items: center; gap: 6px; transition: color .15s; user-select: none; }
+    .az-tab:hover { color: var(--az-text); }
+    .az-tab.active { color: var(--az-text); border-bottom-color: var(--az-accent); }
+    .az-tab-count { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 1px 7px; font-size: .68rem; }
+    .az-tab.active .az-tab-count { background: rgba(0,120,212,0.3); color: var(--az-link); }
+
+    /* Tab panels */
+    .az-tab-panel { display: none; padding: 24px; }
+    .az-tab-panel.active { display: block; }
+
+    /* ── Description list (Tailwind "two-column" pattern) ── */
+    .az-dl-section { margin-bottom: 28px; }
+    .az-dl-section-title { font-size: .8rem; font-weight: 700; color: var(--az-text); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--az-border); }
+    .az-dl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0; }
+    .az-dl-item { padding: 12px 16px; border-bottom: 1px solid var(--az-border); border-right: 1px solid var(--az-border); }
+    .az-dl-item:nth-child(2n) { border-right: none; }
+    .az-dl-label { font-size: .7rem; font-weight: 600; color: var(--az-text-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
+    .az-dl-value { font-size: .82rem; color: var(--az-text); display: flex; align-items: center; gap: 6px; }
+    .az-dl-mono { font-family: monospace; font-size: .75rem; color: var(--az-text-secondary); word-break: break-all; }
+    .az-copy-btn { background: none; border: none; cursor: pointer; color: var(--az-text-muted); padding: 1px 4px; border-radius: 3px; font-size: .7rem; flex-shrink: 0; }
+    .az-copy-btn:hover { color: var(--az-link); background: rgba(108,176,245,.1); }
+
+    /* Badges */
+    .az-status { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 500; }
+    .az-status i { font-size: .45rem; }
+    .az-status.success i { color: #4ec94e; } .az-status.success { color: rgba(255,255,255,.9); }
+    .az-status.warning i { color: #f0c040; } .az-status.warning { color: rgba(255,255,255,.9); }
+    .az-status.info i    { color: #6cb0f5; } .az-status.info    { color: rgba(255,255,255,.9); }
+    .az-status.secondary i { color: #808080; } .az-status.secondary { color: rgba(255,255,255,.5); }
+    .az-type-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 2px; font-size: .72rem; font-weight: 500; background: rgba(0,120,212,0.15); border: 1px solid rgba(0,120,212,0.25); color: var(--az-link); }
+
+    /* ── Timeline feed (Tailwind "feed" pattern) ── */
+    .az-timeline { position: relative; padding-left: 32px; }
+    .az-timeline::before { content:''; position:absolute; left:10px; top:4px; bottom:0; width:1px; background:var(--az-border-strong); }
+    .az-timeline-item { position: relative; margin-bottom: 20px; }
+    .az-timeline-dot { position: absolute; left: -26px; top: 3px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--az-border-strong); background: var(--az-surface-raised); display: flex; align-items: center; justify-content: center; font-size: .45rem; z-index: 1; }
+    .az-timeline-title { font-size: .82rem; font-weight: 600; color: var(--az-text); }
+    .az-timeline-meta { font-size: .72rem; color: var(--az-text-muted); margin-top: 2px; }
+    .az-timeline-body { margin-top: 8px; font-size: .78rem; color: var(--az-text-secondary); background: var(--az-surface-raised); border: 1px solid var(--az-border); border-radius: 4px; padding: 10px 12px; }
+    .az-timeline-body pre { margin: 0; font-family: monospace; font-size: .7rem; color: var(--az-text-muted); white-space: pre-wrap; }
+
+    /* ── PCR table ── */
+    .az-pcr-table { width: 100%; border-collapse: collapse; font-size: .78rem; font-family: monospace; }
+    .az-pcr-table thead th { padding: 8px 12px; text-align: left; font-weight: 600; font-size: .7rem; color: var(--az-text-muted); background: var(--az-surface-raised); border-bottom: 1px solid var(--az-border-strong); letter-spacing: .3px; font-family: 'Segoe UI', sans-serif; }
+    .az-pcr-table tbody tr { border-bottom: 1px solid var(--az-border); }
+    .az-pcr-table tbody tr:hover { background: var(--az-surface-hover); }
+    .az-pcr-table tbody td { padding: 8px 12px; color: var(--az-text-secondary); vertical-align: middle; }
+    .az-pcr-table tbody td:first-child { color: var(--az-text); font-weight: 600; font-family: 'Segoe UI', sans-serif; width: 60px; }
+
+    /* ── Action buttons ── */
+    .az-cmd-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: 2px; font-size: .8rem; font-family: inherit; background: transparent; color: var(--az-text-secondary); border: 1px solid var(--az-border-strong); cursor: pointer; transition: all .12s; }
+    .az-cmd-btn:hover { background: rgba(255,255,255,0.06); color: var(--az-text); }
+    .az-cmd-btn.primary { background: var(--az-accent); color: #fff; border-color: var(--az-accent); }
+    .az-cmd-btn.primary:hover { background: var(--az-accent-hover); }
+    .az-cmd-btn.danger { border-color: rgba(231,76,60,.4); color: #e74c3c; }
+    .az-cmd-btn.danger:hover { background: rgba(231,76,60,.1); border-color: #e74c3c; }
+    .az-cmd-btn.warn { border-color: rgba(240,192,64,.4); color: #f0c040; }
+    .az-cmd-btn.warn:hover { background: rgba(240,192,64,.1); border-color: #f0c040; }
+
+    /* ── Alert banner (Tailwind "alert" pattern) ── */
+    .az-alert { display: flex; gap: 12px; padding: 12px 16px; border-radius: 3px; font-size: .82rem; border: 1px solid; margin-bottom: 20px; }
+    .az-alert.warning { background: rgba(240,192,64,.08); border-color: rgba(240,192,64,.3); }
+    .az-alert.warning i { color: #f0c040; font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+    .az-alert.info { background: rgba(0,120,212,.08); border-color: rgba(0,120,212,.3); }
+    .az-alert.info i { color: var(--az-accent); font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+    .az-alert.danger { background: rgba(231,76,60,.08); border-color: rgba(231,76,60,.3); }
+    .az-alert.danger i { color: #e74c3c; font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+    .az-alert-title { font-weight: 600; color: var(--az-text); margin-bottom: 2px; }
+    .az-alert-body { color: var(--az-text-secondary); }
+
+
+    /* Toast */
+    #az-toast-host { position: fixed; bottom: 24px; right: 24px; z-index: 3000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; width: 340px; }
+
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .pulse { animation: pulse-dot 2s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="az-header">
+    <div class="az-header-left">
+      <div class="az-logo">
+        <div class="az-logo-mark"><i class="bi bi-shield-check"></i></div>
+        <span>ITL Attestation</span>
+      </div>
+    </div>
+    <div class="az-header-right">
+      <span style="color:var(--az-text-secondary);font-size:.75rem;">
+        <i class="bi bi-circle-fill pulse" style="color:#4ec94e;font-size:.45rem;vertical-align:middle;"></i> Healthy
+      </span>
+      <div class="az-demo-pill">Demo — Static Preview</div>
+      <a href="demo-dashboard.html" class="az-icon-btn" title="Overview"><i class="bi bi-speedometer2"></i></a>
+      <a href="demo.html" class="az-icon-btn" title="Machines"><i class="bi bi-hdd-stack"></i></a>
+      <a href="demo-audit.html" class="az-icon-btn" title="Audit Log"><i class="bi bi-journal-text"></i></a>
+      <button class="az-icon-btn" title="Notifications"><i class="bi bi-bell"></i></button>
+      <div class="az-user-pill">n.weistra@itlusions.nl</div>
+    </div>
+  </header>
+
+  <!-- Layout -->
+  <div class="az-page-wrapper">
+    <aside class="az-nav">
+      <a href="#" class="az-nav-create"><i class="bi bi-plus-circle"></i><span>Register machine</span></a>
+      <a href="demo-dashboard.html" class="az-nav-item"><i class="bi bi-speedometer2"></i><span>Overview</span></a>
+      <a href="demo.html" class="az-nav-item active"><i class="bi bi-hdd-stack"></i><span>Machines</span></a>
+      <a href="demo-audit.html" class="az-nav-item"><i class="bi bi-journal-text"></i><span>Audit log</span></a>
+      <div class="az-nav-divider">Settings</div>
+      <a href="#" class="az-nav-item"><i class="bi bi-sliders"></i><span>Configuration</span></a>
+      <a href="#" class="az-nav-item"><i class="bi bi-shield-lock"></i><span>Policies</span></a>
+    </aside>
+
+    <main class="az-content">
+      <div class="az-breadcrumb">
+        <a href="#">Home</a><span class="az-bc-sep">›</span>
+        <a href="#">ITL Control Plane</a><span class="az-bc-sep">›</span>
+        <a href="demo.html">Machines</a><span class="az-bc-sep">›</span>
+        <span id="bc-id">b8c9d0e1-f2a3…</span>
+      </div>
+
+      <!-- Page header -->
+      <div class="az-hero">
+        <div class="az-hero-top">
+          <div class="az-hero-icon"><i class="bi bi-hdd"></i></div>
+          <div style="flex:1;min-width:0;">
+            <h1 class="az-hero-title" id="hero-title">infra-node-02</h1>
+            <div class="az-hero-meta" id="hero-meta" style="font-family:var(--az-font-mono);font-size:11px;color:var(--az-text-secondary);"></div>
+          </div>
+          <div class="az-hero-actions" id="hero-actions"></div>
+        </div>
+      </div>
+
+      <div class="az-scroll">
+        <!-- Detail body with 4 sections -->
+        <div style="padding:24px;">
+          <div style="display:flex;flex-direction:column;gap:28px;">
+
+            <!-- Identity section -->
+            <div class="az-dl-section">
+              <div class="az-dl-section-title">Identity</div>
+              <div class="az-dl-grid" id="dl-identity"></div>
+            </div>
+
+            <!-- Hardware section -->
+            <div class="az-dl-section">
+              <div class="az-dl-section-title">Hardware</div>
+              <div class="az-dl-grid" id="dl-hardware"></div>
+            </div>
+
+            <!-- Security Anchors section -->
+            <div class="az-dl-section">
+              <div class="az-dl-section-title">Security Anchors</div>
+              <div class="az-dl-grid" id="dl-security"></div>
+            </div>
+
+            <!-- Timeline section -->
+            <div class="az-dl-section">
+              <div class="az-dl-section-title">Timeline</div>
+              <div class="az-dl-grid" id="dl-timeline"></div>
+            </div>
+
+          </div>
+
+          <!-- Back to Machines button -->
+          <div style="margin-top:24px;">
+            <a href="demo.html" class="az-cmd-btn">
+              <i class="bi bi-arrow-left"></i> Back to Machines
+            </a>
+          </div>
+        </div>
+
+      </div><!-- /az-scroll -->
+    </main>
+  </div>
+
+  <div id="az-toast-host"></div>
+
+  <script>
+    // ── Data ──────────────────────────────────────────────────────────────────
+    const MACHINE = {
+      machine_id:      'b8c9d0e1-f2a3-4567-1234-567890000007',
+      hw_product:      'HPE ProLiant DL380 Gen10',
+      hw_serial:       'HPE9911YA',
+      hw_mac:          'AA:BB:CC:DD:EE:06',
+      hw_uuid:         'ii5g7h00-88h5-9jj8-i3l8-6h0j8k968799',
+      role:            'worker-infra',
+      status:          'locked',
+      hostname:        'infra-node-02',
+      assigned_ip:     '10.10.1.22',
+      ek_fingerprint:  'h0k5l98jgi71k4m38l5jh609kl789012345678901234567h08',
+      ek_source:       'cert',
+      registered_at:   '2026-04-25T08:00:00Z',
+      attested_at:     '2026-04-25T08:02:14Z',
+      locked_at:       '2026-05-09T16:30:00Z',
+      revoked_at:      null,
+      token_consumed:  true,
+      wipe_pending:    false,
+    };
+
+    const EVENTS = [
+      { ts:'2026-05-09T16:30:00Z', action:'LOCK',        user:'n.weistra@itlusions.nl', result:'success', detail:{ reason:'Suspected compromise — anomalous network traffic detected' } },
+      { ts:'2026-04-25T08:03:00Z', action:'TOKEN_ISSUE', user:'tpm-agent/v2.1',         result:'success', detail:{ token_type:'bootstrap', expires_in_s:3600 } },
+      { ts:'2026-04-25T08:02:14Z', action:'ATTEST',      user:'tpm-agent/v2.1',         result:'success', detail:{ pcr_banks:['sha256'], pcrs_matched:true, nonce:'d3a8e291cc...' } },
+      { ts:'2026-04-25T08:01:00Z', action:'APPROVE',     user:'n.weistra@itlusions.nl', result:'success', detail:{ comment:'Verified against rack sheet HPE-RACK-02' } },
+      { ts:'2026-04-25T08:00:00Z', action:'REGISTER',    user:'system/auto-register',   result:'success', detail:{ hw_serial:'HPE9911YA', ek_source:'cert' } },
+    ];
+
+    const STATUS_CFG = {
+      attested:         { label:'Attested',   cls:'success' },
+      registered:       { label:'Registered', cls:'info' },
+      pending_approval: { label:'Pending',    cls:'warning' },
+      locked:           { label:'Locked',     cls:'warning' },
+      revoked:          { label:'Revoked',    cls:'secondary' },
+    };
+    const ROLE_LABELS = { 'worker-infra':'Worker Infra', 'worker-app':'Worker App', controlplane:'Control Plane' };
+    const ACTION_COLOR = { REGISTER:'#6cb0f5', APPROVE:'#4ec94e', ATTEST:'#4ec94e', TOKEN_ISSUE:'#6cb0f5', LOCK:'#f0c040', UNLOCK:'#6cb0f5', REVOKE:'#e74c3c' };
+
+    function fmt(dt) {
+      if (!dt) return '—';
+      return new Date(dt).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    }
+    function daysSince(dt) {
+      if (!dt) return null;
+      return Math.floor((Date.now() - new Date(dt)) / 86400000);
+    }
+    function statusBadge(s) {
+      const c = STATUS_CFG[s] || { label:s, cls:'secondary' };
+      return `<span class="az-status ${c.cls}"><i class="bi bi-circle-fill"></i>${c.label}</span>`;
+    }
+
+    function copyText(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        btn.innerHTML = '<i class="bi bi-check"></i>';
+        setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 1500);
+      });
+    }
+
+    function dlItem(label, value, mono = false) {
+      const valHtml = mono
+        ? `<span class="az-dl-mono">${value}</span><button class="az-copy-btn" onclick="copyText('${value}',this)" title="Copy"><i class="bi bi-clipboard"></i></button>`
+        : value;
+      return `<div class="az-dl-item"><div class="az-dl-label">${label}</div><div class="az-dl-value">${valHtml}</div></div>`;
+    }
+
+    // ── Render hero ───────────────────────────────────────────────────────────
+    const m = MACHINE;
+    document.getElementById('bc-id').textContent = m.machine_id.slice(0,20) + '…';
+    document.getElementById('hero-title').textContent = m.hostname || m.machine_id.slice(0,16) + '…';
+    document.getElementById('hero-meta').textContent = m.machine_id;
+
+    // Hero actions
+    const actions = [];
+    if (m.status === 'locked') actions.push(`<button class="az-cmd-btn" onclick="toast('Demo: unlock action (no-op)','info')"><i class="bi bi-unlock"></i> Unlock</button>`);
+    if (!['revoked','rejected'].includes(m.status)) actions.push(`<button class="az-cmd-btn danger" onclick="toast('Demo: revoke action (no-op)','info')"><i class="bi bi-x-circle"></i> Revoke</button>`);
+    actions.push(`<span class="az-status ${STATUS_CFG[m.status].cls}"><i class="bi bi-circle-fill"></i>${STATUS_CFG[m.status].label}</span>`);
+    actions.push(`<span class="az-type-badge">${ROLE_LABELS[m.role] || m.role}</span>`);
+    document.getElementById('hero-actions').innerHTML = actions.join('');
+
+    // ── Description lists ─────────────────────────────────────────────────────
+    // Identity section (matches live Flask app)
+    document.getElementById('dl-identity').innerHTML = [
+      dlItem('Machine ID',   m.machine_id, true),
+      dlItem('Hostname',     m.hostname || '—'),
+      dlItem('Cluster',      'talos-prod-01'),
+      dlItem('Namespace',    'default'),
+      dlItem('Role',         `<span class="az-type-badge">${ROLE_LABELS[m.role] || m.role}</span>`),
+      dlItem('Status',       statusBadge(m.status)),
+    ].join('');
+
+    // Hardware section (matches live Flask app)
+    document.getElementById('dl-hardware').innerHTML = [
+      dlItem('Manufacturer', 'HPE'),
+      dlItem('Model',        m.hw_product),
+      dlItem('Serial',       m.hw_serial, true),
+      dlItem('TPM Version',  '2.0'),
+    ].join('');
+
+    // Security Anchors section (matches live Flask app)
+    document.getElementById('dl-security').innerHTML = [
+      dlItem('EK Certificate', m.ek_fingerprint, true),
+      dlItem('AK Name',        '—'),
+      dlItem('PCR Values',     'PCR0: 0x1489F923C4DCA729178B3E3233458550D8DDDF29<br>PCR1: 0x3D458CFE55CC03EA1F443F1562BEEC8DF51C75E<br>PCR7: 0xB2A83B0EBF2F8374299A5B2BDFC31EA955AD7236'),
+    ].join('');
+
+    // Timeline section (matches live Flask app)
+    document.getElementById('dl-timeline').innerHTML = [
+      dlItem('Registered',      fmt(m.registered_at)),
+      dlItem('Last Attested',   fmt(m.attested_at)),
+      dlItem('Status Changed',  fmt(m.locked_at)),
+      dlItem('Created By',      'usb-agent'),
+      dlItem('Notes',           'No notes'),
+    ].join('');
+
+    // ── Toast ──────────────────────────────────────────────────────────────────
+    function toast(msg, type = 'info') {
+      const accent = { info:'#0078d4', success:'#4ec94e', warn:'#f0c040', error:'#e74c3c' };
+      const el = document.createElement('div');
+      el.style.cssText = `background:#2a2a2a;border:1px solid rgba(255,255,255,0.12);border-left:3px solid ${accent[type]||accent.info};border-radius:2px;padding:10px 14px;font-size:.8rem;color:rgba(255,255,255,0.9);pointer-events:auto;box-shadow:0 4px 16px rgba(0,0,0,.4);font-family:'Segoe UI',sans-serif;`;
+      el.textContent = msg;
+      document.getElementById('az-toast-host').appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

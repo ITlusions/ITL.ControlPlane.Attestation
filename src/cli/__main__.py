@@ -405,6 +405,132 @@ def audit_verify(ctx: click.Context) -> None:
             click.echo(f"   Error: {result['error']}")
 
 
+# ===== Secret Management Commands (Extension) =====
+
+
+@cli.group()
+def secret() -> None:
+    """Secret vault management (extension)."""
+    pass
+
+
+@secret.command("create")
+@click.argument("machine_id")
+@click.option("--name", "-n", required=True, help="Secret name")
+@click.option("--value", "-v", required=True, help="Secret value (plaintext)")
+@click.pass_context
+def secret_create(ctx: click.Context, machine_id: str, name: str, value: str) -> None:
+    """Create a new secret for a machine."""
+    token = _get_token()
+    api_url = ctx.obj["api_url"]
+    output_format = ctx.obj["output"]
+
+    client = AttestationClient(api_url, token)
+    result = client.post(
+        f"/api/v1/secrets/machines/{machine_id}/secrets",
+        json={"name": name, "value": value}
+    )
+
+    if output_format == "json":
+        click.echo(json.dumps(result, indent=2))
+    else:
+        click.echo(f"✅ Secret created:")
+        click.echo(f"   ID:      {result['secret_id']}")
+        click.echo(f"   Machine: {result['machine_id']}")
+        click.echo(f"   Name:    {result['name']}")
+        click.echo(f"   Created: {result['created_at']}")
+
+
+@secret.command("list")
+@click.argument("machine_id")
+@click.pass_context
+def secret_list(ctx: click.Context, machine_id: str) -> None:
+    """List all secrets for a machine."""
+    token = _get_token()
+    api_url = ctx.obj["api_url"]
+    output_format = ctx.obj["output"]
+
+    client = AttestationClient(api_url, token)
+    result = client.get(f"/api/v1/secrets/machines/{machine_id}/secrets")
+
+    if output_format == "json":
+        click.echo(json.dumps(result, indent=2))
+    else:
+        secrets = result.get("secrets", [])
+        if not secrets:
+            click.echo("No secrets found for this machine.")
+            return
+
+        click.echo(f"Found {len(secrets)} secret(s):\n")
+        for s in secrets:
+            click.echo(f"  📝 {s['name']}")
+            click.echo(f"     ID:       {s['secret_id']}")
+            click.echo(f"     Created:  {s['created_at']} by {s['created_by']}")
+            if s['last_accessed_at']:
+                click.echo(f"     Accessed: {s['last_accessed_at']} ({s['access_count']} times)")
+            else:
+                click.echo(f"     Accessed: Never")
+            click.echo()
+
+
+@secret.command("get")
+@click.argument("machine_id")
+@click.argument("secret_name")
+@click.option(
+    "--ek-fingerprint",
+    required=True,
+    help="Machine EK fingerprint for authentication"
+)
+@click.pass_context
+def secret_get(
+    ctx: click.Context,
+    machine_id: str,
+    secret_name: str,
+    ek_fingerprint: str
+) -> None:
+    """
+    Get encrypted secret value.
+    
+    Returns the encrypted blob that can only be decrypted by the machine's TPM.
+    """
+    api_url = ctx.obj["api_url"]
+    output_format = ctx.obj["output"]
+
+    # Note: This endpoint does NOT require operator auth
+    # The machine authenticates via EK fingerprint header
+    client = AttestationClient(api_url, None)  # No token needed
+    result = client.get(
+        f"/api/v1/secrets/machines/{machine_id}/secrets/{secret_name}",
+        headers={"X-EK-Fingerprint": ek_fingerprint}
+    )
+
+    if output_format == "json":
+        click.echo(json.dumps(result, indent=2))
+    else:
+        click.echo(f"✅ Secret retrieved:")
+        click.echo(f"   ID:   {result['secret_id']}")
+        click.echo(f"   Name: {result['name']}")
+        click.echo(f"\n   Encrypted blob (base64):")
+        click.echo(f"   {result['encrypted_blob'][:64]}...")
+        click.echo(f"\n   Nonce: {result['nonce']}")
+        click.echo(f"   Tag:   {result['tag']}")
+
+
+@secret.command("delete")
+@click.argument("secret_id")
+@click.confirmation_option(prompt="Are you sure you want to delete this secret?")
+@click.pass_context
+def secret_delete(ctx: click.Context, secret_id: str) -> None:
+    """Delete a secret permanently."""
+    token = _get_token()
+    api_url = ctx.obj["api_url"]
+
+    client = AttestationClient(api_url, token)
+    client.delete(f"/api/v1/secrets/{secret_id}")
+
+    click.echo(f"✅ Secret {secret_id} deleted")
+
+
 # ===== Helper Functions =====
 
 

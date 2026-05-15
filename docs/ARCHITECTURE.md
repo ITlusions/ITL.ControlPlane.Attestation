@@ -220,6 +220,131 @@ All services share the same data models and repositories via the SDK, ensuring c
 
 ---
 
+## Extension System
+
+The attestation platform supports a modular extension system for adding functionality without modifying the core service.
+
+### Architecture
+
+Extensions implement the `AttestationExtension` ABC and are discovered automatically at startup:
+
+```
+src/extensions/
+├── __init__.py          # Discovery and registry
+├── base.py              # AttestationExtension ABC
+└── builtin/
+    ├── secret_vault/    # TPM-bound + shared secret storage (v2.0.0)
+    │   ├── extension.py
+    │   ├── base_crypto.py       # BaseCrypto ABC
+    │   ├── base_models.py       # EncryptedSecretMixin
+    │   ├── crypto.py            # MachineSecretCrypto
+    │   ├── shared_crypto.py     # SharedSecretCrypto
+    │   ├── models.py            # SecretRow
+    │   ├── shared_models.py     # SharedSecretRow
+    │   ├── schemas.py
+    │   ├── shared_schemas.py
+    │   ├── repository.py
+    │   └── shared_repository.py
+    ├── webhooks/        # HTTP webhook delivery for events
+    │   ├── extension.py
+    │   ├── models.py
+    │   ├── schemas.py
+    │   ├── repository.py
+    │   └── deliverer.py
+    └── metrics/         # Prometheus metrics exporter
+        └── extension.py
+```
+
+### Extension Contract
+
+Each extension must implement:
+
+- `name` — Unique identifier (snake_case)
+- `version` — Semantic version string
+- `description` — Human-readable description
+- `get_router()` — FastAPI router for REST endpoints (or None)
+- `get_models()` — SQLModel classes for database (or empty list)
+- `on_startup()` — Lifecycle hook (optional)
+- `on_shutdown()` — Lifecycle hook (optional)
+
+### Discovery Process
+
+1. Service startup calls `discover_extensions()`
+2. Built-in extensions loaded from `extensions.builtin.*`
+3. External extensions loaded via `entry_points(group="attestation_extensions")`
+4. Each extension's router registered in FastAPI app
+5. Each extension's models registered for Alembic migrations
+6. Startup hooks called
+
+### Built-in Extensions
+
+#### Secret Vault (`secret_vault`) v2.0.0
+
+TPM-bound secret storage + shared secrets for attested machines.
+
+**Features**:
+- **Machine secrets**: Encrypted with machine-specific keys derived from EK fingerprint (HKDF-SHA256)
+- **Shared secrets**: Multi-machine access with explicit ACL, encrypted with master key
+- AES-256-GCM encryption with pluggable key derivation (BaseCrypto ABC)
+- Base classes eliminate duplication (EncryptedSecretMixin for common fields)
+- Access tracking and audit logging
+
+**Endpoints**:
+- Machine secrets: `POST/GET/DELETE /api/v1/secrets/machines/{id}/secrets`
+- Shared secrets: `POST/GET/PUT/DELETE /api/v1/shared-secrets` + ACL management
+
+**CLI**:
+```bash
+# Machine secrets
+attestation secret create <machine-id> --name disk-key --value <secret>
+attestation secret list <machine-id>
+
+# Shared secrets
+attestation shared-secret create prod-k8s-join-token --value "K07::..."
+attestation shared-secret grant prod-k8s-join-token --machines <uuid1>,<uuid2>
+```
+
+**Database**: `extension_secrets`, `extension_shared_secrets`, `extension_shared_secret_access` tables.
+
+#### Webhooks (`webhooks`) v1.0.0
+
+HTTP webhook delivery for attestation events.
+
+**Features**:
+- Subscribe to event types (machine.registered, machine.approved, secret.accessed, etc.)
+- HMAC-SHA256 signatures for verification
+- Delivery history and audit log
+- Automatic retry on failure
+
+**Endpoints**: `POST/GET/PUT/DELETE /api/v1/webhooks`, delivery history, test endpoint
+
+**CLI**:
+```bash
+attestation webhook add --url https://example.com/hooks --events machine.approved
+attestation webhook list
+```
+
+**Database**: `extension_webhooks`, `extension_webhook_deliveries` tables.
+
+#### Metrics (`metrics`) v1.0.0
+
+Prometheus-compatible metrics exporter at `/metrics`.
+
+**Features**:
+- Machine registration/attestation counters
+- Secret vault operation tracking
+- Webhook delivery statistics
+- Audit log activity counters
+- Machine status gauges
+
+**Endpoint**: `GET /metrics` (no auth, Prometheus scrape target)
+
+**Database**: None (in-memory metrics).
+
+See [EXTENSIONS.md](EXTENSIONS.md) for full documentation and extension development guide.
+
+---
+
 ## Data Model
 
 ### Machine record (`machines` table)

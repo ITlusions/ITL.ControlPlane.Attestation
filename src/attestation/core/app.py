@@ -14,12 +14,38 @@ from .deps import get_engine
 from ..pki.enrollment_ca import init_enrollment_ca
 from ..routes import attestation_router, audit_router, config_router, machines_router, registration_router
 
+# Extension system
+import sys
+from pathlib import Path
+# Add src/ to Python path so extensions can be imported
+src_path = Path(__file__).parent.parent.parent
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+from extensions import discover_extensions, list_extensions
+
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     engine = get_engine()
+    
+    # Load extensions BEFORE create_all so their models are registered
+    extensions = discover_extensions()
+    logger.info("Loaded %d extension(s): %s", len(extensions), ", ".join(extensions.keys()))
+    
+    # Register extension models in SQLModel.metadata
+    for ext in extensions.values():
+        models = ext.get_models()
+        if models:
+            logger.info("Extension %s registered %d model(s)", ext.name, len(models))
+            # Models are auto-registered when imported, but ensure they're in metadata
+            for model in models:
+                if hasattr(model, "__tablename__"):
+                    logger.debug("  - %s.%s", ext.name, model.__tablename__)
+    
+    # NOW create all tables (core + extensions)
     SQLModel.metadata.create_all(engine)
     logger.info("Database initialised at %s", settings.db_url)
     logger.info(
@@ -29,7 +55,22 @@ async def lifespan(app: FastAPI):
         "Factory extra extensions: %s",
         settings.factory_extensions or "(none — official only)",
     )
-    logger.info("Installer image: %s", settings.installer_image)
+    
+    # Call extension startup hooks
+    for ext in extensions.values():
+        try:
+            ext.on_startup()
+        except Exception as e:
+            logger.error("Extension %s startup failed: %s", ext.name, e)
+    
+    yield
+    
+    # Call extension shutdown hooks
+    for ext in list_extensions().values():
+        try:
+            ext.on_shutdown()
+        except Exception as e:
+            logger.error("Extension %s shutdown failed: %s", ext.name, e)r.info("Installer image: %s", settings.installer_image)
     logger.info("Service base URL: %s", settings.service_base_url)
     if settings.high_assurance:
         logger.info(
@@ -85,16 +126,41 @@ def _add_high_assurance_middleware(app: FastAPI) -> None:
         response = await call_next(request)
         # HSTS — 1 year, includeSubDomains (RFC 6797)
         response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains"
-        )
-        return response
+    # Core routes
+    prefix = "/api/v1"
+    app.include_router(registration_router, prefix=prefix)
+    app.include_router(attestation_router, prefix=prefix)
+    app.include_router(config_router, prefix=prefix)
+    app.include_router(machines_router, prefix=f"{prefix}/machines")
+    app.include_router(audit_router, prefix=f"{prefix}/audit")
+    
+    # Extension routes
+    extensions = list_extensions()
+    for ext in extensions.values():
+        router = ext.get_router()
+        if router:
+            app.include_router(router)
+            logger.info("Registered extension routes: %s", ext.name)
 
-
-def create_app() -> FastAPI:
-    app = FastAPI(
-        title="ITL Control Plane — Attestation Service",
-        version="1.0.0",
-        description=(
+    @app.get("/healthz", include_in_schema=False)
+    def healthz():
+        return {"status": "ok"}
+    
+    # Extension metadata endpoint
+    @app.get("/api/v1/extensions", tags=["extensions"])
+    def list_loaded_extensions():
+        """List all loaded extensions."""
+        return {
+            "extensions": [
+                {
+                    "name": ext.name,
+                    "version": ext.version,
+                    "description": ext.description
+                }
+                for ext in extensions.values()
+            ],
+            "total": len(extensions)
+        
             "TPM EK-based hardware identity attestation and node onboarding "
             "for the ITL Control Plane"
         ),
