@@ -84,6 +84,7 @@ jobs:
     with:
       tag: ${{ needs.auto-tag.outputs.tag }}
       artifact-name: "sdk-wheel"
+      artifact-run-id: ${{ github.run_id }}
       generate-release-notes: true
       body: |
         **Build:** ${{ needs.build-meta.outputs.build-id }}
