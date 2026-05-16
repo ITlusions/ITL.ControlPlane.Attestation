@@ -15,13 +15,6 @@ from ..pki.enrollment_ca import init_enrollment_ca
 from ..routes import attestation_router, audit_router, config_router, machines_router, registration_router
 
 # Extension system
-import sys
-from pathlib import Path
-# Add src/ to Python path so extensions can be imported
-src_path = Path(__file__).parent.parent.parent
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
-
 from extensions import discover_extensions, list_extensions
 
 logger = logging.getLogger(__name__)

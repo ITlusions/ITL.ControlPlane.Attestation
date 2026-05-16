@@ -6,15 +6,11 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+# RegisterResponse and MachineDetail are part of the public SDK contract.
+# Imported here for backward-compatibility with existing service code.
+from sdk.schemas import MachineDetail, RegisterResponse  # noqa: F401
 
-class RegisterResponse(BaseModel):
-    machine_id:   str
-    role:         str
-    status:       str
-    iso_url:      str
-    config_token: str
-    config_url:   str
-    message:      str
+__all__ = ["RegisterResponse", "MachineDetail"]
 
 
 class SelfRegisterResponse(BaseModel):
@@ -41,24 +37,6 @@ class AttestResponse(BaseModel):
     # Populated when action="apply-config" — one-time URL for the full MachineConfig YAML.
     config_url:   Optional[str] = None
     config_token: Optional[str] = None
-
-
-class MachineDetail(BaseModel):
-    machine_id:     str
-    ek_fingerprint: str
-    hw_uuid:        str
-    hw_mac:         str
-    hw_serial:      str
-    hw_product:     str
-    role:           str
-    status:         str
-    hostname:       Optional[str]
-    assigned_ip:    Optional[str]
-    registered_at:  datetime
-    attested_at:    Optional[datetime]
-    locked_at:      Optional[datetime]
-    revoked_at:     Optional[datetime]
-    wipe_pending:   bool
 
 
 class CertResponse(BaseModel):

@@ -234,6 +234,90 @@ class AttestationClient:
         response.raise_for_status()
         return response.json()
 
+    # Generic HTTP helpers — used by CLI plugins and secret commands
+
+    def get(
+        self,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        raw: bool = False,
+    ) -> Any:
+        """Send a GET request to *path* relative to base_url.
+
+        Args:
+            path: URL path (e.g. ``"/api/v1/webhooks/"``).
+            params: Optional query parameters.
+            headers: Optional extra headers merged over the auth headers.
+            raw: When True return the raw response text instead of parsed JSON.
+
+        Returns:
+            Parsed JSON (dict/list) or raw response text when *raw* is True.
+        """
+        merged = {**self._headers(), **(headers or {})}
+        response = self.client.get(
+            f"{self.base_url}{path}", headers=merged, params=params
+        )
+        response.raise_for_status()
+        return response.text if raw else response.json()
+
+    def post(
+        self,
+        path: str,
+        *,
+        json: Any = None,
+        headers: dict[str, str] | None = None,
+    ) -> Any:
+        """Send a POST request to *path* relative to base_url.
+
+        Args:
+            path: URL path.
+            json: Request body serialised as JSON.
+            headers: Optional extra headers merged over the auth headers.
+
+        Returns:
+            Parsed JSON response body.
+        """
+        merged = {**self._headers(), **(headers or {})}
+        response = self.client.post(
+            f"{self.base_url}{path}", headers=merged, json=json
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def put(
+        self,
+        path: str,
+        *,
+        json: Any = None,
+    ) -> Any:
+        """Send a PUT request to *path* relative to base_url.
+
+        Args:
+            path: URL path.
+            json: Request body serialised as JSON.
+
+        Returns:
+            Parsed JSON response body.
+        """
+        response = self.client.put(
+            f"{self.base_url}{path}", headers=self._headers(), json=json
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def delete(self, path: str) -> None:
+        """Send a DELETE request to *path* relative to base_url.
+
+        Args:
+            path: URL path.
+        """
+        response = self.client.delete(
+            f"{self.base_url}{path}", headers=self._headers()
+        )
+        response.raise_for_status()
+
     def close(self) -> None:
         """Close HTTP client."""
         self.client.close()

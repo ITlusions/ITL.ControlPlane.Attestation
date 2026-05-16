@@ -9,7 +9,9 @@ import click
 
 from . import __version__
 from .api_client import AttestationClient
+from .auth import get_token as _get_token
 from .keycloak_client import KeycloakClient
+from .plugins import discover_and_register_plugins
 from .token_cache import TokenCache
 
 # Environment variable defaults
@@ -340,6 +342,56 @@ def machine_revoke(ctx: click.Context, machine_id: str, reason: str | None) -> N
     click.echo(f"❌ Revoked: {machine['hostname']} ({machine['machine_id'][:8]}...)")
 
 
+@machine.command("delete")
+@click.argument("machine_id")
+@click.confirmation_option(prompt="Hard-delete this machine record? This cannot be undone.")
+@click.pass_context
+def machine_delete(ctx: click.Context, machine_id: str) -> None:  # noqa: ARG001
+    """Hard-delete a machine record from the database."""
+    click.echo("Not implemented yet.")
+
+
+@machine.command("approvals")
+@click.argument("machine_id")
+@click.pass_context
+def machine_approvals(ctx: click.Context, machine_id: str) -> None:  # noqa: ARG001
+    """List dual-control approval history for a machine."""
+    click.echo("Not implemented yet.")
+
+
+@machine.command("offline-bundle")
+@click.argument("machine_id")
+@click.option("--output-file", "-f", help="Write bundle JSON to file instead of stdout")
+@click.pass_context
+def machine_offline_bundle(ctx: click.Context, machine_id: str, output_file: str | None) -> None:  # noqa: ARG001
+    """Download offline provisioning bundle for USB deployment."""
+    click.echo("Not implemented yet.")
+
+
+@machine.command("import")
+@click.argument("receipt_file", type=click.Path(exists=True))
+@click.pass_context
+def machine_import(ctx: click.Context, receipt_file: str) -> None:  # noqa: ARG001
+    """Import a machine from an offline TPM receipt file."""
+    click.echo("Not implemented yet.")
+
+
+@machine.command("request-cert")
+@click.argument("machine_id")
+@click.pass_context
+def machine_request_cert(ctx: click.Context, machine_id: str) -> None:  # noqa: ARG001
+    """Issue an enrollment certificate to a machine (EK-authenticated)."""
+    click.echo("Not implemented yet.")
+
+
+@machine.command("ak-activate")
+@click.argument("machine_id")
+@click.pass_context
+def machine_ak_activate(ctx: click.Context, machine_id: str) -> None:  # noqa: ARG001
+    """Activate the node's Attestation Key (AK) by verifying a PCR quote."""
+    click.echo("Not implemented yet.")
+
+
 # ===== Audit Commands =====
 
 
@@ -527,31 +579,162 @@ def secret_delete(ctx: click.Context, secret_id: str) -> None:
     client = AttestationClient(api_url, token)
     client.delete(f"/api/v1/secrets/{secret_id}")
 
-    click.echo(f"✅ Secret {secret_id} deleted")
+    click.echo(f"Secret {secret_id} deleted")
 
 
-# ===== Helper Functions =====
+# ===== Webhook Commands (webhooks extension) =====
 
 
-def _get_token() -> str:
-    """Get cached token or exit.
+@cli.group()
+def webhook() -> None:
+    """Webhook management (webhooks extension)."""
+    pass
 
-    Returns:
-        Access token string
 
-    Raises:
-        SystemExit: If no valid token found
-    """
-    realm = os.getenv("KEYCLOAK_REALM", DEFAULT_REALM)
-    client_id = os.getenv("KEYCLOAK_CLIENT_ID", DEFAULT_CLIENT_ID)
-    cache = TokenCache()
-    token = cache.load(realm, client_id)
+@webhook.command("list")
+@click.pass_context
+def webhook_list(ctx: click.Context) -> None:  # noqa: ARG001
+    """List all registered webhooks."""
+    click.echo("Not implemented yet.")
 
-    if not token:
-        click.echo("❌ Not logged in. Run: attestation auth login")
-        sys.exit(1)
 
-    return token.access_token
+@webhook.command("get")
+@click.argument("webhook_id")
+@click.pass_context
+def webhook_get(ctx: click.Context, webhook_id: str) -> None:  # noqa: ARG001
+    """Get webhook details."""
+    click.echo("Not implemented yet.")
+
+
+@webhook.command("create")
+@click.option("--url", "-u", required=True, help="Target URL to deliver events to")
+@click.option("--event", "-e", multiple=True, help="Event type(s) to subscribe to")
+@click.option("--secret", "-s", help="HMAC signing secret")
+@click.pass_context
+def webhook_create(ctx: click.Context, url: str, event: tuple[str, ...], secret: str | None) -> None:  # noqa: ARG001
+    """Register a new webhook."""
+    click.echo("Not implemented yet.")
+
+
+@webhook.command("update")
+@click.argument("webhook_id")
+@click.option("--url", "-u", help="New target URL")
+@click.option("--event", "-e", multiple=True, help="Replace event subscription(s)")
+@click.option("--enable/--disable", default=None, help="Enable or disable the webhook")
+@click.pass_context
+def webhook_update(ctx: click.Context, webhook_id: str, url: str | None, event: tuple[str, ...], enable: bool | None) -> None:  # noqa: ARG001
+    """Update an existing webhook."""
+    click.echo("Not implemented yet.")
+
+
+@webhook.command("delete")
+@click.argument("webhook_id")
+@click.confirmation_option(prompt="Delete this webhook?")
+@click.pass_context
+def webhook_delete(ctx: click.Context, webhook_id: str) -> None:  # noqa: ARG001
+    """Delete a webhook."""
+    click.echo("Not implemented yet.")
+
+
+@webhook.command("deliveries")
+@click.argument("webhook_id")
+@click.pass_context
+def webhook_deliveries(ctx: click.Context, webhook_id: str) -> None:  # noqa: ARG001
+    """List recent delivery attempts for a webhook."""
+    click.echo("Not implemented yet.")
+
+
+@webhook.command("test")
+@click.argument("webhook_id")
+@click.pass_context
+def webhook_test(ctx: click.Context, webhook_id: str) -> None:  # noqa: ARG001
+    """Send a test event to a webhook."""
+    click.echo("Not implemented yet.")
+
+
+# ===== Metrics Commands (metrics extension) =====
+
+
+@cli.group()
+def metrics() -> None:
+    """Service metrics (metrics extension)."""
+    pass
+
+
+@metrics.command("show")
+@click.pass_context
+def metrics_show(ctx: click.Context) -> None:  # noqa: ARG001
+    """Show Prometheus metrics from the service."""
+    click.echo("Not implemented yet.")
+
+
+# ===== UX / Utility Commands =====
+
+
+@machine.command("watch")
+@click.option("--interval", "-i", default=5, show_default=True, help="Poll interval in seconds")
+@click.option("--status", help="Filter by status")
+@click.pass_context
+def machine_watch(ctx: click.Context, interval: int, status: str | None) -> None:  # noqa: ARG001
+    """Poll machine list and refresh on every change."""
+    click.echo("Not implemented yet.")
+
+
+@machine.command("wipe")
+@click.argument("machine_id")
+@click.option("--reason", "-r", help="Revocation reason")
+@click.confirmation_option(prompt="Revoke with wipe_pending=True? This will trigger a Talos reset on next attest.")
+@click.pass_context
+def machine_wipe(ctx: click.Context, machine_id: str, reason: str | None) -> None:  # noqa: ARG001
+    """Revoke a machine and schedule a Talos reset on its next attestation."""
+    click.echo("Not implemented yet.")
+
+
+@machine.command("stats")
+@click.pass_context
+def machine_stats(ctx: click.Context) -> None:  # noqa: ARG001
+    """Show machine counts grouped by status and role."""
+    click.echo("Not implemented yet.")
+
+
+@audit.command("export")
+@click.option("--output-file", "-f", required=True, help="Destination file path (.json or .csv)")
+@click.option("--format", "fmt", type=click.Choice(["json", "csv"], case_sensitive=False), default="json", show_default=True)
+@click.pass_context
+def audit_export(ctx: click.Context, output_file: str, fmt: str) -> None:  # noqa: ARG001
+    """Export the full audit log to a JSON or CSV file."""
+    click.echo("Not implemented yet.")
+
+
+@cli.command("version")
+@click.pass_context
+def version(ctx: click.Context) -> None:  # noqa: ARG001
+    """Show CLI version and service version."""
+    click.echo("Not implemented yet.")
+
+
+@cli.command("config")
+@click.pass_context
+def config_show(ctx: click.Context) -> None:
+    """Show active configuration (API URL, realm, client ID)."""
+    click.echo("Not implemented yet.")
+
+
+# ===== Health Command =====
+
+
+@cli.command("health")
+@click.pass_context
+def health(ctx: click.Context) -> None:  # noqa: ARG001
+    """Check service health."""
+    click.echo("Not implemented yet.")
+
+
+# ===== Plugin Discovery =====
+
+# Register any installed third-party CLI plugins.
+# Plugins are discovered via the "attestation_cli_plugins" entry point group.
+discover_and_register_plugins(cli)
 
 
 if __name__ == "__main__":

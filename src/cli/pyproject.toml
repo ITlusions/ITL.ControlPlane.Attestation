@@ -51,6 +51,16 @@ dev = [
 [project.scripts]
 attestation = "cli.__main__:cli"
 
+# Third-party extensions that want to contribute CLI commands must declare an
+# entry point in the "attestation_cli_plugins" group.  The entry point value
+# must be a dotted path to a CliPlugin subclass, e.g.:
+#
+#   [project.entry-points."attestation_cli_plugins"]
+#   my-extension = "mypackage.cli_plugin:MyCliPlugin"
+#
+# See src/cli/plugin.py for the full CliPlugin contract and
+# src/extensions/builtin/webhooks/cli_plugin.py for a reference implementation.
+
 [project.urls]
 Homepage = "https://github.com/ITLusions/ITL.ControlPlane.Attestation"
 Documentation = "https://github.com/ITLusions/ITL.ControlPlane.Attestation/blob/main/src/cli/README.md"
