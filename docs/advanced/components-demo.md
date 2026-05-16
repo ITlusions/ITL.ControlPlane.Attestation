@@ -3,6 +3,7 @@ layout: default
 title: Component Demo
 category: Advanced
 description: Live examples of all documentation components
+robots: noindex, nofollow
 ---
 
 # Component Demo

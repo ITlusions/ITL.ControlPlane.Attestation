@@ -1,5 +1,6 @@
 title: ITL.ControlPlane.Attestation
 description: TPM hardware trust broker for ITL Control Plane Kubernetes nodes
+keywords: attestation, TPM, hardware trust, Kubernetes, ITL Control Plane, machine approval, secure boot, node identity, PKI, Pulumi, infrastructure as code, IaC, Pulumi state backend, zero trust, supply chain security, EK certificate, AK certificate, trust anchor, webhooks, secret vault, metrics, machine lifecycle, node provisioning, FastAPI, Python
 baseurl: "/ITL.ControlPlane.Attestation"
 url: "https://itlusions.github.io"
 
@@ -16,7 +17,8 @@ kramdown:
       line_numbers: false
 
 # Mermaid diagrams via jekyll-mermaid or passthrough
-plugins: []
+plugins:
+  - jekyll-sitemap
 
 # Force include static files (robots.txt, sitemap.xml)
 include:
