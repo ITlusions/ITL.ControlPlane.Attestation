@@ -37,7 +37,7 @@ flowchart TB
         direction LR
         API["FastAPI\nHTTP endpoints"]
         DB["SQLite\nmachines.db\naudit_log\napproval_request"]
-        CA["Enrollment CA\nRSA-4096"]
+        CA["Enrollment CA\nECDSA P-384 (default)"]
         API --- DB
         API --- CA
     end
@@ -160,7 +160,7 @@ src/attestation/
     enrollment.py       — Business logic for /machines/enroll and /machines/{id}/request-cert
   routes/
     registration.py     — FastAPI router: POST /api/v1/register, /self-register
-    attestation.py      — FastAPI router: GET /healthz, /api/v1/attest/challenge, POST /api/v1/attest
+    attestation.py      — FastAPI router: GET /api/v1/attest/challenge, POST /api/v1/attest
     config.py           — FastAPI router: GET /api/v1/config, /api/v1/config/{token}
     machines.py         — FastAPI router: GET/POST /api/v1/machines/**
     audit.py            — FastAPI router: GET /api/v1/audit, /api/v1/audit/verify
@@ -168,6 +168,7 @@ src/attestation/
     config_generator.py — Merge role base configs with machine-specific overrides
     iso_factory.py      — Build Talos Image Factory schematic URLs
   main.py               — Entry point: app = create_app()
+  core/app.py           — create_app() factory: registers GET /healthz and GET /api/v1/extensions directly
 ```
 
 ### 4. **Web Dashboard** (`src/web/`)
@@ -354,16 +355,18 @@ See [EXTENSIONS.md](EXTENSIONS.md) for full documentation and extension developm
 | Field | Type | Description |
 |---|---|---|
 | `machine_id` | UUID v4 | Stable logical identifier assigned at registration |
-| `ek_fingerprint` | SHA-256 hex (64 chars) | Primary hardware identity — SHA-256 of raw EK cert/pub bytes |
+| `ek_fingerprint` | SHA-384 hex (96 chars) | Primary hardware identity — SHA-384 of raw EK cert/pub bytes (CNSA 1.0, FIPS 180-4) |
+| `ek_fingerprint_sha384` | SHA-384 hex (96 chars, nullable) | Populated by the migration script for pre-existing rows; equals `ek_fingerprint` for new registrations |
 | `ek_source` | `cert` \| `pub` | Which TPM EK material was presented |
+| `ek_cert_pem` | base64-encoded PEM (nullable) | Raw EK certificate — stored for EK-bound config encryption; populated on first register/attest |
 | `hw_uuid`, `hw_mac`, `hw_serial`, `hw_product` | string | SMBIOS hardware identity fields (secondary; EK fp is canonical) |
-| `role` | `controlplane` \| `worker-infra` \| `worker-app` | Assigned Talos node role |
+| `role` | `controlplane` \| `worker-infra` \| `worker-app` \| `generic` \| `windows` \| `linux` | Assigned node role |
 | `status` | enum (see below) | Current lifecycle state |
 | `hostname`, `assigned_ip` | optional string | Set by operator at approval |
 | `config_token` | random URL-safe token | One-time token for Talos config fetch |
 | `token_consumed` | bool | True after first successful config fetch |
 | `wipe_pending` | bool | When True + status=revoked, next attest triggers talosctl reset |
-| `ak_pub` | SubjectPublicKeyInfo PEM | AK public key registered via `POST /machines/{id}/ak-activate`; null until AK is activated |
+| `ak_pub` | SubjectPublicKeyInfo PEM (nullable) | AK public key registered via `POST /machines/{id}/ak-activate`; null until AK is activated |
 
 ### Audit log (`audit_log` table)
 
@@ -479,7 +482,7 @@ sequenceDiagram
   participant Svc   as Attestation Service
   participant Fac   as Image Factory
 
-  Agent->>Agent: Read TPM EK cert from /sys<br/>Compute SHA-256 fingerprint
+  Agent->>Agent: Read TPM EK cert from /sys<br/>Compute SHA-384 fingerprint
   Agent->>Svc: POST /api/v1/register<br/>ek_fingerprint, ek_cert_pem, hw_*
   Svc->>Svc: Verify EK structural integrity<br/>Recompute + compare fingerprint<br/>Upsert Machine record
   alt ITL_ISO_URL set

@@ -83,20 +83,7 @@ This is the fully automated path when machines boot a generic Talos ISO that has
 
 **Operator action required:**
 
-**CLI (recommended):**
-```sh
-# 1. See pending machines
-attestation machine list --status pending_approval
-
-# 2. Approve (extension picks this up within 60 s)
-attestation machine approve <machine-id> \
-  --role worker-app \
-  --hostname k8s-worker-03 \
-  --assigned-ip 10.0.1.13/24 \
-  --reason "Production deployment"
-```
-
-**curl (alternative):**
+**curl (recommended for approve — role/hostname/ip required):**
 ```sh
 # 1. See pending machines
 curl -s -H "Authorization: Bearer $TOKEN" \
@@ -111,6 +98,14 @@ curl -s -X POST \
   https://attest.itlusions.com/api/v1/machines/<machine_id>/approve
 ```
 
+**CLI (listing only — approve currently requires curl):**
+```sh
+# 1. See pending machines
+attestation machine list --status pending_approval
+```
+
+> **Note**: The CLI `machine approve` command does not yet support `--role`, `--hostname`, or `--assigned-ip` options. Use the curl example above to approve machines. The CLI can be used for listing, locking, unlocking, and revoking.
+
 No reboot required from the operator — the extension handles it automatically once approved.
 
 ---
@@ -119,29 +114,9 @@ No reboot required from the operator — the extension handles it automatically 
 
 When `ITL_DUAL_CONTROL_ROLES=controlplane`, a single approval is not sufficient. Two distinct operators must approve independently within `ITL_DUAL_CONTROL_WINDOW_SECONDS` (default 10 min).
 
-**CLI (recommended):**
-```sh
-# Operator 1 (alice) — first vote → pending second approval
-attestation auth login  # Alice logs in
-attestation machine approve <machine-id> \
-  --role controlplane \
-  --hostname cp-01 \
-  --assigned-ip 10.0.0.1/24 \
-  --reason "First approval - Alice"
-# → Status: pending_second_approval (1/2 approvals)
+> **CLI note**: The CLI `machine approve` command does not yet support `--role`, `--hostname`, or `--assigned-ip`. Use the curl examples below for dual-control approve flows.
 
-# Operator 2 (bob) — second vote → machine registered
-attestation auth logout
-attestation auth login  # Bob logs in
-attestation machine approve <machine-id> \
-  --role controlplane \
-  --hostname cp-01 \
-  --assigned-ip 10.0.0.1/24 \
-  --reason "Second approval - Bob"
-# → Status: registered (2/2 approvals)
-```
-
-**curl (alternative):**
+**curl (dual-control approve):**
 ```sh
 # Operator 1 (alice) — first vote → HTTP 202
 curl -s -X POST \
@@ -159,6 +134,8 @@ curl -s -X POST \
   https://attest.itlusions.com/api/v1/machines/<machine_id>/approve
 # → MachineDetail (machine is now registered)
 ```
+
+> **CLI note**: The CLI `machine approve` command does not yet support `--role`, `--hostname`, or `--assigned-ip`. Use curl for dual-control approve flows.
 
 **CLI:**
 ```sh
@@ -190,14 +167,6 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 **Step 3** — Approve and assign role:
 
-**CLI:**
-```sh
-attestation machine approve <machine-id> \
-  --role worker-app \
-  --hostname k8s-worker-03 \
-  --assigned-ip 10.0.1.13/24
-```
-
 **curl:**
 ```sh
 curl -s -X POST \
@@ -206,6 +175,8 @@ curl -s -X POST \
   -d '{"role": "worker-app", "hostname": "k8s-worker-03", "assigned_ip": "10.0.1.13/24"}' \
   https://attest.itlusions.com/api/v1/machines/<machine_id>/approve
 ```
+
+> **CLI note**: The CLI `machine approve` command does not yet support `--role`, `--hostname`, or `--assigned-ip`. Use curl to supply these required fields.
 
 **Step 4** — Machine boots, `POST /api/v1/attest` is called by the Talos extension, status transitions to `attested`. The machine fetches its MachineConfig via `GET /api/v1/config/<token>` and joins the cluster.
 
