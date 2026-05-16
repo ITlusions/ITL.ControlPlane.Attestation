@@ -26,4 +26,4 @@ Homepage = "https://github.com/ITlusions/ITL.ControlPlane.Attestation"
 dev = ["pytest", "pytest-mock", "responses"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/pulumi_provider"]
+packages = ["."]
