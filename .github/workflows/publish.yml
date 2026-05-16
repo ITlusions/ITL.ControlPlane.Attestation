@@ -1,149 +1,107 @@
-name: Publish
+﻿name: Publish — Release published
 
-# ── Trigger ───────────────────────────────────────────────────────────────────
-# Fires when a draft release created by auto-tag is manually published on GitHub.
-# The tag prefix determines which package is published:
+# ---------------------------------------------------------------------------
+# Publish orchestrator for ITL.ControlPlane.Attestation
 #
-#   sdk/vX.Y.Z      → PyPI (itl-attestation-sdk)
-#   cli/vX.Y.Z      → PyPI (itl-attestation-cli)
-#   service/vX.Y.Z  → GHCR (ghcr.io/itlusions/itl-attestation)
+# Triggered when a GitHub Release is published — which happens automatically
+# at the end of each ci-*.yml (create-release job) after a successful CI run.
 #
+# Tag routing (resolved from the release tag name):
+#   sdk/vX.Y.Z     → PyPI     (itl-attestation-sdk,    environment: pypi-sdk)
+#   cli/vX.Y.Z     → PyPI     (itl-attestation-cli,    environment: pypi-cli)
+#   pulumi/vX.Y.Z  → PyPI     (itl-attestation-pulumi, environment: pypi-pulumi)
+#   service/vX.Y.Z → GHCR     (ghcr.io/itlusions/itl-attestation)
+#
+# Authentication: PyPI Trusted Publisher (OIDC) for Python packages — no API tokens.
+# ---------------------------------------------------------------------------
 on:
   release:
     types: [published]
 
-permissions:
-  contents: read
+concurrency:
+  group: publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
 
 jobs:
 
-  # ── Route: determine which package this release targets ───────────────────
-  route:
-    name: Route release
+  # ── Resolve which component this release targets ───────────────────────────
+  resolve-target:
+    name: Resolve publish target
     runs-on: ubuntu-latest
     outputs:
-      publish_sdk:     ${{ steps.route.outputs.publish_sdk }}
-      publish_cli:     ${{ steps.route.outputs.publish_cli }}
-      push_docker:     ${{ steps.route.outputs.push_docker }}
-      version:         ${{ steps.route.outputs.version }}
+      component:   ${{ steps.route.outputs.component }}
+      environment: ${{ steps.route.outputs.environment }}
+      version:     ${{ steps.route.outputs.version }}
     steps:
-      - name: Determine target
+      - name: Route by tag prefix
         id: route
         run: |
           TAG="${{ github.event.release.tag_name }}"
-          echo "publish_sdk=false"   >> "$GITHUB_OUTPUT"
-          echo "publish_cli=false"   >> "$GITHUB_OUTPUT"
-          echo "push_docker=false"   >> "$GITHUB_OUTPUT"
-
           if [[ "$TAG" == sdk/* ]]; then
-            echo "publish_sdk=true"  >> "$GITHUB_OUTPUT"
-            echo "version=${TAG#sdk/v}" >> "$GITHUB_OUTPUT"
+            echo "component=sdk"         >> "$GITHUB_OUTPUT"
+            echo "environment=pypi-sdk"  >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#sdk/v}"  >> "$GITHUB_OUTPUT"
           elif [[ "$TAG" == cli/* ]]; then
-            echo "publish_cli=true"  >> "$GITHUB_OUTPUT"
-            echo "version=${TAG#cli/v}" >> "$GITHUB_OUTPUT"
+            echo "component=cli"         >> "$GITHUB_OUTPUT"
+            echo "environment=pypi-cli"  >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#cli/v}"  >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG" == pulumi/* ]]; then
+            echo "component=pulumi"           >> "$GITHUB_OUTPUT"
+            echo "environment=pypi-pulumi"    >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#pulumi/v}"    >> "$GITHUB_OUTPUT"
           elif [[ "$TAG" == service/* ]]; then
-            echo "push_docker=true"  >> "$GITHUB_OUTPUT"
-            echo "version=${TAG#service/v}" >> "$GITHUB_OUTPUT"
+            echo "component=service"          >> "$GITHUB_OUTPUT"
+            echo "environment=ghcr"           >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#service/v}"   >> "$GITHUB_OUTPUT"
           else
             echo "Unrecognised tag prefix: $TAG" && exit 1
           fi
 
-  # ── Publish SDK to PyPI ───────────────────────────────────────────────────
+  # ── Publish SDK → PyPI ─────────────────────────────────────────────────────
   publish-sdk:
     name: Publish SDK → PyPI
-    runs-on: ubuntu-latest
-    needs: route
-    if: needs.route.outputs.publish_sdk == 'true'
-    environment: pypi-sdk          # PyPI Trusted Publisher: workflow = publish.yml
-    permissions:
-      id-token: write              # OIDC — no API tokens
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name }}
+    needs: resolve-target
+    if: needs.resolve-target.outputs.component == 'sdk'
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-publish-pypi.yml@main
+    with:
+      artifact-name:    "sdk-wheel"
+      ci-workflow-name: "CI — SDK"
+      commit-sha:       ${{ github.event.release.target_commitish }}
+      environment:      "pypi-sdk"
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Build SDK wheel
-        run: |
-          pip install build twine
-          cd src/sdk && python -m build
-          twine check dist/*
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: src/sdk/dist/
-
-  # ── Publish CLI to PyPI ───────────────────────────────────────────────────
+  # ── Publish CLI → PyPI ─────────────────────────────────────────────────────
   publish-cli:
     name: Publish CLI → PyPI
-    runs-on: ubuntu-latest
-    needs: route
-    if: needs.route.outputs.publish_cli == 'true'
-    environment: pypi-cli          # PyPI Trusted Publisher: workflow = publish.yml
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name }}
+    needs: resolve-target
+    if: needs.resolve-target.outputs.component == 'cli'
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-publish-pypi.yml@main
+    with:
+      artifact-name:    "cli-wheel"
+      ci-workflow-name: "CI — CLI"
+      commit-sha:       ${{ github.event.release.target_commitish }}
+      environment:      "pypi-cli"
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+  # ── Publish Pulumi Provider → PyPI ─────────────────────────────────────────
+  publish-pulumi:
+    name: Publish Pulumi Provider → PyPI
+    needs: resolve-target
+    if: needs.resolve-target.outputs.component == 'pulumi'
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-publish-pypi.yml@main
+    with:
+      artifact-name:    "pulumi-wheel"
+      ci-workflow-name: "CI — Pulumi Provider"
+      commit-sha:       ${{ github.event.release.target_commitish }}
+      environment:      "pypi-pulumi"
 
-      - name: Build CLI wheel
-        run: |
-          pip install build twine
-          cd src/cli && python -m build
-          twine check dist/*
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: src/cli/dist/
-
-  # ── Push Docker image to GHCR ────────────────────────────────────────────
-  push-docker:
-    name: Push Docker → GHCR
-    runs-on: ubuntu-latest
-    needs: route
-    if: needs.route.outputs.push_docker == 'true'
-    permissions:
-      contents: read
-      packages: write              # push to ghcr.io
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name }}
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/itlusions/itl-attestation
-          tags: |
-            type=raw,value=${{ needs.route.outputs.version }}
-            type=raw,value=latest
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to:   type=gha,mode=max
+  # ── Push Service image → GHCR ──────────────────────────────────────────────
+  publish-service:
+    name: Push Service → GHCR
+    needs: resolve-target
+    if: needs.resolve-target.outputs.component == 'service'
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-docker-build.yml@main
+    with:
+      image-name: "ghcr.io/itlusions/itl-attestation"
+      tag:        ${{ needs.resolve-target.outputs.version }}
+      ref:        ${{ github.event.release.tag_name }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}

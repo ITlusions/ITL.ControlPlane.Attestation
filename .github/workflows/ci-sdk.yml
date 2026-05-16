@@ -1,0 +1,91 @@
+﻿name: CI — SDK
+
+# ---------------------------------------------------------------------------
+# CI orchestrator for the Attestation SDK (itl-attestation-sdk on PyPI)
+#
+# Triggers on changes to src/sdk/**.
+# Follows the same release chain as ITL.BrainCell:
+#   ci → auto-tag → create GitHub Release → publish.yml
+# ---------------------------------------------------------------------------
+on:
+  push:
+    branches: [main, develop, "feature/**", "release/**", "hotfix/**"]
+    paths:
+      - "src/sdk/**"
+      - ".github/workflows/ci-sdk.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "src/sdk/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-sdk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  detect-version:
+    name: Detect version
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-detect-version.yml@main
+    with:
+      tag-prefix: "sdk/v"
+
+  ci:
+    name: Lint / Test / Build
+    needs: detect-version
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-ci-python.yml@main
+    with:
+      python-version: "3.12"
+      ref: ${{ github.sha }}
+      artifact-name: "sdk-wheel"
+      version: ${{ needs.detect-version.outputs.python-version }}
+      working-directory: "src/sdk"
+      ruff-src: "."
+      test-path: "."
+      extra-install: "pip install -e .[dev]"
+
+  build-meta:
+    name: Compute build ID
+    runs-on: ubuntu-latest
+    outputs:
+      build-id: ${{ steps.id.outputs.build-id }}
+    steps:
+      - name: Generate build ID
+        id: id
+        run: echo "build-id=$(date +%Y%m%d)-${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+  auto-tag:
+    name: Auto-tag semver
+    needs: ci
+    if: |
+      github.event_name == 'push' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/heads/release/')
+      )
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-auto-tag.yml@main
+    with:
+      commit-sha: ${{ github.sha }}
+      tag-prefix: "sdk/v"
+    secrets:
+      gh-pat: ${{ secrets.GH_PAT }}
+
+  create-release:
+    name: Create GitHub Release
+    needs: [auto-tag, build-meta]
+    if: |
+      github.event_name == 'push' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/heads/release/')
+      )
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-release-gh.yml@main
+    with:
+      tag: ${{ needs.auto-tag.outputs.tag }}
+      artifact-name: "sdk-wheel"
+      generate-release-notes: true
+      body: |
+        **Build:** ${{ needs.build-meta.outputs.build-id }}
+        **Commit:** ${{ github.sha }}
+        **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

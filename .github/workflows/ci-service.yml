@@ -1,0 +1,99 @@
+﻿name: CI — Service
+
+# ---------------------------------------------------------------------------
+# CI orchestrator for the Attestation Service (Docker → GHCR)
+#
+# Triggers on changes to src/attestation/**, src/extensions/**, tests/**,
+# root pyproject.toml, and Dockerfile.
+# Follows the same release chain as ITL.BrainCell:
+#   ci → auto-tag → create GitHub Release → publish.yml
+# ---------------------------------------------------------------------------
+on:
+  push:
+    branches: [main, develop, "feature/**", "release/**", "hotfix/**"]
+    paths:
+      - "src/attestation/**"
+      - "src/extensions/**"
+      - "src/web/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "Dockerfile"
+      - ".github/workflows/ci-service.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "src/attestation/**"
+      - "src/extensions/**"
+      - "src/web/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "Dockerfile"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-service-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  detect-version:
+    name: Detect version
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-detect-version.yml@main
+    with:
+      tag-prefix: "service/v"
+
+  ci:
+    name: Lint / Test / Build
+    needs: detect-version
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-ci-docker.yml@main
+    with:
+      image-name: "ghcr.io/itlusions/itl-attestation"
+      python-version: "3.12"
+      ruff-src: "src/attestation/ src/extensions/"
+      test-path: "tests/"
+      version: ${{ needs.detect-version.outputs.image-tag }}
+      extra-install: "pip install -e .[dev]"
+
+  build-meta:
+    name: Compute build ID
+    runs-on: ubuntu-latest
+    outputs:
+      build-id: ${{ steps.id.outputs.build-id }}
+    steps:
+      - name: Generate build ID
+        id: id
+        run: echo "build-id=$(date +%Y%m%d)-${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+  auto-tag:
+    name: Auto-tag semver
+    needs: ci
+    if: |
+      github.event_name == 'push' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/heads/release/')
+      )
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-auto-tag.yml@main
+    with:
+      commit-sha: ${{ github.sha }}
+      tag-prefix: "service/v"
+    secrets:
+      gh-pat: ${{ secrets.GH_PAT }}
+
+  create-release:
+    name: Create GitHub Release
+    needs: [auto-tag, build-meta]
+    if: |
+      github.event_name == 'push' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/heads/release/')
+      )
+    uses: ITlusions/ITL.Github/.github/workflows/_reusable-release-gh.yml@main
+    with:
+      tag: ${{ needs.auto-tag.outputs.tag }}
+      generate-release-notes: true
+      body: |
+        **Build:** ${{ needs.build-meta.outputs.build-id }}
+        **Commit:** ${{ github.sha }}
+        **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
