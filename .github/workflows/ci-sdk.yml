@@ -12,7 +12,6 @@ on:
     branches: [main, develop, "feature/**", "release/**", "hotfix/**"]
     paths:
       - "src/sdk/**"
-      - ".github/workflows/ci-sdk.yml"
   pull_request:
     branches: [main, develop]
     paths:

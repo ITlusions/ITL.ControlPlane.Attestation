@@ -18,7 +18,6 @@ on:
       - "tests/**"
       - "pyproject.toml"
       - "Dockerfile"
-      - ".github/workflows/ci-service.yml"
   pull_request:
     branches: [main, develop]
     paths:
