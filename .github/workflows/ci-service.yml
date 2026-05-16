@@ -93,6 +93,13 @@ jobs:
       tag: ${{ needs.auto-tag.outputs.tag }}
       generate-release-notes: true
       body: |
+        ## Installation
+
+        ```bash
+        docker pull ghcr.io/itlusions/itl-attestation-service:${{ needs.detect-version.outputs.python-version }}
+        ```
+
+        ---
         **Build:** ${{ needs.build-meta.outputs.build-id }}
         **Commit:** ${{ github.sha }}
         **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -87,6 +87,13 @@ jobs:
       artifact-run-id: ${{ github.run_id }}
       generate-release-notes: true
       body: |
+        ## Installation
+
+        ```bash
+        pip install itl-attestation-sdk==${{ needs.detect-version.outputs.python-version }}
+        ```
+
+        ---
         **Build:** ${{ needs.build-meta.outputs.build-id }}
         **Commit:** ${{ github.sha }}
         **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
