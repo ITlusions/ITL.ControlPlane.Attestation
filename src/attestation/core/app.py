@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
         try:
             ext.on_shutdown()
         except Exception as e:
-            logger.error("Extension %s shutdown failed: %s", ext.name, e)r.info("Installer image: %s", settings.installer_image)
+            logger.error("Extension %s shutdown failed: %s", ext.name, e)
     logger.info("Service base URL: %s", settings.service_base_url)
     if settings.high_assurance:
         logger.info(
@@ -119,41 +119,16 @@ def _add_high_assurance_middleware(app: FastAPI) -> None:
         response = await call_next(request)
         # HSTS — 1 year, includeSubDomains (RFC 6797)
         response.headers["Strict-Transport-Security"] = (
-    # Core routes
-    prefix = "/api/v1"
-    app.include_router(registration_router, prefix=prefix)
-    app.include_router(attestation_router, prefix=prefix)
-    app.include_router(config_router, prefix=prefix)
-    app.include_router(machines_router, prefix=f"{prefix}/machines")
-    app.include_router(audit_router, prefix=f"{prefix}/audit")
-    
-    # Extension routes
-    extensions = list_extensions()
-    for ext in extensions.values():
-        router = ext.get_router()
-        if router:
-            app.include_router(router)
-            logger.info("Registered extension routes: %s", ext.name)
+            "max-age=31536000; includeSubDomains"
+        )
+        return response
 
-    @app.get("/healthz", include_in_schema=False)
-    def healthz():
-        return {"status": "ok"}
-    
-    # Extension metadata endpoint
-    @app.get("/api/v1/extensions", tags=["extensions"])
-    def list_loaded_extensions():
-        """List all loaded extensions."""
-        return {
-            "extensions": [
-                {
-                    "name": ext.name,
-                    "version": ext.version,
-                    "description": ext.description
-                }
-                for ext in extensions.values()
-            ],
-            "total": len(extensions)
-        
+
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="ITL Control Plane — Attestation Service",
+        version="1.0.0",
+        description=(
             "TPM EK-based hardware identity attestation and node onboarding "
             "for the ITL Control Plane"
         ),
@@ -170,8 +145,32 @@ def _add_high_assurance_middleware(app: FastAPI) -> None:
     app.include_router(machines_router, prefix=f"{prefix}/machines")
     app.include_router(audit_router, prefix=f"{prefix}/audit")
 
+    # Extension routes
+    extensions = list_extensions()
+    for ext in extensions.values():
+        router = ext.get_router()
+        if router:
+            app.include_router(router)
+            logger.info("Registered extension routes: %s", ext.name)
+
     @app.get("/healthz", include_in_schema=False)
     def healthz():
         return {"status": "ok"}
+
+    # Extension metadata endpoint
+    @app.get("/api/v1/extensions", tags=["extensions"])
+    def list_loaded_extensions():
+        """List all loaded extensions."""
+        return {
+            "extensions": [
+                {
+                    "name": ext.name,
+                    "version": ext.version,
+                    "description": ext.description,
+                }
+                for ext in extensions.values()
+            ],
+            "total": len(extensions),
+        }
 
     return app

@@ -4,7 +4,6 @@ Webhook delivery service.
 Sends HTTP POST requests to configured webhooks with event payloads.
 """
 
-import json
 import hmac
 import hashlib
 import time

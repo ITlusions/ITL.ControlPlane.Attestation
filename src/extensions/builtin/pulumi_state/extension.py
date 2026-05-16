@@ -54,9 +54,9 @@ import asyncio
 import json
 import logging
 import os
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Response, status
 from sqlmodel import Session
 
 from sdk import AttestationExtension
@@ -67,14 +67,12 @@ from .models import PulumiDeploymentRow, PulumiStackRow, PulumiUpdateRow
 from .repository import PulumiStateRepository
 from .schemas import (
     BatchEventsRequest,
-    CapabilitiesResponse,
     CompleteUpdateRequest,
     CreateDeploymentRequest,
     CreateStackRequest,
     CreateStackResponse,
     DecryptValueRequest,
     DecryptValueResponse,
-    DeploymentLogsResponse,
     DeploymentResponse,
     EncryptValueRequest,
     EncryptValueResponse,
@@ -270,7 +268,6 @@ async def _run_pulumi_deployment(
             shutil.rmtree(clone_dir, ignore_errors=True)
 
     # Persist result — open a fresh synchronous session via the same get_db factory
-    from attestation.core.deps import get_engine  # noqa: PLC0415
     from sqlmodel import Session as _Session  # noqa: PLC0415
 
     with _Session(get_engine()) as db:

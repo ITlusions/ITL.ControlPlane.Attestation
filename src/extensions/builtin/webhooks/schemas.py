@@ -2,7 +2,7 @@
 Pydantic schemas for Webhooks extension API.
 """
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 from datetime import datetime
 import uuid
 

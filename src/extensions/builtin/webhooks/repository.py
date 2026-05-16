@@ -82,7 +82,7 @@ class WebhookRepository:
         result = await self.session.execute(
             select(WebhookRow).where(
                 and_(
-                    WebhookRow.enabled == True,
+                    WebhookRow.enabled.is_(True),
                     WebhookRow.events.like(f"%{event_type}%")
                 )
             )

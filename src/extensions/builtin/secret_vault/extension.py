@@ -7,7 +7,7 @@ Secrets are encrypted with machine-specific keys derived from EK fingerprints.
 Also provides shared secrets accessible by multiple authorized machines.
 """
 
-from typing import Optional, Annotated
+from typing import Optional
 import base64
 import uuid
 

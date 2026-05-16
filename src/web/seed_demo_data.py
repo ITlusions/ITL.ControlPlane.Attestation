@@ -4,18 +4,17 @@ from __future__ import annotations
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from uuid import uuid4
 
 # Add attestation service to path
 attestation_src = Path(__file__).parent.parent
 if str(attestation_src) not in sys.path:
     sys.path.insert(0, str(attestation_src))
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine  # noqa: E402
 
-from sdk.models import AuditLogRow, MachineRow, MachineStatus, NodeRole
-from sdk.repositories import AuditRepository, SqlMachineRepository
-from core.config import get_settings
+from sdk.models import AuditLogRow, MachineRow, MachineStatus, NodeRole  # noqa: E402
+from sdk.repositories import AuditRepository, SqlMachineRepository  # noqa: E402
+from core.config import get_settings  # noqa: E402
 
 
 def seed_machines(repo: SqlMachineRepository) -> list[MachineRow]:
@@ -1206,7 +1205,7 @@ def main():
         # Seed audit logs
         print("📋 Creating audit logs...")
         seed_audit_logs(audit_repo, machines)
-        print(f"✅ Created audit log entries\n")
+        print("✅ Created audit log entries\n")
         
         print("🎉 Demo data seeded successfully!")
         print(f"   Database: {settings.db_url}")

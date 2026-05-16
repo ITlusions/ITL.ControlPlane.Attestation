@@ -7,7 +7,7 @@ Allows operators to register HTTP endpoints that receive attestation events.
 from typing import Annotated
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sdk import AttestationExtension
@@ -22,8 +22,7 @@ from .schemas import (
     WebhookUpdateRequest,
     WebhookResponse,
     WebhookListResponse,
-    WebhookDeliveryListResponse,
-    WebhookEventPayload
+    WebhookDeliveryListResponse
 )
 
 
@@ -167,9 +166,9 @@ class WebhooksExtension(AttestationExtension):
         @router.get("/{webhook_id}/deliveries", response_model=WebhookDeliveryListResponse)
         async def get_delivery_history(
             webhook_id: uuid.UUID,
-            limit: int = 100,
             session: Annotated[AsyncSession, Depends(get_session)],
-            _user: Annotated[dict, Depends(get_current_user)]
+            _user: Annotated[dict, Depends(get_current_user)],
+            limit: int = 100,
         ):
             """
             Get delivery history for a webhook.

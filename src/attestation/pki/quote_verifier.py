@@ -42,7 +42,6 @@ from typing import Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa, padding
-from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 from cryptography.exceptions import InvalidSignature
 
 logger = logging.getLogger(__name__)
@@ -215,8 +214,8 @@ class QuoteVerifier:
 
         offset = 0
         try:
-            magic,    = struct.unpack_from(">I", quote_raw, offset); offset += 4
-            tpm_type, = struct.unpack_from(">H", quote_raw, offset); offset += 2
+            magic,    = struct.unpack_from(">I", quote_raw, offset); offset += 4  # noqa: E702
+            tpm_type, = struct.unpack_from(">H", quote_raw, offset); offset += 2  # noqa: E702
         except struct.error as exc:
             raise QuoteVerificationError(f"TPMS_ATTEST header parse error: {exc}") from exc
 
@@ -245,7 +244,7 @@ class QuoteVerifier:
         if offset + 4 > len(quote_raw):
             raise QuoteVerificationError("TPMS_ATTEST truncated before pcrSelect count")
         try:
-            pcr_select_count, = struct.unpack_from(">I", quote_raw, offset); offset += 4
+            pcr_select_count, = struct.unpack_from(">I", quote_raw, offset); offset += 4  # noqa: E702
         except struct.error as exc:
             raise QuoteVerificationError(f"TPMS_ATTEST pcrSelect count error: {exc}") from exc
 

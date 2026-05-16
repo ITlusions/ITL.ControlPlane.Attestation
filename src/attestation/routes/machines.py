@@ -19,11 +19,9 @@ from ..repositories.operator_repo import AuditRepository, ApprovalRepository
 from ..schemas.requests import ApproveRequest, CertRequest, LockRequest, RevokeRequest
 from ..schemas.responses import (
     ApprovalDetail,
-    AuditLogEntry,
     AttestResponse,
     CertResponse,
     MachineDetail,
-    PendingApprovalResponse,
 )
 
 router = APIRouter(tags=["machines"])

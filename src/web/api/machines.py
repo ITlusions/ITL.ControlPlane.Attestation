@@ -3,10 +3,8 @@ from __future__ import annotations
 
 import csv
 import io
-import sys
-from pathlib import Path
 
-from flask import Blueprint, abort, current_app, jsonify, make_response, render_template, request, url_for
+from flask import Blueprint, abort, jsonify, make_response, render_template, request, url_for
 
 from core.adapters import machine_to_dict
 from core.deps import get_audit_repo, get_machine_repo

@@ -1,7 +1,7 @@
 """Query API — KQL query execution endpoints."""
 from __future__ import annotations
 
-from flask import Blueprint, current_app, jsonify, render_template, request, url_for
+from flask import Blueprint, jsonify, render_template, request
 
 bp = Blueprint("query", __name__)
 

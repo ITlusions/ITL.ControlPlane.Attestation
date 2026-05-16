@@ -1,7 +1,7 @@
 """Dashboard page — overview stats and recent activity."""
 from flask import Blueprint, render_template
 
-from sdk.models import MachineStatus, NodeRole
+from sdk.models import MachineStatus
 from core.adapters import audit_log_to_dict, machine_to_dict
 from core.deps import get_audit_repo, get_machine_repo
 

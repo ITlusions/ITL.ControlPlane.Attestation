@@ -39,7 +39,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey, generate_private_key as rsa_generate
 from cryptography.hazmat.primitives.asymmetric.ec import (
-    EllipticCurvePrivateKey,
     EllipticCurvePublicKey,
     SECP384R1,
     ECDSA,

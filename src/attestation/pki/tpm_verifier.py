@@ -115,7 +115,7 @@ def _verify_ek_cert_chain(cert: x509.Certificate) -> None:
         try:
             ca_pub = ca.public_key()
             if isinstance(ca_pub, RSAPublicKey):
-                from cryptography.hazmat.primitives.asymmetric import padding as _p, hashes as _h
+                from cryptography.hazmat.primitives.asymmetric import padding as _p
                 ca_pub.verify(cert.signature, cert.tbs_certificate_bytes, _p.PKCS1v15(), cert.signature_hash_algorithm)  # type: ignore[arg-type]
             elif isinstance(ca_pub, EllipticCurvePublicKey):
                 from cryptography.hazmat.primitives.asymmetric.ec import ECDSA

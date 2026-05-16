@@ -5,9 +5,7 @@ All secrets are encrypted at rest using AES-256-GCM.
 The encryption key is derived from the machine's EK fingerprint.
 """
 
-from sqlmodel import SQLModel, Field, Relationship
-from datetime import datetime
-from typing import Optional
+from sqlmodel import SQLModel, Field
 import uuid
 
 from .base_models import EncryptedSecretMixin

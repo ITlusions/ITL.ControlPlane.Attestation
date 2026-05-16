@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 import re
-import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any
 
-from sdk.repositories import AuditRepository, SqlMachineRepository
+from sdk.repositories import SqlMachineRepository
 
 from core.adapters import audit_log_to_dict, machine_to_dict
 from core.deps import AuditRepositoryWrapper

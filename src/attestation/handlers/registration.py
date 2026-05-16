@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import secrets
 import uuid
-from typing import Optional
 
 from fastapi import HTTPException
 
@@ -132,7 +131,7 @@ class RegistrationHandler:
                 existing.machine_id, existing.status.value, ek_fingerprint[:12],
             )
             config_url = (
-                f"{settings.service_base_url}/api/v1/config/{existing.config_token}"
+                f"{get_settings().service_base_url}/api/v1/config/{existing.config_token}"
                 if existing.config_token
                 else None
             )

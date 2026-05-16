@@ -8,7 +8,6 @@ from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
 import uuid
-import json
 
 
 class WebhookRow(SQLModel, table=True):

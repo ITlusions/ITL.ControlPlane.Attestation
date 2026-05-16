@@ -14,7 +14,6 @@ from __future__ import annotations
 import click
 
 from cli.api_client import AttestationClient
-from cli.auth import get_token
 from cli.plugin import CliPlugin
 
 

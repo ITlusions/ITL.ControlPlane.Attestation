@@ -15,8 +15,7 @@ from __future__ import annotations
 import secrets
 import threading
 from datetime import datetime, timedelta, timezone
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 _NONCE_TTL_SECONDS = 60
 

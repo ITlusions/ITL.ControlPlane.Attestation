@@ -1,7 +1,7 @@
 """Policies page blueprint."""
 from __future__ import annotations
 
-from flask import Blueprint, render_template, url_for
+from flask import Blueprint, render_template
 
 bp = Blueprint("policies", __name__)
 

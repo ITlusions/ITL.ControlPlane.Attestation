@@ -15,25 +15,22 @@ attestation_src = Path(__file__).parent.parent
 if str(attestation_src) not in sys.path:
     sys.path.insert(0, str(attestation_src))
 
-from flask import Flask, g, render_template
-from sqlmodel import Session, SQLModel, create_engine
+from flask import Flask, g, render_template  # noqa: E402
+from sqlmodel import Session, SQLModel, create_engine  # noqa: E402
 
-from core.config import Settings, get_settings
+from core.config import get_settings  # noqa: E402
 
 # Import SDK (which will register all models)
-import sdk  # noqa: E402
 from sdk.models import MachineStatus  # noqa: E402
-from sdk.repositories import AuditRepository, SqlMachineRepository  # noqa: E402
+from sdk.repositories import SqlMachineRepository  # noqa: E402
 
 # Import blueprints
-from api.audit import bp as audit_bp
-from api.configuration import bp as configuration_bp
-from api.dashboard import bp as dashboard_bp
-from api.machines import bp as machines_bp
-from api.policies import bp as policies_bp
-from api.query import bp as query_bp
-from services.audit_service import AuditService
-from services.machine_service import MachineService
+from api.audit import bp as audit_bp  # noqa: E402
+from api.configuration import bp as configuration_bp  # noqa: E402
+from api.dashboard import bp as dashboard_bp  # noqa: E402
+from api.machines import bp as machines_bp  # noqa: E402
+from api.policies import bp as policies_bp  # noqa: E402
+from api.query import bp as query_bp  # noqa: E402
 
 
 def create_app() -> Flask:

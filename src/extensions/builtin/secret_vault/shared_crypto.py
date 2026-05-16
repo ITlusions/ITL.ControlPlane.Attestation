@@ -69,29 +69,6 @@ _shared_crypto_instance: SharedSecretCrypto = None
 
 def get_shared_crypto() -> SharedSecretCrypto:
     """
-    Get singleton SharedSecretCrypto instance.
-    
-    Returns:
-        Shared instance
-    """
-    global _shared_crypto_instance
-    if _shared_crypto_instance is None:
-        _shared_crypto_instance = SharedSecretCrypto()
-    return _shared_crypto_instance
-
-    
-    @classmethod
-    def get_key_id(cls) -> str:
-        """Return current key ID for metadata."""
-        return cls.KEY_ID
-
-
-# Global instance (singleton pattern)
-_crypto_instance = None
-
-
-def get_shared_crypto() -> SharedSecretCrypto:
-    """
     Get shared crypto singleton instance.
     
     Returns:
