@@ -32,7 +32,7 @@ jobs:
       tag-prefix: "sdk/v"
 
   ci:
-    name: CI - Test / Build
+    name: CI / Test / Build
     needs: detect-version
     uses: ITlusions/ITL.Github/.github/workflows/_reusable-ci-python.yml@main
     with:
