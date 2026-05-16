@@ -95,8 +95,17 @@ jobs:
       body: |
         ## Installation
 
+        **From GitHub Container Registry (GHCR)**
         ```bash
         docker pull ghcr.io/itlusions/itl-attestation-service:${{ needs.detect-version.outputs.python-version }}
+        docker pull ghcr.io/itlusions/itl-attestation-service:latest
+        ```
+
+        **From source**
+        ```bash
+        git clone https://github.com/${{ github.repository }}.git
+        cd $(basename ${{ github.repository }})
+        docker build -t itl-attestation-service:${{ needs.detect-version.outputs.python-version }} .
         ```
 
         ---

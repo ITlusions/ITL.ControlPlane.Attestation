@@ -89,8 +89,21 @@ jobs:
       body: |
         ## Installation
 
+        **From PyPI**
         ```bash
         pip install itl-attestation-sdk==${{ needs.detect-version.outputs.python-version }}
+        ```
+
+        **From GitHub (this release)**
+        ```bash
+        pip install "itl-attestation-sdk @ https://github.com/${{ github.repository }}/releases/download/${{ needs.auto-tag.outputs.tag }}/$(ls dist/*.whl | xargs basename)"
+        ```
+
+        **From source**
+        ```bash
+        git clone https://github.com/${{ github.repository }}.git
+        cd $(basename ${{ github.repository }})/src/sdk
+        pip install .
         ```
 
         ---
