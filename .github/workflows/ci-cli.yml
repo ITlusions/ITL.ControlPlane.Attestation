@@ -3,7 +3,8 @@
 # ---------------------------------------------------------------------------
 # CI orchestrator for the Attestation CLI (itl-attestation-cli on PyPI)
 #
-# Triggers on changes to src/cli/** or src/sdk/** (CLI depends on SDK).
+# Triggers on changes to src/cli/**. SDK is installed from the standalone
+# itl-attestation-sdk repo (git+https://github.com/ITlusions/ITL.ControlPlane.Attestation.Sdk).
 # Follows the same release chain as ITL.BrainCell:
 #   ci → auto-tag → create GitHub Release → publish.yml
 # ---------------------------------------------------------------------------
@@ -12,12 +13,10 @@ on:
     branches: [main, develop, "feature/**", "release/**", "hotfix/**"]
     paths:
       - "src/cli/**"
-      - "src/sdk/**"
   pull_request:
     branches: [main, develop]
     paths:
       - "src/cli/**"
-      - "src/sdk/**"
   workflow_dispatch:
 
 concurrency:
@@ -44,7 +43,7 @@ jobs:
       working-directory: "src/cli"
       ruff-src: "."
       test-path: "."
-      extra-install: "pip install -e ../sdk && pip install -e .[dev]"
+      extra-install: "pip install git+https://github.com/ITlusions/ITL.ControlPlane.Attestation.Sdk.git@main && pip install -e .[dev]"
 
   build-meta:
     name: Compute build ID

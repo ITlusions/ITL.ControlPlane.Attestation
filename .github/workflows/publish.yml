@@ -9,7 +9,6 @@
 # downstream (GITHUB_TOKEN-created releases are silently dropped by GitHub).
 #
 # Tag routing (resolved from the release tag name):
-#   sdk/vX.Y.Z     → PyPI     (itl-attestation-sdk,    environment: pypi-sdk)
 #   cli/vX.Y.Z     → PyPI     (itl-attestation-cli,    environment: pypi-cli)
 #   pulumi/vX.Y.Z  → PyPI     (itl-attestation-pulumi, environment: pypi-pulumi)
 #   service/vX.Y.Z → GHCR     (ghcr.io/itlusions/itl-attestation)
@@ -39,11 +38,7 @@ jobs:
         id: route
         run: |
           TAG="${{ github.event.release.tag_name }}"
-          if [[ "$TAG" == sdk/* ]]; then
-            echo "component=sdk"         >> "$GITHUB_OUTPUT"
-            echo "environment=pypi-sdk"  >> "$GITHUB_OUTPUT"
-            echo "version=${TAG#sdk/v}"  >> "$GITHUB_OUTPUT"
-          elif [[ "$TAG" == cli/* ]]; then
+          if [[ "$TAG" == cli/* ]]; then
             echo "component=cli"         >> "$GITHUB_OUTPUT"
             echo "environment=pypi-cli"  >> "$GITHUB_OUTPUT"
             echo "version=${TAG#cli/v}"  >> "$GITHUB_OUTPUT"
@@ -58,18 +53,6 @@ jobs:
           else
             echo "Unrecognised tag prefix: $TAG" && exit 1
           fi
-
-  # ── Publish SDK → PyPI ─────────────────────────────────────────────────────
-  publish-sdk:
-    name: Publish SDK → PyPI
-    needs: resolve-target
-    if: needs.resolve-target.outputs.component == 'sdk'
-    uses: ITlusions/ITL.Github/.github/workflows/_reusable-publish-pypi.yml@main
-    with:
-      artifact-name:    "sdk-wheel"
-      ci-workflow-name: "CI — SDK"
-      commit-sha:       ${{ github.event.release.target_commitish }}
-      environment:      "pypi-sdk"
 
   # ── Publish CLI → PyPI ─────────────────────────────────────────────────────
   publish-cli:

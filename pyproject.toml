@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "ITL Control Plane — Attestation Service: TPM EK-based hardware identity registration and machine lifecycle management"
 requires-python = ">=3.12"
 dependencies = [
+    "itl-attestation-sdk @ git+https://github.com/ITlusions/ITL.ControlPlane.Attestation.Sdk.git@main",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
     "sqlmodel>=0.0.21",

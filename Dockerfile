@@ -2,21 +2,16 @@ FROM python:3.12-slim AS base
 
 WORKDIR /app
 
-# System deps for cryptography wheel
+# System deps for cryptography wheel + git (required to install itl-attestation-sdk)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-        gcc libssl-dev curl \
+        gcc libssl-dev curl git \
  && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps
+# Copy source + config and install all deps (including SDK from git)
 COPY pyproject.toml .
-RUN pip install --no-cache-dir ".[standard]" 2>/dev/null || \
-    pip install --no-cache-dir \
-        fastapi uvicorn[standard] sqlmodel pydantic cryptography httpx \
-        python-multipart pyjwt aiofiles jinja2 pyyaml
-
-# Copy source
 COPY src/ ./src/
+RUN pip install --no-cache-dir .
 
 # Data directories
 RUN mkdir -p /var/lib/itl-reg/configs /var/lib/itl-reg/db
