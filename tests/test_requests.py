@@ -11,7 +11,6 @@ from attestation.schemas.requests import (
     AttestRequest,
     CertRequest,
     RegisterRequest,
-    SelfRegisterRequest,
 )
 
 SHA256_FP = "a" * 64

@@ -6,12 +6,10 @@ the Attestation Service and external integrations such as the Pulumi provider.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from datetime import datetime  # noqa: TC003  # Pydantic resolves this at runtime
+from typing import Optional
 
 from pydantic import BaseModel
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class RegisterResponse(BaseModel):

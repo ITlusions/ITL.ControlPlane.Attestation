@@ -1,7 +1,6 @@
 """Tests for pki/nonce_store.py — issue #7."""
 from __future__ import annotations
 
-import time
 
 import pytest
 

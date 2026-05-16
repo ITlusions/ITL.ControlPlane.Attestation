@@ -7,18 +7,17 @@ from __future__ import annotations
 import base64
 import secrets
 import uuid
-from datetime import datetime, timezone, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
-from cryptography.hazmat.primitives.asymmetric.ec import ECDSA, SECP384R1, generate_private_key
+from cryptography.hazmat.primitives.asymmetric.ec import ECDSA
 from cryptography.hazmat.primitives import hashes, serialization
 from fastapi import HTTPException
 
 from attestation.pki.enrollment_ca import (
     extract_ek_fingerprint_from_cert,
-    init_enrollment_ca,
     issue_enrollment_cert,
 )
 from attestation.handlers.enrollment import EnrollmentHandler

@@ -4,14 +4,12 @@ Issue ref: security — per-operator identity and dual-control approval
 """
 from __future__ import annotations
 
-import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
 
 from attestation.handlers.machines import MachineAdminHandler
 from attestation.models.machine import MachineRow, MachineStatus, NodeRole
