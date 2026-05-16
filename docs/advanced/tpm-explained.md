@@ -61,13 +61,13 @@ graph TD
     C -.-> note2
 ```
 
-The EK fingerprint (SHA-256 of the raw EK cert/pub bytes, or SHA-384 for CNSA 2.0 compliance) is used as a hardware identifier.
+The EK fingerprint (SHA-256 of the raw EK cert/pub bytes, or SHA-384 for CNSA 1.0 compliance) is used as a hardware identifier.
 
 ---
 
 ## Platform Configuration Registers (PCRs)
 
-PCRs are fixed-size registers inside the TPM that record what software has run on a machine. With SHA-256 banks they are 32 bytes; with SHA-384 banks (CNSA 2.0) they are 48 bytes.
+PCRs are fixed-size registers inside the TPM that record what software has run on a machine. With SHA-256 banks they are 32 bytes; with SHA-384 banks (CNSA 1.0) they are 48 bytes.
 
 **Key property**: PCRs can only be *extended* — never directly written.
 
