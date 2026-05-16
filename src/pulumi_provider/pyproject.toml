@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pulumi-itl-attestation"
+name = "itl-attestation-pulumi"
 version = "0.1.0"
 description = "Pulumi dynamic provider for the ITL Control Plane Attestation Service"
 readme = "README.md"
@@ -15,10 +15,8 @@ requires-python = ">=3.10"
 dependencies = [
     "pulumi>=3.0.0,<4.0.0",
     "requests>=2.31.0",
-    # SDK: NodeRole, MachineStatus enums
+    # SDK: NodeRole, MachineStatus enums + RegisterResponse, MachineDetail schemas
     "itl-attestation-sdk>=0.1.0",
-    # Attestation service: RegisterResponse, MachineDetail response schemas
-    "itl-controlplane-attestation>=1.0.0",
 ]
 
 [project.urls]

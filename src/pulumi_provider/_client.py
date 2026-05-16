@@ -1,7 +1,7 @@
 """HTTP client for the ITL Attestation REST API.
 
-Uses the attestation service's own Pydantic request/response schemas so the
-provider stays in sync with the API contract automatically.
+Uses SDK schemas for responses (MachineDetail, RegisterResponse) and the
+attestation service's request schemas to stay in sync with the API contract.
 """
 
 from __future__ import annotations
@@ -16,10 +16,7 @@ from attestation.schemas.requests import (
     RegisterRequest,
     RevokeRequest,
 )
-from attestation.schemas.responses import (
-    MachineDetail,
-    RegisterResponse,
-)
+from sdk import MachineDetail, RegisterResponse
 
 
 class AttestationApiError(Exception):

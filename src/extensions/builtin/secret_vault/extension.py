@@ -14,7 +14,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from extensions.base import AttestationExtension
+from sdk import AttestationExtension
 from .models import SecretRow
 from .repository import SecretRepository
 from .schemas import (

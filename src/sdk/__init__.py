@@ -53,6 +53,13 @@ from sdk.repositories import (
     SqlMachineRepository,
     compute_entry_hash,
 )
+from sdk.extensions import AttestationExtension
+try:
+    from sdk.extensions import CliPlugin
+    _cli_exports: list[str] = ["CliPlugin"]
+except ImportError:
+    _cli_exports = []
+from sdk.schemas import MachineDetail, RegisterResponse
 
 __version__ = "0.1.0"
 
@@ -90,4 +97,10 @@ __all__ = [
     "UnauthorizedError",
     "TPMVerificationError",
     "ConfigTokenError",
+    # Extension system
+    "AttestationExtension",
+    "CliPlugin",
+    # Schemas
+    "RegisterResponse",
+    "MachineDetail",
 ]

@@ -2,7 +2,7 @@
 
 from attestation.models.machine import MachineStatus, NodeRole
 from attestation.schemas.requests import ApproveRequest, RegisterRequest, RevokeRequest, LockRequest
-from attestation.schemas.responses import MachineDetail, RegisterResponse
+from sdk import MachineDetail, RegisterResponse
 
 from ._client import AttestationClient, AttestationApiError
 from .resources import RegisteredMachine, MachineApproval

@@ -8,7 +8,7 @@ Tracks operational statistics without database storage.
 from fastapi import APIRouter, Response
 from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
-from extensions.base import AttestationExtension
+from sdk import AttestationExtension
 
 
 # Define metrics

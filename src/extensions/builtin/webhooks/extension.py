@@ -10,7 +10,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from extensions.base import AttestationExtension
+from sdk import AttestationExtension
 from attestation.core.database import get_session
 from attestation.core.auth import get_current_user
 
