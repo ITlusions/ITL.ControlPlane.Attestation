@@ -59,7 +59,7 @@ def discover_and_register_plugins(cli: click.Group) -> list[str]:
             plugin.register(cli)
             registered.append(plugin.name)
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             click.echo(
                 f"[attestation] Warning: could not load CLI plugin '{ep.name}': {exc}",
                 err=True,

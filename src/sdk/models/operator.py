@@ -11,7 +11,6 @@ These tables support:
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
@@ -32,15 +31,15 @@ class AuditLogRow(SQLModel, table=True):
 
     __tablename__ = "audit_log"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     operator_cn: str  # "SYSTEM" | operator name/CN | Keycloak preferred_username
     action: str  # "approve", "revoke", "lock", "unlock", "wipe", "import", "register", "attest"
-    machine_id: Optional[str] = Field(default=None)
-    prev_state: Optional[str] = Field(default=None)
-    new_state: Optional[str] = Field(default=None)
-    detail: Optional[str] = Field(default=None)  # free-text note / reason
-    source_ip: Optional[str] = Field(default=None)  # Client IP address
+    machine_id: str | None = Field(default=None)
+    prev_state: str | None = Field(default=None)
+    new_state: str | None = Field(default=None)
+    detail: str | None = Field(default=None)  # free-text note / reason
+    source_ip: str | None = Field(default=None)  # Client IP address
     prev_hash: str = Field(default="")  # SHA-256 of previous entry; "0"*64 for genesis
     entry_hash: str = Field(default="")  # SHA-256 of this entry (excl. id + entry_hash)
 
@@ -55,12 +54,12 @@ class ApprovalRequestRow(SQLModel, table=True):
 
     __tablename__ = "approval_request"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     machine_id: str = Field(index=True)
     operator_cn: str
     role: str
-    hostname: Optional[str] = Field(default=None)
-    assigned_ip: Optional[str] = Field(default=None)
+    hostname: str | None = Field(default=None)
+    assigned_ip: str | None = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime
     consumed: bool = Field(default=False)

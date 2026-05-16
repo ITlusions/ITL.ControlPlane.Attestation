@@ -11,7 +11,7 @@ from typing import Any
 
 from pulumi import dynamic
 
-from attestation.schemas.requests import ApproveRequest, RegisterRequest, RevokeRequest
+from attestation.schemas.requests import ApproveRequest, RevokeRequest
 from ._client import AttestationClient, AttestationApiError
 
 

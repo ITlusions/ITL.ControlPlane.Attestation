@@ -12,9 +12,9 @@ __all__ = [
     "KeycloakClient",
     "OIDCToken",
     "TokenCache",
+    "__version__",
     "discover_and_register_plugins",
     "get_token",
-    "__version__",
 ]
 
 from .api_client import AttestationClient

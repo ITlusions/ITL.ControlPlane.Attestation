@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 
 from sdk.core.config import config
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 
 # Convert sync SQLite URL to async aiosqlite URL

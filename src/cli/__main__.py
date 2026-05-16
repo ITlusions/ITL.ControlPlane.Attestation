@@ -346,7 +346,7 @@ def machine_revoke(ctx: click.Context, machine_id: str, reason: str | None) -> N
 @click.argument("machine_id")
 @click.confirmation_option(prompt="Hard-delete this machine record? This cannot be undone.")
 @click.pass_context
-def machine_delete(ctx: click.Context, machine_id: str) -> None:  # noqa: ARG001
+def machine_delete(ctx: click.Context, machine_id: str) -> None:
     """Hard-delete a machine record from the database."""
     click.echo("Not implemented yet.")
 
@@ -354,7 +354,7 @@ def machine_delete(ctx: click.Context, machine_id: str) -> None:  # noqa: ARG001
 @machine.command("approvals")
 @click.argument("machine_id")
 @click.pass_context
-def machine_approvals(ctx: click.Context, machine_id: str) -> None:  # noqa: ARG001
+def machine_approvals(ctx: click.Context, machine_id: str) -> None:
     """List dual-control approval history for a machine."""
     click.echo("Not implemented yet.")
 
@@ -363,7 +363,7 @@ def machine_approvals(ctx: click.Context, machine_id: str) -> None:  # noqa: ARG
 @click.argument("machine_id")
 @click.option("--output-file", "-f", help="Write bundle JSON to file instead of stdout")
 @click.pass_context
-def machine_offline_bundle(ctx: click.Context, machine_id: str, output_file: str | None) -> None:  # noqa: ARG001
+def machine_offline_bundle(ctx: click.Context, machine_id: str, output_file: str | None) -> None:
     """Download offline provisioning bundle for USB deployment."""
     click.echo("Not implemented yet.")
 
@@ -371,7 +371,7 @@ def machine_offline_bundle(ctx: click.Context, machine_id: str, output_file: str
 @machine.command("import")
 @click.argument("receipt_file", type=click.Path(exists=True))
 @click.pass_context
-def machine_import(ctx: click.Context, receipt_file: str) -> None:  # noqa: ARG001
+def machine_import(ctx: click.Context, receipt_file: str) -> None:
     """Import a machine from an offline TPM receipt file."""
     click.echo("Not implemented yet.")
 
@@ -379,7 +379,7 @@ def machine_import(ctx: click.Context, receipt_file: str) -> None:  # noqa: ARG0
 @machine.command("request-cert")
 @click.argument("machine_id")
 @click.pass_context
-def machine_request_cert(ctx: click.Context, machine_id: str) -> None:  # noqa: ARG001
+def machine_request_cert(ctx: click.Context, machine_id: str) -> None:
     """Issue an enrollment certificate to a machine (EK-authenticated)."""
     click.echo("Not implemented yet.")
 
@@ -387,7 +387,7 @@ def machine_request_cert(ctx: click.Context, machine_id: str) -> None:  # noqa: 
 @machine.command("ak-activate")
 @click.argument("machine_id")
 @click.pass_context
-def machine_ak_activate(ctx: click.Context, machine_id: str) -> None:  # noqa: ARG001
+def machine_ak_activate(ctx: click.Context, machine_id: str) -> None:
     """Activate the node's Attestation Key (AK) by verifying a PCR quote."""
     click.echo("Not implemented yet.")
 
@@ -593,7 +593,7 @@ def webhook() -> None:
 
 @webhook.command("list")
 @click.pass_context
-def webhook_list(ctx: click.Context) -> None:  # noqa: ARG001
+def webhook_list(ctx: click.Context) -> None:
     """List all registered webhooks."""
     click.echo("Not implemented yet.")
 
@@ -601,7 +601,7 @@ def webhook_list(ctx: click.Context) -> None:  # noqa: ARG001
 @webhook.command("get")
 @click.argument("webhook_id")
 @click.pass_context
-def webhook_get(ctx: click.Context, webhook_id: str) -> None:  # noqa: ARG001
+def webhook_get(ctx: click.Context, webhook_id: str) -> None:
     """Get webhook details."""
     click.echo("Not implemented yet.")
 
@@ -611,7 +611,7 @@ def webhook_get(ctx: click.Context, webhook_id: str) -> None:  # noqa: ARG001
 @click.option("--event", "-e", multiple=True, help="Event type(s) to subscribe to")
 @click.option("--secret", "-s", help="HMAC signing secret")
 @click.pass_context
-def webhook_create(ctx: click.Context, url: str, event: tuple[str, ...], secret: str | None) -> None:  # noqa: ARG001
+def webhook_create(ctx: click.Context, url: str, event: tuple[str, ...], secret: str | None) -> None:  # noqa: E501
     """Register a new webhook."""
     click.echo("Not implemented yet.")
 
@@ -622,7 +622,7 @@ def webhook_create(ctx: click.Context, url: str, event: tuple[str, ...], secret:
 @click.option("--event", "-e", multiple=True, help="Replace event subscription(s)")
 @click.option("--enable/--disable", default=None, help="Enable or disable the webhook")
 @click.pass_context
-def webhook_update(ctx: click.Context, webhook_id: str, url: str | None, event: tuple[str, ...], enable: bool | None) -> None:  # noqa: ARG001
+def webhook_update(ctx: click.Context, webhook_id: str, url: str | None, event: tuple[str, ...], enable: bool | None) -> None:  # noqa: E501
     """Update an existing webhook."""
     click.echo("Not implemented yet.")
 
@@ -631,7 +631,7 @@ def webhook_update(ctx: click.Context, webhook_id: str, url: str | None, event: 
 @click.argument("webhook_id")
 @click.confirmation_option(prompt="Delete this webhook?")
 @click.pass_context
-def webhook_delete(ctx: click.Context, webhook_id: str) -> None:  # noqa: ARG001
+def webhook_delete(ctx: click.Context, webhook_id: str) -> None:
     """Delete a webhook."""
     click.echo("Not implemented yet.")
 
@@ -639,7 +639,7 @@ def webhook_delete(ctx: click.Context, webhook_id: str) -> None:  # noqa: ARG001
 @webhook.command("deliveries")
 @click.argument("webhook_id")
 @click.pass_context
-def webhook_deliveries(ctx: click.Context, webhook_id: str) -> None:  # noqa: ARG001
+def webhook_deliveries(ctx: click.Context, webhook_id: str) -> None:
     """List recent delivery attempts for a webhook."""
     click.echo("Not implemented yet.")
 
@@ -647,7 +647,7 @@ def webhook_deliveries(ctx: click.Context, webhook_id: str) -> None:  # noqa: AR
 @webhook.command("test")
 @click.argument("webhook_id")
 @click.pass_context
-def webhook_test(ctx: click.Context, webhook_id: str) -> None:  # noqa: ARG001
+def webhook_test(ctx: click.Context, webhook_id: str) -> None:
     """Send a test event to a webhook."""
     click.echo("Not implemented yet.")
 
@@ -663,7 +663,7 @@ def metrics() -> None:
 
 @metrics.command("show")
 @click.pass_context
-def metrics_show(ctx: click.Context) -> None:  # noqa: ARG001
+def metrics_show(ctx: click.Context) -> None:
     """Show Prometheus metrics from the service."""
     click.echo("Not implemented yet.")
 
@@ -675,7 +675,7 @@ def metrics_show(ctx: click.Context) -> None:  # noqa: ARG001
 @click.option("--interval", "-i", default=5, show_default=True, help="Poll interval in seconds")
 @click.option("--status", help="Filter by status")
 @click.pass_context
-def machine_watch(ctx: click.Context, interval: int, status: str | None) -> None:  # noqa: ARG001
+def machine_watch(ctx: click.Context, interval: int, status: str | None) -> None:
     """Poll machine list and refresh on every change."""
     click.echo("Not implemented yet.")
 
@@ -683,32 +683,32 @@ def machine_watch(ctx: click.Context, interval: int, status: str | None) -> None
 @machine.command("wipe")
 @click.argument("machine_id")
 @click.option("--reason", "-r", help="Revocation reason")
-@click.confirmation_option(prompt="Revoke with wipe_pending=True? This will trigger a Talos reset on next attest.")
+@click.confirmation_option(prompt="Revoke with wipe_pending=True? This will trigger a Talos reset on next attest.")  # noqa: E501
 @click.pass_context
-def machine_wipe(ctx: click.Context, machine_id: str, reason: str | None) -> None:  # noqa: ARG001
+def machine_wipe(ctx: click.Context, machine_id: str, reason: str | None) -> None:
     """Revoke a machine and schedule a Talos reset on its next attestation."""
     click.echo("Not implemented yet.")
 
 
 @machine.command("stats")
 @click.pass_context
-def machine_stats(ctx: click.Context) -> None:  # noqa: ARG001
+def machine_stats(ctx: click.Context) -> None:
     """Show machine counts grouped by status and role."""
     click.echo("Not implemented yet.")
 
 
 @audit.command("export")
 @click.option("--output-file", "-f", required=True, help="Destination file path (.json or .csv)")
-@click.option("--format", "fmt", type=click.Choice(["json", "csv"], case_sensitive=False), default="json", show_default=True)
+@click.option("--format", "fmt", type=click.Choice(["json", "csv"], case_sensitive=False), default="json", show_default=True)  # noqa: E501
 @click.pass_context
-def audit_export(ctx: click.Context, output_file: str, fmt: str) -> None:  # noqa: ARG001
+def audit_export(ctx: click.Context, output_file: str, fmt: str) -> None:
     """Export the full audit log to a JSON or CSV file."""
     click.echo("Not implemented yet.")
 
 
 @cli.command("version")
 @click.pass_context
-def version(ctx: click.Context) -> None:  # noqa: ARG001
+def version(ctx: click.Context) -> None:
     """Show CLI version and service version."""
     click.echo("Not implemented yet.")
 
@@ -725,7 +725,7 @@ def config_show(ctx: click.Context) -> None:
 
 @cli.command("health")
 @click.pass_context
-def health(ctx: click.Context) -> None:  # noqa: ARG001
+def health(ctx: click.Context) -> None:
     """Check service health."""
     click.echo("Not implemented yet.")
 

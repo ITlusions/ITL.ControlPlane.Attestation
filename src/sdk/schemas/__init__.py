@@ -6,10 +6,12 @@ the Attestation Service and external integrations such as the Pulumi provider.
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class RegisterResponse(BaseModel):
@@ -35,10 +37,10 @@ class MachineDetail(BaseModel):
     hw_product:     str
     role:           str
     status:         str
-    hostname:       Optional[str]
-    assigned_ip:    Optional[str]
+    hostname:       str | None
+    assigned_ip:    str | None
     registered_at:  datetime
-    attested_at:    Optional[datetime]
-    locked_at:      Optional[datetime]
-    revoked_at:     Optional[datetime]
+    attested_at:    datetime | None
+    locked_at:      datetime | None
+    revoked_at:     datetime | None
     wipe_pending:   bool

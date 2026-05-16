@@ -52,7 +52,6 @@ jobs:
       ruff-src: "src/attestation/ src/extensions/"
       test-path: "tests/"
       version: ${{ needs.detect-version.outputs.image-tag }}
-      extra-install: "pip install -e .[dev]"
 
   build-meta:
     name: Compute build ID

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime
-from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
@@ -58,7 +57,7 @@ class MachineRow(SQLModel, table=True):
 
     __tablename__ = "machine"  # Preserve existing DB table name
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     machine_id: str = Field(index=True, unique=True)  # UUID v4
     ek_fingerprint: str = Field(index=True, unique=True)  # SHA-384 hex (CNSA 1.0)
     ek_source: str = Field(default="cert")  # "cert" | "pub"
@@ -71,27 +70,27 @@ class MachineRow(SQLModel, table=True):
     role: NodeRole = Field(default=NodeRole.worker_app)
     status: MachineStatus = Field(default=MachineStatus.pending_approval)
 
-    hostname: Optional[str] = Field(default=None)
-    assigned_ip: Optional[str] = Field(default=None)
+    hostname: str | None = Field(default=None)
+    assigned_ip: str | None = Field(default=None)
 
     # One-time config token — consumed on first Talos config fetch
-    config_token: Optional[str] = Field(default=None, index=True)
+    config_token: str | None = Field(default=None, index=True)
     token_consumed: bool = Field(default=False)
 
     registered_at: datetime = Field(default_factory=datetime.utcnow)
-    attested_at: Optional[datetime] = Field(default=None)
-    locked_at: Optional[datetime] = Field(default=None)
-    revoked_at: Optional[datetime] = Field(default=None)
+    attested_at: datetime | None = Field(default=None)
+    locked_at: datetime | None = Field(default=None)
+    revoked_at: datetime | None = Field(default=None)
 
     # When True and status=revoked, the next POST /attest returns action=wipe
     # so the extension triggers a Talos reset (STATE + EPHEMERAL wipe).
     wipe_pending: bool = Field(default=False)
 
     # AK (Attestation Key) public key — SubjectPublicKeyInfo PEM
-    ak_pub: Optional[str] = Field(default=None)
+    ak_pub: str | None = Field(default=None)
 
     # EK certificate PEM (base64-encoded) — stored for EK-bound config encryption
-    ek_cert_pem: Optional[str] = Field(default=None)
+    ek_cert_pem: str | None = Field(default=None)
 
     # SHA-384 EK fingerprint (CNSA 1.0) — canonical identity for new registrations
-    ek_fingerprint_sha384: Optional[str] = Field(default=None, index=True)
+    ek_fingerprint_sha384: str | None = Field(default=None, index=True)

@@ -39,6 +39,7 @@ from sdk.core import (
     get_session,
     init_db,
 )
+from sdk.extensions import AttestationExtension
 from sdk.models import (
     ApprovalRequestRow,
     AuditLogRow,
@@ -47,13 +48,13 @@ from sdk.models import (
     NodeRole,
 )
 from sdk.repositories import (
+    GENESIS_HASH,
     ApprovalRequestRepository,
     AuditRepository,
-    GENESIS_HASH,
     SqlMachineRepository,
     compute_entry_hash,
 )
-from sdk.extensions import AttestationExtension
+
 try:
     from sdk.extensions import CliPlugin
     _cli_exports: list[str] = ["CliPlugin"]
@@ -64,43 +65,43 @@ from sdk.schemas import MachineDetail, RegisterResponse
 __version__ = "0.1.0"
 
 __all__ = [
-    # Version
-    "__version__",
+    "GENESIS_HASH",
+    "ApprovalRequestRepository",
+    "ApprovalRequestRow",
     # Config
     "AttestationConfig",
+    # Extension system
+    "AttestationExtension",
+    # Exceptions
+    "AttestationSDKError",
+    "AuditLogIntegrityError",
+    "AuditLogRow",
+    "AuditRepository",
+    "CliPlugin",
+    "ConfigTokenError",
+    "DualControlRequiredError",
+    "InvalidMachineStateError",
+    "MachineAlreadyExistsError",
+    "MachineDetail",
+    "MachineNotFoundError",
+    # Models
+    "MachineRow",
+    "MachineStatus",
+    "NodeRole",
+    # Schemas
+    "RegisterResponse",
+    # Repositories
+    "SqlMachineRepository",
+    "TPMVerificationError",
+    "UnauthorizedError",
+    # Version
+    "__version__",
+    "async_session_maker",
+    "close_db",
+    "compute_entry_hash",
     "config",
     # Database
     "engine",
-    "async_session_maker",
     "get_session",
     "init_db",
-    "close_db",
-    # Models
-    "MachineRow",
-    "NodeRole",
-    "MachineStatus",
-    "AuditLogRow",
-    "ApprovalRequestRow",
-    # Repositories
-    "SqlMachineRepository",
-    "AuditRepository",
-    "ApprovalRequestRepository",
-    "GENESIS_HASH",
-    "compute_entry_hash",
-    # Exceptions
-    "AttestationSDKError",
-    "MachineNotFoundError",
-    "MachineAlreadyExistsError",
-    "InvalidMachineStateError",
-    "AuditLogIntegrityError",
-    "DualControlRequiredError",
-    "UnauthorizedError",
-    "TPMVerificationError",
-    "ConfigTokenError",
-    # Extension system
-    "AttestationExtension",
-    "CliPlugin",
-    # Schemas
-    "RegisterResponse",
-    "MachineDetail",
 ]

@@ -38,7 +38,6 @@ from __future__ import annotations
 
 from typing import Optional, Union
 
-import pulumi
 from pulumi import dynamic, Input, Output, ResourceOptions
 
 from attestation.models.machine import NodeRole, MachineStatus

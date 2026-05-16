@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,8 +35,8 @@ class AttestationConfig(BaseSettings):
     log_json: bool = Field(default=False, description="Log in JSON format")
 
     # PKI / TPM
-    ca_cert_path: Optional[Path] = Field(default=None, description="Enrollment CA cert path")
-    ca_key_path: Optional[Path] = Field(default=None, description="Enrollment CA key path")
+    ca_cert_path: Path | None = Field(default=None, description="Enrollment CA cert path")
+    ca_key_path: Path | None = Field(default=None, description="Enrollment CA key path")
     tpm_simulator: bool = Field(default=False, description="Use TPM simulator for testing")
 
     # Keycloak OIDC
@@ -46,13 +45,13 @@ class AttestationConfig(BaseSettings):
     keycloak_client_id: str = Field(default="attestation", description="Keycloak client ID")
 
     # Security
-    admin_token: Optional[str] = Field(default=None, description="ITL_ADMIN_TOKEN for break-glass")
+    admin_token: str | None = Field(default=None, description="ITL_ADMIN_TOKEN for break-glass")
     require_dual_control: bool = Field(default=False, description="Enable dual-control approvals")
 
     # Talos
     talos_version: str = Field(default="1.9.3", description="Talos Linux version")
     talos_cluster_name: str = Field(default="talos-prod", description="Default cluster name")
-    talos_cluster_endpoint: Optional[str] = Field(default=None, description="Cluster API endpoint")
+    talos_cluster_endpoint: str | None = Field(default=None, description="Cluster API endpoint")
 
     def get_data_dir(self) -> Path:
         """Return the data directory for SQLite, ISO files, etc."""

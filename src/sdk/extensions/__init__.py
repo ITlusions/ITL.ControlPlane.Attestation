@@ -96,7 +96,7 @@ class AttestationExtension(ABC):
         """
 
     @abstractmethod
-    def get_router(self) -> Optional[APIRouter]:
+    def get_router(self) -> APIRouter | None:
         """
         Return a FastAPI ``APIRouter`` for this extension's REST endpoints.
 
@@ -117,7 +117,7 @@ class AttestationExtension(ABC):
             List of SQLModel classes, or an empty list if no models are needed.
         """
 
-    def on_startup(self) -> None:
+    def on_startup(self) -> None:  # noqa: B027
         """
         Called once when the attestation service starts, after ``get_models()``
         and before routes are mounted.
@@ -126,7 +126,7 @@ class AttestationExtension(ABC):
         background tasks. Default implementation does nothing.
         """
 
-    def on_shutdown(self) -> None:
+    def on_shutdown(self) -> None:  # noqa: B027
         """
         Called once when the attestation service shuts down.
 

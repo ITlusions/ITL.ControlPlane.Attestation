@@ -138,8 +138,6 @@ select = [
     "RUF", # ruff-specific
 ]
 ignore = [
-    "ANN101",  # Missing type annotation for self
-    "ANN102",  # Missing type annotation for cls
     "ANN401",  # Dynamically typed expressions (Any)
 ]
 

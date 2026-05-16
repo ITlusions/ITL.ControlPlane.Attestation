@@ -60,8 +60,10 @@ as built-in commands:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-import click
+if TYPE_CHECKING:
+    import click
 
 
 class CliPlugin(ABC):
