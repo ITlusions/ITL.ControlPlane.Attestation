@@ -44,7 +44,7 @@ class AttestationClient:
 
         Args:
             status: Filter by status (pending_approval, registered, attested, locked, revoked)
-            role: Filter by role (controlplane, worker-infra, worker-app)
+            role: Filter by role (controlplane, worker-infra, worker-app, generic, windows, linux)
 
         Returns:
             List of machine dictionaries

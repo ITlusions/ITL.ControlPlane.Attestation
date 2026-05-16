@@ -128,6 +128,16 @@ class Settings(BaseSettings):
         validation_alias="ITL_DUAL_CONTROL_WINDOW_SECONDS",
     )
 
+    # -----------------------------------------------------------------------
+    # Pulumi HTTP state backend (pulumi_state extension)
+    # -----------------------------------------------------------------------
+    # ITL_PULUMI_TOKEN   — static bearer token accepted by the state server
+    # ITL_PULUMI_ORG     — org name returned in /api/user (used as stack owner)
+    # ITL_PULUMI_ENABLED — set "false" to disable the extension entirely
+    pulumi_operator_token: str = Field(default="", validation_alias="ITL_PULUMI_TOKEN")
+    pulumi_org: str = Field(default="itlusions", validation_alias="ITL_PULUMI_ORG")
+    pulumi_enabled: bool = Field(default=True, validation_alias="ITL_PULUMI_ENABLED")
+
     @field_validator("service_base_url", "factory_url", mode="after")
     @classmethod
     def strip_trailing_slash(cls, v: str) -> str:

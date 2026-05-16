@@ -640,9 +640,89 @@ Key panels to include:
 - Audit log activity (heatmap)
 
 ---
-## Extension Discovery
 
-Extensions are loaded at service startup in this order:
+### Pulumi State Backend
+
+**Name**: `pulumi_state`  
+**Version**: 1.0.0
+
+Turns the Attestation Service into a self-hosted [Pulumi HTTP state backend](https://www.pulumi.com/docs/concepts/state/). Teams run `pulumi login https://attest.itlusions.com` and the service handles stack state, secrets encryption, and server-side deployments — no Pulumi Cloud subscription required.
+
+**Features**:
+- Full Pulumi HTTP state protocol implementation
+- Per-stack AES-256-GCM secrets encryption (`--secrets-provider https://attest.itlusions.com`)
+- Server-side `pulumi up/preview/refresh/destroy` triggered via REST
+- Stack history and checkpoint management
+- State stored in the Attestation PostgreSQL / SQLite database
+
+**Environment variables**:
+
+| Variable | Default | Description |
+|---|---|---|
+| `ITL_PULUMI_TOKEN` | *(required)* | Bearer token for CLI authentication |
+| `ITL_PULUMI_ORG` | `itlusions` | Org name returned in `/api/user` |
+| `ITL_PULUMI_ENABLED` | `true` | Set `false` to disable |
+
+**Quick start**:
+
+```bash
+export PULUMI_ACCESS_TOKEN="<ITL_PULUMI_TOKEN>"
+pulumi login https://attest.itlusions.com
+
+# Stack with server-side secret encryption
+pulumi stack init myorg/myproject/production \
+  --secrets-provider https://attest.itlusions.com
+
+pulumi config set --secret db_password "s3cr3t!"
+pulumi up
+```
+
+**Secrets provider API** (`/encrypt` / `/decrypt`):
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/stacks/{org}/{project}/{stack}/encrypt` | Encrypt a value (CLI sends base64-encoded plaintext) |
+| POST | `/api/stacks/{org}/{project}/{stack}/decrypt` | Decrypt a value |
+
+A random 256-bit AES key is generated for each stack on the first encrypt call and stored in `extension_pulumi_state_stacks.secrets_key`. Ciphertext format: `v1:<base64(12-byte nonce + ciphertext + 16-byte GCM tag)>`.
+
+**Server-side deployments API**:
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/stacks/{org}/{project}/{stack}/deployments` | Queue a deployment (returns 202) |
+| GET | `/api/stacks/{org}/{project}/{stack}/deployments` | List all deployments |
+| GET | `/api/stacks/{org}/{project}/{stack}/deployments/{id}` | Get deployment status + logs |
+| DELETE | `/api/stacks/{org}/{project}/{stack}/deployments/{id}/cancel` | Cancel a queued/running deployment |
+
+**Trigger a deployment from CI/CD**:
+
+```bash
+curl -X POST https://attest.itlusions.com/api/stacks/myorg/myproject/production/deployments \
+  -H "Authorization: token $ITL_PULUMI_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "update",
+    "source": {
+      "repoURL": "https://github.com/myorg/infra",
+      "branch": "main",
+      "repoDir": "environments/production"
+    }
+  }'
+```
+
+**Database tables**:
+
+| Table | Description |
+|---|---|
+| `extension_pulumi_state_stacks` | Stack registry (org/project/stack, checkpoint, secrets key) |
+| `extension_pulumi_state_updates` | Update lifecycle with short-lived tokens |
+| `extension_pulumi_state_deployments` | Server-side deployment records with logs |
+
+For full details, see [Pulumi Integration](pulumi-provider.md).
+
+---
+## Extension Discovery
 
 1. **Built-in extensions** from `src/extensions/builtin/`
 2. **External extensions** via `entry_points(group="attestation_extensions")`
@@ -672,9 +752,14 @@ Response:
       "name": "metrics",
       "version": "1.0.0",
       "description": "Prometheus metrics exporter for operational monitoring"
+    },
+    {
+      "name": "pulumi_state",
+      "version": "1.0.0",
+      "description": "Pulumi HTTP state backend — store Pulumi stack state in the Attestation DB"
     }
   ],
-  "total": 3
+  "total": 4
 }
 ```
 

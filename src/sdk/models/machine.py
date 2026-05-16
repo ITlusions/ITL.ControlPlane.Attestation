@@ -9,11 +9,17 @@ from sqlmodel import Field, SQLModel
 
 
 class NodeRole(str, enum.Enum):
-    """Node role within the Talos cluster."""
+    """Node role — covers Talos cluster nodes and generic/OS-specific bare-metal nodes."""
 
+    # Talos / Kubernetes roles
     controlplane = "controlplane"
     worker_infra = "worker-infra"
     worker_app = "worker-app"
+
+    # Generic / OS-specific roles (non-Talos)
+    generic = "generic"
+    windows = "windows"
+    linux = "linux"
 
 
 class MachineStatus(str, enum.Enum):
