@@ -1,14 +1,14 @@
-﻿name: Publish — Tag push
+﻿name: Publish — Release published
 
 # ---------------------------------------------------------------------------
 # Publish orchestrator for ITL.ControlPlane.Attestation
 #
-# Triggered by a tag push — which happens automatically at the end of each
-# ci-*.yml (auto-tag job) after a successful CI run on main/release/*.
-# Tags are pushed using GH_PAT, which DOES trigger downstream workflows
-# (unlike releases created with GITHUB_TOKEN, which do not).
+# Triggered when a GitHub Release is published — which happens automatically
+# at the end of each ci-*.yml (create-release job) after a successful CI run.
+# Releases are created using GH_PAT so the release:published event fires
+# downstream (GITHUB_TOKEN-created releases are silently dropped by GitHub).
 #
-# Tag routing (resolved from the pushed tag name):
+# Tag routing (resolved from the release tag name):
 #   sdk/vX.Y.Z     → PyPI     (itl-attestation-sdk,    environment: pypi-sdk)
 #   cli/vX.Y.Z     → PyPI     (itl-attestation-cli,    environment: pypi-cli)
 #   pulumi/vX.Y.Z  → PyPI     (itl-attestation-pulumi, environment: pypi-pulumi)
@@ -17,15 +17,11 @@
 # Authentication: PyPI Trusted Publisher (OIDC) for Python packages — no API tokens.
 # ---------------------------------------------------------------------------
 on:
-  push:
-    tags:
-      - "sdk/v*"
-      - "cli/v*"
-      - "pulumi/v*"
-      - "service/v*"
+  release:
+    types: [published]
 
 concurrency:
-  group: publish-${{ github.ref_name }}
+  group: publish-${{ github.event.release.tag_name }}
   cancel-in-progress: false
 
 jobs:
@@ -42,7 +38,7 @@ jobs:
       - name: Route by tag prefix
         id: route
         run: |
-          TAG="${{ github.ref_name }}"
+          TAG="${{ github.event.release.tag_name }}"
           if [[ "$TAG" == sdk/* ]]; then
             echo "component=sdk"         >> "$GITHUB_OUTPUT"
             echo "environment=pypi-sdk"  >> "$GITHUB_OUTPUT"
@@ -72,7 +68,7 @@ jobs:
     with:
       artifact-name:    "sdk-wheel"
       ci-workflow-name: "CI — SDK"
-      commit-sha:       ${{ github.sha }}
+      commit-sha:       ${{ github.event.release.target_commitish }}
       environment:      "pypi-sdk"
 
   # ── Publish CLI → PyPI ─────────────────────────────────────────────────────
@@ -84,7 +80,7 @@ jobs:
     with:
       artifact-name:    "cli-wheel"
       ci-workflow-name: "CI — CLI"
-      commit-sha:       ${{ github.sha }}
+      commit-sha:       ${{ github.event.release.target_commitish }}
       environment:      "pypi-cli"
 
   # ── Publish Pulumi Provider → PyPI ─────────────────────────────────────────
@@ -96,7 +92,7 @@ jobs:
     with:
       artifact-name:    "pulumi-wheel"
       ci-workflow-name: "CI — Pulumi Provider"
-      commit-sha:       ${{ github.sha }}
+      commit-sha:       ${{ github.event.release.target_commitish }}
       environment:      "pypi-pulumi"
 
   # ── Push Service image → GHCR ──────────────────────────────────────────────
@@ -108,6 +104,6 @@ jobs:
     with:
       image-name: "ghcr.io/itlusions/itl-attestation"
       tag:        ${{ needs.resolve-target.outputs.version }}
-      ref:        ${{ github.ref_name }}
+      ref:        ${{ github.event.release.tag_name }}
     secrets:
       registry-password: ${{ secrets.GITHUB_TOKEN }}

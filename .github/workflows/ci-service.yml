@@ -96,3 +96,5 @@ jobs:
         **Build:** ${{ needs.build-meta.outputs.build-id }}
         **Commit:** ${{ github.sha }}
         **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets:
+      gh-pat: ${{ secrets.GH_PAT }}
