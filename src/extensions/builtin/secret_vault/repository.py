@@ -1,4 +1,4 @@
-"""
+﻿"""
 Repository for Secret Vault extension.
 
 Handles database operations for machine-specific encrypted secrets.
@@ -6,7 +6,7 @@ Handles database operations for machine-specific encrypted secrets.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
@@ -53,7 +53,7 @@ class SecretRepository:
             nonce=nonce,
             tag=tag,
             created_by=created_by,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             access_count=0
         )
         
@@ -149,6 +149,6 @@ class SecretRepository:
         """
         secret = await self.get_by_id(secret_id)
         if secret:
-            secret.last_accessed_at = datetime.utcnow()
+            secret.last_accessed_at = datetime.now(timezone.utc)
             secret.access_count += 1
             await self.session.commit()

@@ -1,4 +1,4 @@
-"""ORM models for the pulumi_state extension.
+﻿"""ORM models for the pulumi_state extension.
 
 Two tables:
   extension_pulumi_state_stacks   — one row per Pulumi stack
@@ -7,7 +7,7 @@ Two tables:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlmodel import Field, SQLModel
@@ -44,8 +44,8 @@ class PulumiStackRow(SQLModel, table=True):
     # None = stack uses passphrase/KMS secrets provider instead.
     secrets_key: Optional[str] = Field(default=None)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class PulumiUpdateRow(SQLModel, table=True):
@@ -83,7 +83,7 @@ class PulumiUpdateRow(SQLModel, table=True):
     # Stack version at the time the update completed successfully
     result_version: Optional[int] = Field(default=None)
 
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = Field(default=None)
 
 
@@ -124,7 +124,7 @@ class PulumiDeploymentRow(SQLModel, table=True):
     # Exit code of the pulumi subprocess (None while running)
     exit_code: Optional[int] = Field(default=None)
 
-    queued_at: datetime = Field(default_factory=datetime.utcnow)
+    queued_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)

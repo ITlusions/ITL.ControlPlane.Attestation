@@ -1,4 +1,4 @@
-"""Repository layer for the pulumi_state extension.
+﻿"""Repository layer for the pulumi_state extension.
 
 All database operations for PulumiStackRow and PulumiUpdateRow live here.
 Uses the synchronous SQLModel Session to stay consistent with the core service.
@@ -9,7 +9,7 @@ import base64
 import json
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -75,8 +75,8 @@ class PulumiStateRepository:
             tags_json=json.dumps(tags),
             checkpoint_json=json.dumps(initial_checkpoint) if initial_checkpoint else None,
             checkpoint_version=0,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         self._db.add(row)
         self._db.commit()
@@ -103,7 +103,7 @@ class PulumiStateRepository:
         arrive during a single update run.
         """
         row.checkpoint_json = checkpoint_json
-        row.updated_at = datetime.utcnow()
+        row.updated_at = datetime.now(timezone.utc)
         self._db.add(row)
         self._db.commit()
         self._db.refresh(row)
@@ -116,7 +116,7 @@ class PulumiStateRepository:
     ) -> PulumiStackRow:
         """Replace all stack tags."""
         row.tags_json = json.dumps(tags)
-        row.updated_at = datetime.utcnow()
+        row.updated_at = datetime.now(timezone.utc)
         self._db.add(row)
         self._db.commit()
         self._db.refresh(row)
@@ -145,8 +145,8 @@ class PulumiStateRepository:
             kind=kind,
             status="created",
             token=str(uuid.uuid4()),
-            token_expires=datetime.utcnow() + timedelta(seconds=_UPDATE_TOKEN_TTL_SECONDS),
-            started_at=datetime.utcnow(),
+            token_expires=datetime.now(timezone.utc) + timedelta(seconds=_UPDATE_TOKEN_TTL_SECONDS),
+            started_at=datetime.now(timezone.utc),
         )
         self._db.add(row)
         self._db.commit()
@@ -172,7 +172,7 @@ class PulumiStateRepository:
         upd.status = "in-progress"
         upd.result_version = next_version
         # Refresh token TTL on explicit start
-        upd.token_expires = datetime.utcnow() + timedelta(seconds=_UPDATE_TOKEN_TTL_SECONDS)
+        upd.token_expires = datetime.now(timezone.utc) + timedelta(seconds=_UPDATE_TOKEN_TTL_SECONDS)
         self._db.add(upd)
         self._db.commit()
         self._db.refresh(upd)
@@ -184,7 +184,7 @@ class PulumiStateRepository:
         duration_seconds: int,
     ) -> PulumiUpdateRow:
         """Extend the update token TTL by *duration_seconds*."""
-        upd.token_expires = datetime.utcnow() + timedelta(seconds=max(duration_seconds, 60))
+        upd.token_expires = datetime.now(timezone.utc) + timedelta(seconds=max(duration_seconds, 60))
         self._db.add(upd)
         self._db.commit()
         self._db.refresh(upd)
@@ -198,12 +198,12 @@ class PulumiStateRepository:
     ) -> PulumiUpdateRow:
         """Mark update as complete; bump stack version on success."""
         upd.status = status
-        upd.completed_at = datetime.utcnow()
+        upd.completed_at = datetime.now(timezone.utc)
         self._db.add(upd)
 
         if status == "succeeded" and upd.result_version is not None:
             stack.checkpoint_version = upd.result_version
-            stack.updated_at = datetime.utcnow()
+            stack.updated_at = datetime.now(timezone.utc)
             self._db.add(stack)
 
         self._db.commit()
@@ -236,7 +236,7 @@ class PulumiStateRepository:
         upd = self._db.exec(stmt).first()
         if upd is None:
             return False
-        return upd.token_expires > datetime.utcnow()
+        return upd.token_expires > datetime.now(timezone.utc)
 
     # ------------------------------------------------------------------
     # Secrets provider (encrypt / decrypt)
@@ -247,7 +247,7 @@ class PulumiStateRepository:
         if row.secrets_key is None:
             key = os.urandom(32)
             row.secrets_key = base64.b64encode(key).decode()
-            row.updated_at = datetime.utcnow()
+            row.updated_at = datetime.now(timezone.utc)
             self._db.add(row)
             self._db.commit()
             self._db.refresh(row)
@@ -309,7 +309,7 @@ class PulumiStateRepository:
             status="queued",
             source_json=source_json,
             env_json=env_json,
-            queued_at=datetime.utcnow(),
+            queued_at=datetime.now(timezone.utc),
         )
         self._db.add(row)
         self._db.commit()
@@ -340,7 +340,7 @@ class PulumiStateRepository:
     def start_deployment(self, dep: PulumiDeploymentRow) -> PulumiDeploymentRow:
         """Transition deployment to 'running'."""
         dep.status = "running"
-        dep.started_at = datetime.utcnow()
+        dep.started_at = datetime.now(timezone.utc)
         self._db.add(dep)
         self._db.commit()
         self._db.refresh(dep)
@@ -357,7 +357,7 @@ class PulumiStateRepository:
         dep.status = status
         dep.logs = logs
         dep.exit_code = exit_code
-        dep.completed_at = datetime.utcnow()
+        dep.completed_at = datetime.now(timezone.utc)
         self._db.add(dep)
         self._db.commit()
         self._db.refresh(dep)
@@ -367,7 +367,7 @@ class PulumiStateRepository:
         """Mark deployment cancelled (best-effort; subprocess may still run)."""
         if dep.status not in ("succeeded", "failed", "cancelled"):
             dep.status = "cancelled"
-            dep.completed_at = datetime.utcnow()
+            dep.completed_at = datetime.now(timezone.utc)
             self._db.add(dep)
             self._db.commit()
             self._db.refresh(dep)

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Webhook delivery service.
 
 Sends HTTP POST requests to configured webhooks with event payloads.
@@ -7,7 +7,7 @@ Sends HTTP POST requests to configured webhooks with event payloads.
 import hmac
 import hashlib
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
@@ -58,7 +58,7 @@ class WebhookDeliverer:
         # Build payload
         payload = WebhookEventPayload(
             event_type=event_type,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             machine_id=machine_id,
             data=data or {}
         )

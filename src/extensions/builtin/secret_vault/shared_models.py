@@ -1,4 +1,4 @@
-"""
+﻿"""
 Data models for shared secrets.
 
 Shared secrets can be accessed by multiple machines.
@@ -6,7 +6,7 @@ They are encrypted with a master key, not TPM-bound.
 """
 
 from sqlmodel import SQLModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
@@ -96,7 +96,7 @@ class SharedSecretAccessRow(SQLModel, table=True):
     )
     
     granted_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="Access grant timestamp (UTC)"
     )
     

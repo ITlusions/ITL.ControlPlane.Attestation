@@ -1,4 +1,4 @@
-"""
+﻿"""
 Secret Vault Extension for ITL Attestation Platform.
 
 Provides TPM-bound secret storage for attested machines.
@@ -7,6 +7,7 @@ Secrets are encrypted with machine-specific keys derived from EK fingerprints.
 Also provides shared secrets accessible by multiple authorized machines.
 """
 
+from datetime import datetime, timezone
 from typing import Optional
 import base64
 import uuid
@@ -552,11 +553,10 @@ class SecretVaultExtension(AttestationExtension):
             return SharedSecretValueResponse(
                 name=secret.name,
                 value=value,
-                accessed_at=datetime.utcnow()
+                accessed_at=datetime.now(timezone.utc)
             )
         
         # Combine both routers
-        from datetime import datetime
         combined_router = APIRouter()
         combined_router.include_router(router)
         combined_router.include_router(shared_router)

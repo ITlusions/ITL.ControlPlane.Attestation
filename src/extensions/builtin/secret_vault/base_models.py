@@ -1,11 +1,11 @@
-"""
+﻿"""
 Base classes for secret storage models.
 
 Common fields for all encrypted secrets (machine-bound and shared).
 """
 
 from sqlmodel import Field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -32,7 +32,7 @@ class EncryptedSecretMixin:
     )
     
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="Creation timestamp (UTC)"
     )
     

@@ -1,11 +1,11 @@
-"""
+﻿"""
 Data models for Webhooks extension.
 
 Stores webhook configurations and delivery history.
 """
 
 from sqlmodel import SQLModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
@@ -47,7 +47,7 @@ class WebhookRow(SQLModel, table=True):
     )
     
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="Creation timestamp (UTC)"
     )
     
@@ -130,7 +130,7 @@ class WebhookDeliveryRow(SQLModel, table=True):
     )
     
     delivered_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="Delivery attempt timestamp (UTC)"
     )
     

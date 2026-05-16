@@ -1,4 +1,4 @@
-"""
+﻿"""
 Repository for Webhooks extension.
 
 Handles database operations for webhooks and delivery logs.
@@ -6,7 +6,7 @@ Handles database operations for webhooks and delivery logs.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
@@ -44,7 +44,7 @@ class WebhookRepository:
             secret=secret,
             enabled=True,
             created_by=created_by,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             trigger_count=0,
             failure_count=0
         )
@@ -132,7 +132,7 @@ class WebhookRepository:
         """Record successful delivery."""
         webhook = await self.get_by_id(webhook_id)
         if webhook:
-            webhook.last_triggered_at = datetime.utcnow()
+            webhook.last_triggered_at = datetime.now(timezone.utc)
             webhook.trigger_count += 1
             await self.session.commit()
     
@@ -189,7 +189,7 @@ class WebhookDeliveryRepository:
             response_status=response_status,
             response_body=response_body,
             error=error,
-            delivered_at=datetime.utcnow(),
+            delivered_at=datetime.now(timezone.utc),
             duration_ms=duration_ms
         )
         

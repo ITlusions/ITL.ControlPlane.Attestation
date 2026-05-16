@@ -1,4 +1,4 @@
-"""
+﻿"""
 Repository for shared secrets.
 
 Handles CRUD operations for shared secrets and access control.
@@ -6,7 +6,7 @@ Handles CRUD operations for shared secrets and access control.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
@@ -50,7 +50,7 @@ class SharedSecretRepository:
             tag=tag,
             encryption_key_id=self.crypto.get_key_id(),
             created_by=created_by,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             description=description
         )
         
@@ -110,7 +110,7 @@ class SharedSecretRepository:
             secret.encrypted_value = ciphertext
             secret.nonce = nonce
             secret.tag = tag
-            secret.last_rotated_at = datetime.utcnow()
+            secret.last_rotated_at = datetime.now(timezone.utc)
         
         if description is not None:
             secret.description = description
@@ -208,7 +208,7 @@ class SharedSecretAccessRepository:
                 shared_secret_id=shared_secret_id,
                 machine_id=machine_id,
                 granted_by=granted_by,
-                granted_at=datetime.utcnow()
+                granted_at=datetime.now(timezone.utc)
             )
             self.session.add(grant)
             grants.append(grant)
@@ -288,6 +288,6 @@ class SharedSecretAccessRepository:
         """Record that a machine accessed a shared secret."""
         access = await self.get_access(shared_secret_id, machine_id)
         if access:
-            access.last_accessed_at = datetime.utcnow()
+            access.last_accessed_at = datetime.now(timezone.utc)
             access.access_count += 1
             await self.session.commit()

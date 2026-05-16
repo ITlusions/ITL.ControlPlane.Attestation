@@ -1,8 +1,8 @@
-"""ORM models for machines — SQLModel table definitions."""
+﻿"""ORM models for machines — SQLModel table definitions."""
 from __future__ import annotations
 
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Field, SQLModel
 
@@ -77,7 +77,7 @@ class MachineRow(SQLModel, table=True):
     config_token: str | None = Field(default=None, index=True)
     token_consumed: bool = Field(default=False)
 
-    registered_at: datetime = Field(default_factory=datetime.utcnow)
+    registered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     attested_at: datetime | None = Field(default=None)
     locked_at: datetime | None = Field(default=None)
     revoked_at: datetime | None = Field(default=None)
