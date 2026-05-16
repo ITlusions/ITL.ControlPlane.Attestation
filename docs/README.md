@@ -69,7 +69,7 @@ Flask-based web interface for operators. Uses SDK for data access.
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment guide, Docker Compose, environment variables, CLI setup |
 | [OPERATIONS.md](OPERATIONS.md) | Operator workflows, CLI and curl examples, monitoring, backup |
 | [ENDPOINTS.md](ENDPOINTS.md) | REST API reference, request/response schemas |
-| [SECURITY.md](SECURITY.md) | Security architecture, CNSA 2.0 compliance, threat model |
+| [SECURITY.md](SECURITY.md) | Security architecture, CNSA 1.0 compliance, threat model |
 | [TPM_EXPLAINED.md](TPM_EXPLAINED.md) | TPM concepts, EK/AK hierarchy, attestation flows |
 | [WALKTHROUGH.md](WALKTHROUGH.md) | Step-by-step walkthrough of the full registration and attestation flow |
 | [EXTENSIONS.md](EXTENSIONS.md) | Extension system, Secret Vault, extension development guide |

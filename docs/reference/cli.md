@@ -297,6 +297,8 @@ attestation machine approve [OPTIONS] MACHINE_ID
 |---|---|
 | `-r, --reason TEXT` | Approval reason (recorded in audit log) |
 
+> **Current limitation**: This command sends only the `reason` field to the API. The API also requires `role` (and optionally `hostname`, `assigned_ip`). Until `--role`, `--hostname`, and `--assigned-ip` options are added to the CLI, use the REST API directly (see [OPERATIONS.md](OPERATIONS.md)) for full approval with role assignment.
+
 **Output:**
 
 ```

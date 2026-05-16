@@ -28,7 +28,7 @@ description: Deploy the attestation service from scratch
 | `ITL_ADMIN_TOKEN` | *(empty)* | No (break-glass only) | Shared Bearer token — emergency break-glass path. Prefer Keycloak OIDC for normal operator access. Service returns 503 for admin calls when neither OIDC nor this token is configured. |
 | `ITL_ENROLLMENT_CERT_DAYS` | `30` | No | Validity period for issued enrollment certificates |
 | `ITL_ENROLLMENT_CA_DIR` | `/var/lib/itl-reg/ca` | No | Directory for Enrollment CA key + cert PEM files |
-| `ITL_ENROLLMENT_CA_ALGORITHM` | `ecdsa-p384` | No | CA key algorithm: `ecdsa-p384` (CNSA 2.0 default) or `rsa-4096` |
+| `ITL_ENROLLMENT_CA_ALGORITHM` | `ecdsa-p384` | No | CA key algorithm: `ecdsa-p384` (CNSA 1.0 default) or `rsa-4096` |
 | `ITL_CONFIG_CACHE_DIR` | `/var/lib/itl-reg/configs` | No | Directory containing role base config YAML files |
 | `ITL_TPM_VERIFY_CA` | `false` | No | Enable EK cert chain verification against manufacturer CA bundles |
 | `ITL_TPM_VERIFY_CA_STRICT` | `false` | No | When `true`, reject registration if manufacturer CA verification fails |
@@ -91,7 +91,7 @@ The named volume (or host path) at `/var/lib/itl-reg` contains:
 ```
 /var/lib/itl-reg/
 ├── ca/
-│   ├── enrollment-ca.key    # RSA-4096 private key (mode 0600, auto-generated)
+│   ├── enrollment-ca.key    # ECDSA P-384 private key (default; RSA-4096 if ITL_ENROLLMENT_CA_ALGORITHM=rsa-4096) (mode 0600, auto-generated)
 │   └── enrollment-ca.crt    # Self-signed CA cert (valid 10 years)
 ├── configs/
 │   ├── controlplane-final.yaml

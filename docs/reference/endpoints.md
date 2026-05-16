@@ -94,7 +94,7 @@ If the machine was previously registered (same EK fingerprint), the existing rec
 | `hw_mac` | string | No | Primary NIC MAC address |
 | `hw_serial` | string | No | SMBIOS serial number |
 | `hw_product` | string | No | SMBIOS product name |
-| `desired_role` | `"controlplane"` \| `"worker-infra"` \| `"worker-app"` | No | Requested role (operator can override at approval) |
+| `desired_role` | `"controlplane"` \| `"worker-infra"` \| `"worker-app"` \| `"generic"` \| `"windows"` \| `"linux"` | No | Requested role (operator can override at approval) |
 
 **Response 200**
 
@@ -154,7 +154,7 @@ sequenceDiagram
 
 | Field | Type | Required |
 |---|---|---|
-| `ek_fingerprint` | SHA-256 hex | Yes |
+| `ek_fingerprint` | SHA-256 hex (64 chars) **or** SHA-384 hex (96 chars) | Yes |
 | `ek_cert_pem` | base64-encoded PEM/DER | Yes |
 | `ek_source` | `"cert"` \| `"pub"` | No |
 | `hw_uuid`, `hw_mac`, `hw_serial`, `hw_product` | string | No |
@@ -224,7 +224,6 @@ If the machine is unknown, a `pending_approval` record is created automatically.
 | `nonce_signature` | string | No | base64-encoded signature over nonce bytes using AK private key |
 | `pcr_quote` | string | No | base64-encoded `TPM2B_ATTEST` (stored, verified when `ITL_REQUIRE_QUOTE=true`) |
 | `pcr_signature` | string | No | base64-encoded `TPMT_SIGNATURE` |
-| `pcr_nonce` | string | No | Nonce used during quote generation |
 | `hw_uuid`, `hw_mac`, `hw_serial`, `hw_product` | string | No | Hardware identity fields |
 
 **Response 200**
@@ -235,8 +234,10 @@ If the machine is unknown, a `pending_approval` record is created automatically.
   "status":     "attested",
   "hostname":   "k8s-worker-01",
   "role":       "worker-app",
-  "message":    "Attestation successful",
-  "action":     "none"
+  "message":    "Attestation successful — fetch config_url and apply with talosctl apply-config",
+  "action":     "apply-config",
+  "config_url": "https://attest.itlusions.com/api/v1/config/abc123...",
+  "config_token": "abc123..."
 }
 ```
 
@@ -244,16 +245,21 @@ The `action` field instructs the Talos extension what to do:
 
 | `action` | Meaning |
 |---|---|
-| `"none"` | Normal operation |
+| `"none"` | Machine still pending approval, already attested, or revoked without wipe — no action needed |
+| `"apply-config"` | Machine just attested for the first time; fetch `config_url` and apply with `talosctl apply-config --insecure` |
 | `"wipe"` | Machine revoked with `wipe_pending=true`; extension calls `talosctl reset --graceful=false` |
 | `"lock"` | Machine temporarily locked; extension halts enrollment and logs |
+
+`config_url` and `config_token` are populated only when `action="apply-config"` (first successful attestation) or when a machine is already attested and has an outstanding config token.
 
 **Errors**
 
 | Code | Reason |
 |---|---|
 | 403 | Machine is in `rejected` state |
-| 422 | EK fingerprint mismatch |
+| 409 | Nonce already consumed — replay detected |
+| 410 | Nonce has expired — request a new challenge |
+| 422 | EK fingerprint mismatch, unknown `nonce_id`, or `ITL_REQUIRE_NONCE`/`ITL_REQUIRE_QUOTE` enforced but corresponding field missing |
 
 ---
 
@@ -392,7 +398,7 @@ Approve a `pending_approval` or `registered` machine. Assigns role, hostname, an
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `role` | `"controlplane"` \| `"worker-infra"` \| `"worker-app"` | Yes | Node role in the cluster |
+| `role` | `"controlplane"` \| `"worker-infra"` \| `"worker-app"` \| `"generic"` \| `"windows"` \| `"linux"` | Yes | Node role in the cluster. The Talos-specific roles (`controlplane`, `worker-infra`, `worker-app`) are the most common; `generic`, `windows`, and `linux` are available for non-Talos nodes. |
 | `hostname` | string | No | Kubernetes node hostname |
 | `assigned_ip` | string (CIDR) | No | Static IP for `machine.network.interfaces[0]` |
 
@@ -456,31 +462,58 @@ Restore a locked machine to `attested`.
 
 Generate a complete airgap bundle for machines that cannot reach the service during initial deployment.
 
-Returns a JSON payload containing:
-- `iso_url` — Talos ISO download URL (from Image Factory)
-- `config_token` — one-time config token
-- `config_url` — full config endpoint URL
-- `machineconfig` — inline MachineConfig YAML with embedded enrollment cert and key
+Returns a JSON payload containing all information needed to provision the machine offline.
 
 **Response 200**
 
 ```json
 {
-  "machine_id":    "550e8400-...",
-  "iso_url":       "https://factory.talos.dev/image/.../metal-amd64.iso",
-  "config_token":  "abc123...",
-  "config_url":    "https://attest.itlusions.com/api/v1/config/abc123...",
-  "machineconfig": "version: v1alpha1\n..."
+  "machine_id":          "550e8400-...",
+  "role":                "worker-app",
+  "status":              "registered",
+  "ek_fingerprint":      "a3f1b8c2d...",
+  "hostname":            "k8s-worker-03",
+  "assigned_ip":         "10.0.1.13/24",
+  "iso_url":             "https://factory.talos.dev/image/.../metal-amd64.iso",
+  "config_token":        "abc123...",
+  "config_url":          "https://attest.itlusions.com/api/v1/config/abc123...",
+  "machineconfig":       "version: v1alpha1\n...",
+  "enrollment_cert_pem": "-----BEGIN CERTIFICATE-----\n...",
+  "enrollment_key_pem":  "-----BEGIN EC PRIVATE KEY-----\n...",
+  "install_mode":        "offline",
+  "built_at":            "2026-05-14T17:00:00+00:00"
 }
 ```
+
+`machineconfig` is `null` when no role base config YAML is found for the machine's role in `ITL_CONFIG_CACHE_DIR`.  `enrollment_cert_pem` and `enrollment_key_pem` are freshly issued for this bundle — they are used by the `tpm-attest.sh` script embedded in the machineconfig to self-enroll on first boot.
 
 ---
 
 ### `POST /api/v1/machines/import`
 
-Import a machine from a TPM receipt written by the offline USB agent. Registers without booting an ISO.
+Import a machine from a TPM receipt written by the offline USB agent. Registers without booting an ISO. Idempotent — re-importing the same EK fingerprint updates the existing record and issues a fresh config token.
 
-**Request body** — TPM receipt fields (same as `RegisterRequest` minus the factory ISO call)
+**Request body**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `ek_fingerprint` | string | Yes | SHA-256 or SHA-384 hex fingerprint (same as `RegisterRequest`) |
+| `role` | string | No | Role string (default: `worker-app`) |
+| `machine_id` | string | No | Use a specific UUID; auto-assigned if absent |
+| `hw_uuid`, `hw_mac`, `hw_serial`, `hw_product` | string | No | SMBIOS identity fields |
+| `ek_source` | string | No | `"cert"`, `"pub"`, or `"offline-import"` |
+
+**Response 200**
+
+```json
+{
+  "machine_id": "550e8400-...",
+  "role":       "worker-app",
+  "status":     "registered",
+  "config_url": "https://attest.itlusions.com/api/v1/config/abc123...",
+  "message":    "Machine imported from offline receipt — ready for attestation"
+}
+```
 
 ---
 
@@ -703,3 +736,36 @@ The caller must also re-present its EK cert to prove it is the same physical har
 | 409 | Nonce already consumed — replay detected |
 | 410 | Nonce has expired |
 | 422 | AK key type/size not accepted, quote signature invalid, or PCR digest mismatch |
+
+---
+
+## Extension Metadata
+
+### `GET /api/v1/extensions`
+
+List all loaded extensions, their versions, and descriptions. No authentication required.
+
+**Response 200**
+
+```json
+{
+  "extensions": [
+    {
+      "name":        "secret_vault",
+      "version":     "2.0.0",
+      "description": "TPM-bound secret storage + shared secrets for attested machines"
+    },
+    {
+      "name":        "webhooks",
+      "version":     "1.0.0",
+      "description": "HTTP webhook delivery for attestation events"
+    },
+    {
+      "name":        "metrics",
+      "version":     "1.0.0",
+      "description": "Prometheus-compatible metrics exporter"
+    }
+  ],
+  "total": 3
+}
+```
