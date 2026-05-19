@@ -198,6 +198,178 @@ And that the extension appears in the registry:
 
 ```bash
 curl http://localhost:9000/api/v1/extensions
+```
+
+---
+
+## Part 2 — Node Event Hooks
+
+In addition to REST routes and lifecycle hooks, extensions can subscribe to **node lifecycle events** emitted by the attestation service. Handlers receive a strongly-typed context object rather than a raw dict, and run in isolation — a slow or failing handler never blocks the registration endpoint or affects other handlers.
+
+### Events
+
+| Event constant | `NodeEvent` value | When fired |
+|---|---|---|
+| `NODE_REGISTERED` | `node.registered` | `POST /register` or `/self-register` completes |
+| `NODE_ONLINE` | `node.online` | `POST /attest` succeeds (status → `attested`) |
+| `NODE_CONFIGURED` | `node.configured` | `GET /config/{token}` is consumed |
+| `NODE_IMAGE_CREATED` | `node.image_created` | ISO schematic built |
+| `NODE_PROVISIONED` | `node.provisioned` | Operator approves + machine moves to registered/provisioned |
+| `NODE_DECOMMISSIONED` | `node.decommissioned` | Operator revokes a machine |
+| `NODE_HEARTBEAT_MISSED` | `node.heartbeat_missed` | Future: heartbeat timeout detected |
+| `NODE_ROLE_CHANGED` | `node.role_changed` | Future: operator changes assigned role |
+| `NODE_CERT_RENEWED` | `node.cert_renewed` | Future: enrollment cert renewed |
+
+### Typed context objects
+
+Each event delivers a context dataclass instead of a raw dict. All contexts extend `NodeContext`:
+
+```python
+@dataclass
+class NodeContext:
+    event: NodeEvent
+    ek_fingerprint: str
+    timestamp: datetime
+    raw: NodeEventPayload   # original untyped payload always accessible
+
+@dataclass
+class RegisteredContext(NodeContext):
+    ip_address: str
+    mac_address: str
+    tpm_available: bool
+    hardware: dict          # hw_uuid, hw_mac, hw_serial, hw_product
+
+@dataclass
+class OnlineContext(NodeContext):
+    hostname: str
+    role: str
+    first_seen_at: datetime
+
+@dataclass
+class ProvisioningContext(NodeContext):
+    hostname: str
+    role: str
+    config_url: str
+    schematic_id: str
+    iso_url: str
+
+@dataclass
+class DecommissionedContext(NodeContext):
+    hostname: str
+    role: str
+    reason: str | None
+```
+
+### Subscribing with named decorators
+
+The simplest API — import the decorator, apply it to an `async def` function:
+
+```python
+# mypackage/extension.py
+from attestation.hooks import on_registered, on_online, on_decommissioned, on_any_event
+from attestation.hooks import RegisteredContext, OnlineContext, DecommissionedContext, NodeContext
+
+
+@on_registered
+async def handle_registration(ctx: RegisteredContext) -> None:
+    print(f"New node: {ctx.ek_fingerprint[:12]}... mac={ctx.mac_address}")
+
+
+@on_online
+async def node_went_online(ctx: OnlineContext) -> None:
+    print(f"{ctx.hostname} ({ctx.role}) is now online")
+
+
+@on_decommissioned
+async def node_revoked(ctx: DecommissionedContext) -> None:
+    print(f"{ctx.hostname} decommissioned — reason: {ctx.reason}")
+
+
+@on_any_event
+async def audit_all_events(ctx: NodeContext) -> None:
+    print(f"[{ctx.event.value}] {ctx.ek_fingerprint[:12]}...")
+```
+
+The decorators register the handler with the global `bus` singleton at **import time**. No further wiring is required.
+
+### Subscribing via the raw bus API
+
+For advanced use (multiple events, dynamic registration), use the `bus` directly:
+
+```python
+from attestation.core.eventbus import bus
+from attestation.core.events import NodeEvent, NodeEventPayload
+
+
+@bus.on(NodeEvent.NODE_REGISTERED, NodeEvent.NODE_ONLINE)
+async def handle_both(payload: NodeEventPayload) -> None:
+    node = payload.node
+    print(f"[{payload.event.value}] id={node.get('machine_id')}")
+
+
+@bus.on_any()
+async def log_everything(payload: NodeEventPayload) -> None:
+    print(payload)
+```
+
+### Guarantees and isolation
+
+- Each handler runs inside `asyncio.wait_for(handler(payload), timeout=10.0)`.
+- A handler that raises or times out logs a warning/error but **never propagates to the caller**.
+- All matching handlers for an event run concurrently via `asyncio.gather`.
+- `bus.emit_nowait()` is used internally by sync route handlers — it schedules the fan-out as an asyncio task so the HTTP response is returned immediately.
+
+### Full extension example with hooks
+
+```python
+# mypackage/extension.py
+from sdk import AttestationExtension
+from fastapi import APIRouter
+from attestation.hooks import on_online, on_decommissioned
+from attestation.hooks import OnlineContext, DecommissionedContext
+import httpx
+
+
+@on_online
+async def notify_cmdb(ctx: OnlineContext) -> None:
+    async with httpx.AsyncClient() as client:
+        await client.post(
+            "https://cmdb.example.com/api/nodes",
+            json={"hostname": ctx.hostname, "role": ctx.role, "ek": ctx.ek_fingerprint},
+            timeout=5.0,
+        )
+
+
+@on_decommissioned
+async def remove_from_cmdb(ctx: DecommissionedContext) -> None:
+    async with httpx.AsyncClient() as client:
+        await client.delete(
+            f"https://cmdb.example.com/api/nodes/{ctx.hostname}",
+            timeout=5.0,
+        )
+
+
+class CmdbSyncExtension(AttestationExtension):
+    @property
+    def name(self) -> str:
+        return "cmdb_sync"
+
+    @property
+    def version(self) -> str:
+        return "1.0.0"
+
+    @property
+    def description(self) -> str:
+        return "Sync attested nodes to the CMDB"
+
+    def get_router(self) -> APIRouter | None:
+        return None     # hooks only — no REST routes needed
+
+    def get_models(self) -> list[type]:
+        return []
+```
+
+The `@on_online` and `@on_decommissioned` decorators at module level run when the extension is imported during startup — the handlers are registered before the first request arrives.
 # {"my_ext": {"version": "1.0.0", "description": "Attach custom labels..."}}
 ```
 

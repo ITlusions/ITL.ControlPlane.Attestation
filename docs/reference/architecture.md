@@ -152,11 +152,15 @@ src/attestation/
     quote_verifier.py   — TPM2_Quote signature + TPMS_ATTEST parsing + PCR digest verification
     nonce_store.py      — In-memory nonce store with 60-second TTL
     oidc.py             — Keycloak OIDC JWT validation: JWKS fetch, signature verify, role check
+  core/
+    events.py           — NodeEvent enum (9 lifecycle events) + NodeEventPayload dataclass
+    eventbus.py         — EventBus class with async fan-out, 10 s per-handler timeout + bus singleton
+  hooks.py              — Typed context dataclasses + named hook decorators (@on_registered, @on_online, etc.)
   handlers/
-    registration.py     — Business logic for /register and /self-register
-    attestation.py      — Business logic for /attest
+    registration.py     — Business logic for /register and /self-register; emits NODE_REGISTERED
+    attestation.py      — Business logic for /attest; emits NODE_ONLINE on successful attestation
     config_delivery.py  — Business logic for /config/{token} and /config?mac=
-    machines.py         — Business logic for machine CRUD, approve, revoke, lock, unlock
+    machines.py         — Business logic for machine CRUD, approve, revoke, lock, unlock; emits NODE_PROVISIONED, NODE_DECOMMISSIONED
     enrollment.py       — Business logic for /machines/enroll and /machines/{id}/request-cert
   routes/
     registration.py     — FastAPI router: POST /api/v1/register, /self-register
@@ -229,12 +233,17 @@ The attestation platform supports a modular extension system for adding function
 
 ### Architecture
 
-Extensions implement the `AttestationExtension` ABC and are discovered automatically at startup:
+Extensions implement the `AttestationExtension` ABC and are discovered automatically at startup. They can contribute REST routes, database models, lifecycle hooks, and **node event handlers** that subscribe to machine lifecycle events via the `EventBus`.
 
 ```
+src/attestation/
+├── core/
+│   ├── events.py        # NodeEvent enum + NodeEventPayload dataclass
+│   └── eventbus.py      # EventBus (async fan-out, 10 s timeout isolation) + bus singleton
+├── hooks.py             # Typed context objects + named decorators (@on_registered, @on_online, …)
 src/extensions/
 ├── __init__.py          # Discovery and registry
-├── base.py              # AttestationExtension ABC
+├── base.py              # AttestationExtension ABC (re-exports from SDK)
 └── builtin/
     ├── secret_vault/    # TPM-bound + shared secret storage (v2.0.0)
     │   ├── extension.py
@@ -270,6 +279,20 @@ Each extension must implement:
 - `on_startup()` — Lifecycle hook (optional)
 - `on_shutdown()` — Lifecycle hook (optional)
 
+Extensions can also **subscribe to node lifecycle events** by applying the named hook decorators from `attestation.hooks` at module level:
+
+```python
+from attestation.hooks import on_registered, on_online, on_decommissioned
+
+@on_registered
+async def handle_registration(ctx: RegisteredContext) -> None: ...
+
+@on_online
+async def node_went_online(ctx: OnlineContext) -> None: ...
+```
+
+See [extension-development.md](../advanced/extension-development.md) for the full event API reference.
+
 ### Discovery Process
 
 1. Service startup calls `discover_extensions()`
@@ -278,6 +301,7 @@ Each extension must implement:
 4. Each extension's router registered in FastAPI app
 5. Each extension's models registered for Alembic migrations
 6. Startup hooks called
+7. Node event handlers registered with `bus` at module import time (step 2/3 above) — no extra wiring needed
 
 ### Built-in Extensions
 
