@@ -11,6 +11,8 @@ from typing import Optional
 from fastapi import HTTPException
 
 from ..core.config import get_settings
+from ..core.eventbus import bus
+from ..core.events import NodeEvent, NodeEventPayload
 from ..talos.config_generator import generate_machine_config
 from ..pki.enrollment_ca import issue_enrollment_cert
 from ..talos.iso_factory import get_itl_iso_url
@@ -231,6 +233,22 @@ class MachineAdminHandler:
             "Machine %s approved by %s — role=%s hostname=%s",
             machine_id, operator_cn, req.role, req.hostname,
         )
+
+        settings = get_settings()
+        config_url = f"{settings.service_base_url}/api/v1/config/{config_token}"
+        iso_url    = get_itl_iso_url(config_url)
+        bus.emit_nowait(NodeEventPayload(
+            event=NodeEvent.NODE_PROVISIONED,
+            ek_fingerprint=machine.ek_fingerprint,
+            node={
+                "machine_id":  machine.machine_id,
+                "hostname":    machine.hostname,
+                "role":        machine.role.value,
+                "config_url":  config_url,
+                "iso_url":     iso_url,
+            },
+        ))
+
         return self._machine_detail(machine), 200
 
     def revoke(
@@ -259,6 +277,16 @@ class MachineAdminHandler:
             "Machine %s REVOKED by %s — action=%s reason=%r",
             machine_id, operator_cn, action_detail, req.reason,
         )
+        bus.emit_nowait(NodeEventPayload(
+            event=NodeEvent.NODE_DECOMMISSIONED,
+            ek_fingerprint=machine.ek_fingerprint,
+            node={
+                "machine_id": machine.machine_id,
+                "hostname":   machine.hostname,
+                "role":       machine.role.value,
+            },
+            meta={"reason": req.reason},
+        ))
         return self._machine_detail(machine)
 
     def lock(

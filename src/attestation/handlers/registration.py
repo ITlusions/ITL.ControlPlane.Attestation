@@ -9,6 +9,8 @@ import uuid
 from fastapi import HTTPException
 
 from ..core.config import get_settings
+from ..core.eventbus import bus
+from ..core.events import NodeEvent, NodeEventPayload
 from ..talos.iso_factory import get_itl_iso_url
 from ..models.machine import MachineRow, MachineStatus, NodeRole
 from ..repositories.machine_repo import SqlMachineRepository
@@ -90,6 +92,22 @@ class RegistrationHandler:
         settings = get_settings()
         config_url = f"{settings.service_base_url}/api/v1/config/{config_token}"
         iso_url    = get_itl_iso_url(config_url)
+
+        bus.emit_nowait(NodeEventPayload(
+            event=NodeEvent.NODE_REGISTERED,
+            ek_fingerprint=machine.ek_fingerprint,
+            node={
+                "machine_id":  machine.machine_id,
+                "role":        machine.role.value,
+                "status":      machine.status.value,
+                "hw_uuid":     machine.hw_uuid,
+                "hw_mac":      machine.hw_mac,
+                "hw_serial":   machine.hw_serial,
+                "hw_product":  machine.hw_product,
+                "config_url":  config_url,
+                "iso_url":     iso_url,
+            },
+        ))
 
         return RegisterResponse(
             machine_id   = machine.machine_id,

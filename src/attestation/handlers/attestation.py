@@ -11,6 +11,8 @@ from typing import Optional
 from fastapi import HTTPException
 
 from ..core.config import get_settings
+from ..core.eventbus import bus
+from ..core.events import NodeEvent, NodeEventPayload
 from ..models.machine import MachineRow, MachineStatus, NodeRole
 from ..repositories.machine_repo import SqlMachineRepository
 from ..schemas.requests import AttestRequest
@@ -182,6 +184,18 @@ class AttestationHandler:
 
         settings = get_settings()
         config_url = f"{settings.service_base_url}/api/v1/config/{config_token}"
+
+        bus.emit_nowait(NodeEventPayload(
+            event=NodeEvent.NODE_ONLINE,
+            ek_fingerprint=machine.ek_fingerprint,
+            node={
+                "machine_id":  machine.machine_id,
+                "hostname":    machine.hostname,
+                "role":        machine.role.value,
+                "attested_at": machine.attested_at,
+                "config_url":  config_url,
+            },
+        ))
 
         return AttestResponse(
             machine_id   = machine.machine_id,
