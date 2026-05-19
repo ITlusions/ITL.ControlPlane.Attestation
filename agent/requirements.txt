@@ -8,7 +8,7 @@ azure-identity>=1.19.0
 openai>=1.0.0
 
 # HTTP server (for Agent Inspector mode)
-aiohttp>=3.9.0
+aiohttp>=3.13.5
 
 # Configuration
 python-dotenv>=1.0.0
