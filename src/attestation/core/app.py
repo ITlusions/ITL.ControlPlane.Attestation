@@ -12,7 +12,7 @@ from sqlmodel import SQLModel
 from .config import settings
 from .deps import get_engine
 from ..pki.enrollment_ca import init_enrollment_ca
-from ..routes import attestation_router, audit_router, config_router, machines_router, registration_router
+from ..routes import attestation_router, audit_router, bootstrap_router, config_router, machines_router, registration_router
 
 # Extension system
 from extensions import discover_extensions, list_extensions
@@ -144,6 +144,7 @@ def create_app() -> FastAPI:
     app.include_router(config_router, prefix=prefix)
     app.include_router(machines_router, prefix=f"{prefix}/machines")
     app.include_router(audit_router, prefix=f"{prefix}/audit")
+    app.include_router(bootstrap_router)  # prefix: /api/v1/clusters
 
     # Extension routes
     extensions = list_extensions()

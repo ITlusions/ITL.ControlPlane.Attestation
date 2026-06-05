@@ -17,6 +17,7 @@ class RegisterRequest(BaseModel):
     hw_serial:      str           = "unknown"
     hw_product:     str           = "unknown"
     desired_role:   Optional[str] = None
+    cluster_id:     str           = "default"  # target cluster for this machine
 
     @field_validator("ek_source")
     @classmethod
@@ -52,13 +53,13 @@ class SelfRegisterRequest(BaseModel):
     hw_serial:      str           = "unknown"
     hw_product:     str           = "unknown"
     desired_role:   Optional[str] = None
+    cluster_id:     str           = "default"  # target cluster for this machine
 
     @field_validator("ek_source")
     @classmethod
     def validate_ek_source(cls, v: str) -> str:
         if v not in ("cert", "pub"):
             raise ValueError("ek_source must be 'cert' or 'pub'")
-        return v
 
     @field_validator("ek_fingerprint")
     @classmethod

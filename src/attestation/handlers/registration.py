@@ -83,6 +83,7 @@ class RegistrationHandler:
                 role           = role,
                 status         = MachineStatus.registered,
                 config_token   = config_token,
+                cluster_id     = req.cluster_id,
             ))
             logger.info(
                 "New machine registered: id=%s role=%s ek=%s...",

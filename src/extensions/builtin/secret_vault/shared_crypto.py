@@ -74,7 +74,7 @@ def get_shared_crypto() -> SharedSecretCrypto:
     Returns:
         SharedSecretCrypto instance with master key
     """
-    global _crypto_instance
-    if _crypto_instance is None:
-        _crypto_instance = SharedSecretCrypto()
-    return _crypto_instance
+    global _shared_crypto_instance
+    if _shared_crypto_instance is None:
+        _shared_crypto_instance = SharedSecretCrypto()
+    return _shared_crypto_instance

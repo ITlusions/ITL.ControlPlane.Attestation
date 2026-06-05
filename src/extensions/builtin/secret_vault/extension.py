@@ -270,7 +270,7 @@ class SecretVaultExtension(AttestationExtension):
         shared_router = APIRouter(
             prefix="/api/v1/shared-secrets",
             tags=["shared-secrets", "extensions"]
-        ), SharedSecretRow, SharedSecretAccessRow
+        )
         
         @shared_router.post(
             "/",

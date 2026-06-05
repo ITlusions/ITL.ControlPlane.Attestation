@@ -10,8 +10,12 @@ from fastapi import HTTPException
 from fastapi.responses import JSONResponse, Response
 
 from ..core.config import get_settings
-from ..talos.config_generator import generate_machine_config, generate_pending_config
-from ..models.machine import MachineRow, MachineStatus
+from ..talos.config_generator import (
+    generate_base_configs,
+    generate_machine_config,
+    generate_pending_config,
+)
+from ..models.machine import MachineRow, MachineStatus, NodeRole
 from ..repositories.machine_repo import SqlMachineRepository
 
 logger = logging.getLogger(__name__)
@@ -85,7 +89,7 @@ class ConfigDeliveryHandler:
     def __init__(self, machine_repo: SqlMachineRepository) -> None:
         self.machine_repo = machine_repo
 
-    def get_config_by_mac(self, mac: str, accept: str = "") -> Response:
+    def get_config_by_mac(self, mac: str, accept: str = "", client_ip: str = "") -> Response:
         """Resolve MachineConfig by MAC address (generic ISO boot flow).
 
         Security model: MAC is a routing key only — TPM attestation is the real
@@ -129,21 +133,13 @@ class ConfigDeliveryHandler:
         )
 
         try:
-            config_yaml = generate_machine_config(
-                role           = machine.role.value,
-                machine_id     = machine.machine_id,
-                ek_fingerprint = machine.ek_fingerprint,
-                hostname       = machine.hostname,
-                assigned_ip    = machine.assigned_ip,
-            )
+            config_yaml = self._get_config_yaml(machine, client_ip)
             return self._deliver_config(machine, config_yaml, accept, settings)
         except FileNotFoundError as exc:
             logger.error("Base config not found: %s", exc)
-            raise HTTPException(
-                503, "Base config not available — ensure CI configs are downloaded"
-            ) from exc
+            raise HTTPException(503, str(exc)) from exc
 
-    def get_config_by_token(self, token: str, accept: str = "") -> Response:
+    def get_config_by_token(self, token: str, accept: str = "", client_ip: str = "") -> Response:
         """One-time Talos MachineConfig endpoint keyed on a single-use token."""
         settings = get_settings()
 
@@ -168,23 +164,50 @@ class ConfigDeliveryHandler:
             )
 
         try:
-            config_yaml = generate_machine_config(
-                role           = machine.role.value,
-                machine_id     = machine.machine_id,
-                ek_fingerprint = machine.ek_fingerprint,
-                hostname       = machine.hostname,
-                assigned_ip    = machine.assigned_ip,
-            )
+            config_yaml = self._get_config_yaml(machine, client_ip)
             return self._deliver_config(machine, config_yaml, accept, settings)
         except FileNotFoundError as exc:
             logger.error("Base config not found: %s", exc)
-            raise HTTPException(
-                503, "Base config not available — ensure CI configs are downloaded"
-            ) from exc
+            raise HTTPException(503, str(exc)) from exc
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_config_yaml(machine: MachineRow, client_ip: str = "") -> str:
+        """Return the personalised MachineConfig YAML for *machine*.
+
+        Auto-generates base configs for the machine's cluster on the first
+        controlplane config fetch (zero-touch bootstrap per cluster).
+        """
+        from ..talos.config_generator import base_configs_exist  # avoid circular at module level
+
+        cluster_id = getattr(machine, "cluster_id", "default")
+
+        if not base_configs_exist(cluster_id) and machine.role == NodeRole.controlplane:
+            endpoint_ip = machine.assigned_ip or client_ip
+            if not endpoint_ip:
+                raise FileNotFoundError(
+                    f"No base configs for cluster '{cluster_id}' and no IP available to auto-bootstrap. "
+                    "Assign an IP to this machine or call POST /api/v1/admin/bootstrap manually."
+                )
+            endpoint_ip = endpoint_ip.split("/")[0]
+            endpoint = f"https://{endpoint_ip}:6443"
+            logger.info(
+                "Auto-bootstrapping cluster '%s' from first controlplane node %s (%s)",
+                cluster_id, machine.machine_id, endpoint,
+            )
+            generate_base_configs(endpoint, cluster_id=cluster_id)
+
+        return generate_machine_config(
+            role           = machine.role.value,
+            machine_id     = machine.machine_id,
+            ek_fingerprint = machine.ek_fingerprint,
+            cluster_id     = cluster_id,
+            hostname       = machine.hostname,
+            assigned_ip    = machine.assigned_ip,
+        )
 
     @staticmethod
     def _deliver_config(machine: MachineRow, config_yaml: str, accept: str, settings) -> Response:
