@@ -14,7 +14,7 @@ aiohttp>=3.13.5
 python-dotenv>=1.2.2
 
 # Debugging (optional - for VS Code integration)
-debugpy>=1.8.0
+debugpy>=1.8.21
 
 # Agent Dev CLI (optional - for Agent Inspector)
 # agent-dev-cli --pre
