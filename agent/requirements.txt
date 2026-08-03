@@ -5,7 +5,7 @@ azure-ai-agents>=1.0.0
 azure-identity>=1.25.3
 
 # OpenAI SDK (for Ollama local mode)
-openai>=2.37.0
+openai>=2.52.0
 
 # HTTP server (for Agent Inspector mode)
 aiohttp>=3.13.5
