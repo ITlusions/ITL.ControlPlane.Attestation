@@ -11,7 +11,7 @@ openai>=2.37.0
 aiohttp>=3.13.5
 
 # Configuration
-python-dotenv>=1.2.2
+python-dotenv>=1.2.3
 
 # Debugging (optional - for VS Code integration)
 debugpy>=1.8.0
